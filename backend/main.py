@@ -2,14 +2,9 @@
 FastAPI application main module.
 """
 
+from app.api.v1 import api_router as api_router_v1
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-# Import API routes
-try:
-    from app.api.routes import router as api_router
-except ImportError:
-    api_router = None
 
 # Create FastAPI instance
 app = FastAPI(
@@ -28,15 +23,22 @@ app.add_middleware(
 )
 
 # Include API routes
-if api_router:
-    app.include_router(api_router, prefix="/api/v1", tags=["api"])
+app.include_router(api_router_v1, prefix="/api/v1")
 
 
 @app.get("/")
-def read_root():
-    return {"Hello": "World"}
+async def root():
+    """Root endpoint returning a welcome message."""
+    return {"message": "Welcome to Vesta API"}
 
 
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q=None):
-    return {"item_id": item_id, "q": q}
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "healthy", "message": "Service is running"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)
