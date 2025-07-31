@@ -1,37 +1,75 @@
-"""
-Users API routes.
-"""
+"""User-related API routes."""
 
-from fastapi import APIRouter
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlmodel import Session
+
+from app.core.database import get_session
+from app.models.user import UserCreate, UserRead, UserUpdate
+from app.services.user import UserService
 
 router = APIRouter()
+user_service = UserService()
 
 
-@router.get("/")
-async def get_users():
-    """Get all users."""
-    return {"users": []}
-
-
-@router.get("/{user_id}")
-async def get_user(user_id: int):
-    """Get a specific user by ID."""
-    return {"user_id": user_id, "username": f"user_{user_id}"}
-
-
-@router.post("/")
-async def create_user(user_data: dict):
+@router.post("/", response_model=UserRead)
+def create_user(user_in: UserCreate, db: Session = Depends(get_session)):
     """Create a new user."""
-    return {"message": "User created", "data": user_data}
+    return user_service.create(db, obj_in=user_in)
 
 
-@router.put("/{user_id}")
-async def update_user(user_id: int, user_data: dict):
-    """Update an existing user."""
-    return {"message": f"User {user_id} updated", "data": user_data}
+@router.get("/", response_model=List[UserRead])
+def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_session)):
+    """Get multiple users."""
+    return user_service.get_multi(db, skip=skip, limit=limit)
 
 
-@router.delete("/{user_id}")
-async def delete_user(user_id: int):
+@router.get("/{user_id}", response_model=UserRead)
+def get_user(user_id: int, db: Session = Depends(get_session)):
+    """Get a user by ID."""
+    user = user_service.get(db, id=user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    return user
+
+
+@router.put("/{user_id}", response_model=UserRead)
+def update_user(user_id: int, user_in: UserUpdate, db: Session = Depends(get_session)):
+    """Update a user."""
+    return user_service.update(db, id=user_id, obj_in=user_in)
+
+
+@router.delete("/{user_id}", response_model=UserRead)
+def delete_user(user_id: int, db: Session = Depends(get_session)):
     """Delete a user."""
-    return {"message": f"User {user_id} deleted"}
+    user = user_service.delete(db, id=user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    return user
+
+
+@router.get("/email/{email}", response_model=UserRead)
+def get_user_by_email(email: str, db: Session = Depends(get_session)):
+    """Get a user by email."""
+    user = user_service.get_by_email(db, email=email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    return user
+
+
+@router.get("/username/{username}", response_model=UserRead)
+def get_user_by_username(username: str, db: Session = Depends(get_session)):
+    """Get a user by username."""
+    user = user_service.get_by_username(db, username=username)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    return user

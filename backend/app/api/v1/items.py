@@ -1,37 +1,111 @@
-"""
-Items API routes.
-"""
+"""Item-related API routes."""
 
-from fastapi import APIRouter
+from decimal import Decimal
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlmodel import Session
+
+from app.core.database import get_session
+from app.models.item import ItemCreate, ItemRead, ItemUpdate
+from app.services.item import ItemService
 
 router = APIRouter()
+item_service = ItemService()
 
 
-@router.get("/")
-async def get_items():
-    """Get all items."""
-    return {"items": []}
-
-
-@router.get("/{item_id}")
-async def get_item(item_id: int):
-    """Get a specific item by ID."""
-    return {"item_id": item_id, "name": f"Item {item_id}"}
-
-
-@router.post("/")
-async def create_item(item_data: dict):
+@router.post("/", response_model=ItemRead)
+def create_item(item_in: ItemCreate, db: Session = Depends(get_session)):
     """Create a new item."""
-    return {"message": "Item created", "data": item_data}
+    return item_service.create(db, obj_in=item_in)
 
 
-@router.put("/{item_id}")
-async def update_item(item_id: int, item_data: dict):
-    """Update an existing item."""
-    return {"message": f"Item {item_id} updated", "data": item_data}
+@router.get("/", response_model=List[ItemRead])
+def get_items(
+    skip: int = 0,
+    limit: int = 100,
+    available_only: bool = Query(False, description="Get only available items"),
+    db: Session = Depends(get_session),
+):
+    """Get multiple items."""
+    if available_only:
+        return item_service.get_available_items(db, skip=skip, limit=limit)
+    return item_service.get_multi(db, skip=skip, limit=limit)
 
 
-@router.delete("/{item_id}")
-async def delete_item(item_id: int):
+@router.get("/search", response_model=List[ItemRead])
+def search_items(
+    search_term: str = Query(..., min_length=2, description="Search term"),
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_session),
+):
+    """Search items by name or description."""
+    return item_service.search_items(
+        db, search_term=search_term, skip=skip, limit=limit
+    )
+
+
+@router.get("/price-range", response_model=List[ItemRead])
+def get_items_by_price_range(
+    min_price: Decimal = Query(..., gt=0, description="Minimum price"),
+    max_price: Decimal = Query(..., gt=0, description="Maximum price"),
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_session),
+):
+    """Get items within price range."""
+    return item_service.get_by_price_range(
+        db, min_price=min_price, max_price=max_price, skip=skip, limit=limit
+    )
+
+
+@router.get("/low-stock", response_model=List[ItemRead])
+def get_low_stock_items(
+    threshold: int = Query(10, ge=1, description="Stock threshold"),
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_session),
+):
+    """Get items with low stock."""
+    return item_service.get_low_stock_items(
+        db, threshold=threshold, skip=skip, limit=limit
+    )
+
+
+@router.get("/{item_id}", response_model=ItemRead)
+def get_item(item_id: int, db: Session = Depends(get_session)):
+    """Get an item by ID."""
+    item = item_service.get(db, id=item_id)
+    if not item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Item not found"
+        )
+    return item
+
+
+@router.put("/{item_id}", response_model=ItemRead)
+def update_item(item_id: int, item_in: ItemUpdate, db: Session = Depends(get_session)):
+    """Update an item."""
+    return item_service.update(db, id=item_id, obj_in=item_in)
+
+
+@router.patch("/{item_id}/quantity", response_model=ItemRead)
+def update_item_quantity(
+    item_id: int,
+    new_quantity: int = Query(..., ge=0, description="New quantity"),
+    db: Session = Depends(get_session),
+):
+    """Update item quantity."""
+    return item_service.update_quantity(db, item_id=item_id, new_quantity=new_quantity)
+
+
+@router.delete("/{item_id}", response_model=ItemRead)
+def delete_item(item_id: int, db: Session = Depends(get_session)):
     """Delete an item."""
-    return {"message": f"Item {item_id} deleted"}
+    item = item_service.delete(db, id=item_id)
+    if not item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Item not found"
+        )
+    return item
