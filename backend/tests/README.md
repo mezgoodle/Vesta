@@ -33,9 +33,7 @@ tests/
 
 - **test_performance.py**: Response time, concurrent requests, large payload handling
 
-## Running Tests
-
-### Prerequisites
+## Prerequisites
 
 Install test dependencies:
 
@@ -43,64 +41,177 @@ Install test dependencies:
 pip install pytest pytest-asyncio coverage
 ```
 
-Or use the PowerShell script:
+## Running Tests with pytest
 
-```powershell
-.\run_tests.ps1 -Install
-```
-
-### Basic Usage
+### Basic Commands
 
 **Run all tests:**
 
 ```bash
-python run_tests.py
-# or
-.\run_tests.ps1
+pytest
 ```
 
-**Run specific test categories:**
+**Run all tests with verbose output:**
 
 ```bash
-python run_tests.py unit          # Unit tests only
-python run_tests.py integration   # Integration tests only
-python run_tests.py performance   # Performance tests only
+pytest -v
 ```
 
-**Run specific test files:**
+**Run all tests with coverage:**
 
 ```bash
-python run_tests.py auth          # Authentication tests
-python run_tests.py items         # Items tests
-python run_tests.py users         # Users tests
-python run_tests.py main          # Main app tests
+pytest --cov=app --cov=main --cov-report=html --cov-report=term-missing
 ```
 
-### Advanced Options
+### Running Specific Test Files
 
-**Run with verbose output:**
+**Run authentication tests:**
 
 ```bash
-python run_tests.py all -v
-# or
-.\run_tests.ps1 -Verbose
+pytest tests/test_auth.py
 ```
 
-**Run without coverage:**
+**Run items tests:**
 
 ```bash
-python run_tests.py all --no-coverage
-# or
-.\run_tests.ps1 -NoCoverage
+pytest tests/test_items.py
 ```
 
-**Using pytest directly:**
+**Run users tests:**
 
 ```bash
-pytest tests/ -v                           # All tests, verbose
-pytest tests/test_auth.py -v              # Specific file
-pytest -m "not performance" -v            # Exclude performance tests
-pytest --cov=app --cov-report=html        # With coverage report
+pytest tests/test_users.py
+```
+
+**Run main application tests:**
+
+```bash
+pytest tests/test_main.py
+```
+
+**Run integration tests:**
+
+```bash
+pytest tests/test_integration.py
+```
+
+**Run performance tests:**
+
+```bash
+pytest tests/test_performance.py
+```
+
+### Running Tests by Category (using markers)
+
+**Run only unit tests (exclude integration and performance):**
+
+```bash
+pytest -m "not integration and not performance"
+```
+
+**Run only integration tests:**
+
+```bash
+pytest -m integration
+```
+
+**Run only performance tests:**
+
+```bash
+pytest -m performance
+```
+
+**Exclude slow tests:**
+
+```bash
+pytest -m "not slow"
+```
+
+### Advanced pytest Options
+
+**Run with extra verbosity and show local variables:**
+
+```bash
+pytest -vv -l
+```
+
+**Run tests and stop on first failure:**
+
+```bash
+pytest -x
+```
+
+**Run tests with detailed output on failures:**
+
+```bash
+pytest --tb=long
+```
+
+**Run specific test methods:**
+
+```bash
+pytest tests/test_auth.py::TestAuthEndpoints::test_login_endpoint
+```
+
+**Run tests matching a pattern:**
+
+```bash
+pytest -k "login"              # Run tests with 'login' in the name
+pytest -k "auth and not logout" # Run auth tests except logout
+```
+
+**Run tests in parallel (if pytest-xdist is installed):**
+
+```bash
+pip install pytest-xdist
+pytest -n auto                # Use all available cores
+pytest -n 4                   # Use 4 cores
+```
+
+### Coverage Reports
+
+**Generate HTML coverage report:**
+
+```bash
+pytest --cov=app --cov=main --cov-report=html
+```
+
+**Generate terminal coverage report:**
+
+```bash
+pytest --cov=app --cov=main --cov-report=term-missing
+```
+
+**Generate both HTML and terminal reports:**
+
+```bash
+pytest --cov=app --cov=main --cov-report=html --cov-report=term-missing
+```
+
+**View coverage report:**
+
+- HTML report: Open `htmlcov/index.html` in your browser
+- Terminal report: Shows missing lines directly in terminal
+
+### Debugging Tests
+
+**Run with Python debugger:**
+
+```bash
+pytest --pdb                   # Drop into debugger on failures
+pytest --pdbcls=ipdb.debugger  # Use ipdb if installed
+```
+
+**Run with print statements visible:**
+
+```bash
+pytest -s                     # Don't capture output
+```
+
+**Run with extra debugging info:**
+
+```bash
+pytest --tb=long -vv -s
 ```
 
 ## Test Fixtures
@@ -111,15 +222,6 @@ The `conftest.py` file provides several useful fixtures:
 - **`sample_item_data`**: Sample data for item testing
 - **`sample_user_data`**: Sample data for user testing
 - **`sample_credentials`**: Sample login credentials
-
-## Coverage Reports
-
-Test coverage reports are generated in the `htmlcov/` directory when running with coverage enabled (default).
-
-**View coverage report:**
-
-- Open `htmlcov/index.html` in your browser
-- Or use PowerShell script prompt to open automatically
 
 ## Test Markers
 
@@ -177,7 +279,7 @@ The test suite is designed to work with CI/CD pipelines:
 - name: Run tests
   run: |
     pip install -r requirements.txt
-    python run_tests.py all
+    pytest --cov=app --cov=main --cov-report=xml
 ```
 
 ## Test Data
@@ -213,4 +315,44 @@ Current performance targets:
 - **Concurrent requests**: Handle 10 simultaneous requests
 - **Large payloads**: Process 10KB+ payloads within 2 seconds
 
-Run performance tests regularly to ensure these benchmarks are met.
+Run performance tests regularly to ensure these benchmarks are met:
+
+```bash
+pytest tests/test_performance.py -v
+```
+
+## Common pytest Commands Cheat Sheet
+
+```bash
+# Basic usage
+pytest                                    # Run all tests
+pytest -v                                # Verbose output
+pytest -q                                # Quiet output
+pytest -x                                # Stop on first failure
+
+# File/directory selection
+pytest tests/                            # Run tests in directory
+pytest tests/test_auth.py                # Run specific file
+pytest tests/test_auth.py::TestAuthEndpoints  # Run specific class
+pytest tests/test_auth.py::TestAuthEndpoints::test_login  # Run specific test
+
+# Filtering
+pytest -k "auth"                         # Run tests matching pattern
+pytest -m "integration"                  # Run tests with marker
+pytest -m "not slow"                     # Exclude tests with marker
+
+# Output and debugging
+pytest -s                                # Show print statements
+pytest --tb=short                        # Short traceback format
+pytest --tb=long                         # Long traceback format
+pytest --pdb                             # Drop into debugger on failure
+
+# Coverage
+pytest --cov=app                         # Run with coverage
+pytest --cov=app --cov-report=html       # Generate HTML report
+pytest --cov=app --cov-report=term-missing  # Show missing lines
+
+# Parallel execution (requires pytest-xdist)
+pytest -n auto                           # Use all CPU cores
+pytest -n 4                              # Use 4 workers
+```
