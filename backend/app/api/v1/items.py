@@ -1,7 +1,6 @@
 """Item-related API routes."""
 
 from decimal import Decimal
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session
@@ -15,12 +14,11 @@ item_service = ItemService()
 
 
 @router.post("/", response_model=ItemRead)
-def create_item(item_in: ItemCreate, db: Session = Depends(get_session)):
-    """Create a new item."""
+def create_item(item_in: ItemCreate, db: Session = Depends(get_session)) -> ItemRead:
     return item_service.create(db, obj_in=item_in)
 
 
-@router.get("/", response_model=List[ItemRead])
+@router.get("/", response_model=list[ItemRead])
 def get_items(
     skip: int = 0,
     limit: int = 100,
@@ -33,7 +31,7 @@ def get_items(
     return item_service.get_multi(db, skip=skip, limit=limit)
 
 
-@router.get("/search", response_model=List[ItemRead])
+@router.get("/search", response_model=list[ItemRead])
 def search_items(
     search_term: str = Query(..., min_length=2, description="Search term"),
     skip: int = 0,
@@ -46,7 +44,7 @@ def search_items(
     )
 
 
-@router.get("/price-range", response_model=List[ItemRead])
+@router.get("/price-range", response_model=list[ItemRead])
 def get_items_by_price_range(
     min_price: Decimal = Query(..., gt=0, description="Minimum price"),
     max_price: Decimal = Query(..., gt=0, description="Maximum price"),
@@ -60,7 +58,7 @@ def get_items_by_price_range(
     )
 
 
-@router.get("/low-stock", response_model=List[ItemRead])
+@router.get("/low-stock", response_model=list[ItemRead])
 def get_low_stock_items(
     threshold: int = Query(10, ge=1, description="Stock threshold"),
     skip: int = 0,

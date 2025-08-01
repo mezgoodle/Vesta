@@ -12,5 +12,6 @@ class BaseModel(SQLModel):
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: Optional[datetime] = Field(
-        default=None, sa_column_kwargs={"onupdate": datetime.now}
+        default=None,
+        sa_column_kwargs={"onupdate": datetime.now},
     )

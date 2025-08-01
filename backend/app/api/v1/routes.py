@@ -17,9 +17,8 @@ api_router.include_router(items.router, prefix="/items", tags=["items"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 
 
-# Optional: Add some general API endpoints
 @api_router.get("/")
-async def api_root():
+async def api_root() -> dict[str, str]:
     """API root endpoint."""
     return {
         "message": "Welcome to Vesta API",
@@ -29,6 +28,6 @@ async def api_root():
 
 
 @api_router.get("/status")
-async def api_status():
+async def api_status() -> dict[str, str]:
     """API status endpoint."""
     return {"status": "active", "message": "All API services are running"}

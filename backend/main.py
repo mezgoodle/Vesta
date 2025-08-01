@@ -17,10 +17,12 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     # Startup
-    create_db_and_tables()
+    try:
+        create_db_and_tables()
+    except Exception as e:
+        raise RuntimeError(f"Failed to initialize database: {e}") from e
     yield
     # Shutdown
-    pass
 
 
 # Create FastAPI instance
@@ -45,14 +47,12 @@ app.include_router(api_router_v1, prefix="/api/v1")
 
 
 @app.get("/")
-async def root():
-    """Root endpoint returning a welcome message."""
+async def root() -> dict:
     return {"message": "Welcome to Vesta API"}
 
 
 @app.get("/health")
-async def health_check():
-    """Health check endpoint."""
+async def health_check() -> dict:
     return {"status": "healthy", "message": "Service is running"}
 
 

@@ -1,6 +1,6 @@
 """Base repository for CRUD operations."""
 
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
+from typing import Any, Generic, Optional, TypeVar
 
 from fastapi.encoders import jsonable_encoder
 from sqlmodel import Session, SQLModel, select
@@ -13,7 +13,7 @@ UpdateSchemaType = TypeVar("UpdateSchemaType", bound=SQLModel)
 class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     """Base repository class for CRUD operations."""
 
-    def __init__(self, model: Type[ModelType]):
+    def __init__(self, model: type[ModelType]) -> None:
         """Initialize repository with model."""
         self.model = model
 
@@ -23,7 +23,7 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
     def get_multi(
         self, db: Session, *, skip: int = 0, limit: int = 100
-    ) -> List[ModelType]:
+    ) -> list[ModelType]:
         """Get multiple records with pagination."""
         statement = select(self.model).offset(skip).limit(limit)
         return db.exec(statement).all()
@@ -42,14 +42,14 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db: Session,
         *,
         db_obj: ModelType,
-        obj_in: UpdateSchemaType | Dict[str, Any],
+        obj_in: UpdateSchemaType | dict[str, Any],
     ) -> ModelType:
         """Update an existing record."""
         obj_data = jsonable_encoder(db_obj)
         if isinstance(obj_in, dict):
             update_data = obj_in
         else:
-            update_data = obj_in.dict(exclude_unset=True)
+            update_data = obj_in.model_dump(exclude_unset=True)
 
         for field in obj_data:
             if field in update_data:
@@ -60,10 +60,9 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db.refresh(db_obj)
         return db_obj
 
-    def delete(self, db: Session, *, id: int) -> ModelType:
-        """Delete a record by ID."""
+    def delete(self, db: Session, *, id: int) -> Optional[ModelType]:
         obj = db.get(self.model, id)
-        if obj:
+        if obj is not None:
             db.delete(obj)
             db.commit()
         return obj

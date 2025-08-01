@@ -1,6 +1,4 @@
-"""Base service for business logic operations."""
-
-from typing import Any, Dict, Generic, List, Optional, TypeVar
+from typing import Any, Generic, Optional, TypeVar
 
 from sqlmodel import Session
 
@@ -17,7 +15,7 @@ class BaseService(
 ):
     """Base service class for business logic operations."""
 
-    def __init__(self, repository: RepositoryType):
+    def __init__(self, repository: RepositoryType) -> None:
         """Initialize service with repository."""
         self.repository = repository
 
@@ -27,7 +25,7 @@ class BaseService(
 
     def get_multi(
         self, db: Session, *, skip: int = 0, limit: int = 100
-    ) -> List[ModelType]:
+    ) -> list[ModelType]:
         """Get multiple records with pagination."""
         return self.repository.get_multi(db, skip=skip, limit=limit)
 
@@ -36,7 +34,7 @@ class BaseService(
         return self.repository.create(db, obj_in=obj_in)
 
     def update(
-        self, db: Session, *, id: int, obj_in: UpdateSchemaType | Dict[str, Any]
+        self, db: Session, *, id: int, obj_in: UpdateSchemaType | dict[str, Any]
     ) -> Optional[ModelType]:
         """Update an existing record."""
         db_obj = self.repository.get(db, id)

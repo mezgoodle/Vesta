@@ -7,7 +7,7 @@ from app.core.database import create_db_and_tables
 from app.core.settings import get_settings
 
 
-def main():
+def main() -> None:
     """Initialize the database."""
     print("Initializing database...")
     settings = get_settings()

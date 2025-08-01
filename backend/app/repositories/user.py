@@ -17,7 +17,7 @@ from app.repositories.base import BaseRepository
 class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
     """User repository for database operations."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(User)
 
     def get_by_email(self, db: Session, *, email: str) -> Optional[User]:
@@ -31,7 +31,10 @@ class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
         return db.exec(statement).first()
 
     def create(self, db: Session, *, obj_in: UserCreate) -> User:
-        """Create user with hashed password."""
+        if self.get_by_email(db, email=obj_in.email):
+            raise ValueError("Email already registered")
+        if self.get_by_username(db, username=obj_in.username):
+            raise ValueError("Username already taken")
         db_obj = User(
             username=obj_in.username,
             email=obj_in.email,
@@ -41,8 +44,12 @@ class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
             is_superuser=obj_in.is_superuser,
         )
         db.add(db_obj)
-        db.commit()
-        db.refresh(db_obj)
+        try:
+            db.commit()
+            db.refresh(db_obj)
+        except Exception as e:
+            db.rollback()
+            raise RuntimeError(f"Error creating user: {e}") from e
         return db_obj
 
     def authenticate(self, db: Session, *, email: str, password: str) -> Optional[User]:

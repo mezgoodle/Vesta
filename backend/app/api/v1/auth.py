@@ -21,7 +21,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_session)):
 @router.post("/login")
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_session)
-):
+) -> dict[str, str | UserRead]:
     """Login user and return access token."""
     user = user_service.authenticate(
         db, email=form_data.username, password=form_data.password
@@ -42,7 +42,7 @@ def login(
 
 
 @router.post("/logout")
-def logout():
+def logout() -> dict[str, str]:
     """Logout user (invalidate token)."""
     # Note: In a real application, you would invalidate the token here
     return {"message": "Successfully logged out"}

@@ -49,14 +49,20 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 The API will be available at:
 
-- **API**: http://localhost:8000
-- **Interactive Documentation**: http://localhost:8000/docs
-- **Alternative Documentation**: http://localhost:8000/redoc
+- **API**: <http://localhost:8000>
+- **Interactive Documentation**: <http://localhost:8000/docs>
+- **Alternative Documentation**: <http://localhost:8000/redoc>
 
 ## API Endpoints
 
 - `GET /` - Welcome message
 - `GET /health` - Health check endpoint
+- `GET /api/v1/` - Welcome message
+- `GET /api/v1/status` - API status endpoint
+- `GET /api/v1/auth/*` - Authentication endpoints
+- `GET /api/v1/items/*` - Items management endpoints
+- `GET /api/v1/users/*` - Users management endpoints
+- `GET /health` - Health check endpoint (if implemented in main.py)
 
 ## Development
 

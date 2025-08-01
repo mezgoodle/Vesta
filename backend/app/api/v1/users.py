@@ -1,7 +1,3 @@
-"""User-related API routes."""
-
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
@@ -14,13 +10,14 @@ user_service = UserService()
 
 
 @router.post("/", response_model=UserRead)
-def create_user(user_in: UserCreate, db: Session = Depends(get_session)):
-    """Create a new user."""
+def create_user(user_in: UserCreate, db: Session = Depends(get_session)) -> UserRead:
     return user_service.create(db, obj_in=user_in)
 
 
-@router.get("/", response_model=List[UserRead])
-def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_session)):
+@router.get("/", response_model=list[UserRead])
+def get_users(
+    skip: int = 0, limit: int = 100, db: Session = Depends(get_session)
+) -> list[UserRead]:
     """Get multiple users."""
     return user_service.get_multi(db, skip=skip, limit=limit)
 
