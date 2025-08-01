@@ -1,5 +1,4 @@
-"""Item models."""
-
+from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
@@ -44,5 +43,5 @@ class ItemRead(ItemBase):
     """Item read model (public response)."""
 
     id: int
-    created_at: str
-    updated_at: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None

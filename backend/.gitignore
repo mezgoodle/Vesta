@@ -39,3 +39,7 @@ Thumbs.db
 # Environment variables
 .env
 .env.local
+
+# SQlite
+*.sqlite3
+*.db

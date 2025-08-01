@@ -1,5 +1,4 @@
-"""User models."""
-
+from datetime import datetime
 from typing import Optional
 
 from passlib.context import CryptContext
@@ -48,8 +47,8 @@ class UserRead(UserBase):
     """User read model (public response)."""
 
     id: int
-    created_at: str
-    updated_at: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
