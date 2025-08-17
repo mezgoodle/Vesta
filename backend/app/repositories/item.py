@@ -1,7 +1,6 @@
 """Item repository for database operations."""
 
 from decimal import Decimal
-from typing import List
 
 from sqlmodel import Session, and_, or_, select
 
@@ -15,14 +14,14 @@ class ItemRepository(BaseRepository[Item, ItemCreate, ItemUpdate]):
     def __init__(self):
         super().__init__(Item)
 
-    def get_by_name(self, db: Session, *, name: str) -> List[Item]:
+    def get_by_name(self, db: Session, *, name: str) -> list[Item]:
         """Get items by name (case-insensitive search)."""
         statement = select(Item).where(Item.name.ilike(f"%{name}%"))
         return db.exec(statement).all()
 
     def get_available_items(
         self, db: Session, *, skip: int = 0, limit: int = 100
-    ) -> List[Item]:
+    ) -> list[Item]:
         """Get all available items."""
         statement = (
             select(Item)
@@ -40,7 +39,7 @@ class ItemRepository(BaseRepository[Item, ItemCreate, ItemUpdate]):
         max_price: Decimal,
         skip: int = 0,
         limit: int = 100,
-    ) -> List[Item]:
+    ) -> list[Item]:
         """Get items within price range."""
         statement = (
             select(Item)
@@ -52,7 +51,7 @@ class ItemRepository(BaseRepository[Item, ItemCreate, ItemUpdate]):
 
     def search_items(
         self, db: Session, *, search_term: str, skip: int = 0, limit: int = 100
-    ) -> List[Item]:
+    ) -> list[Item]:
         """Search items by name or description."""
         statement = (
             select(Item)
@@ -69,7 +68,7 @@ class ItemRepository(BaseRepository[Item, ItemCreate, ItemUpdate]):
 
     def get_low_stock_items(
         self, db: Session, *, threshold: int = 10, skip: int = 0, limit: int = 100
-    ) -> List[Item]:
+    ) -> list[Item]:
         """Get items with low stock."""
         statement = (
             select(Item)

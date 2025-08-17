@@ -1,7 +1,6 @@
 """Item service for business logic operations."""
 
 from decimal import Decimal
-from typing import List
 
 from fastapi import HTTPException, status
 from sqlmodel import Session
@@ -17,13 +16,13 @@ class ItemService(BaseService[Item, ItemCreate, ItemUpdate, ItemRepository]):
     def __init__(self):
         super().__init__(ItemRepository())
 
-    def get_by_name(self, db: Session, *, name: str) -> List[Item]:
+    def get_by_name(self, db: Session, *, name: str) -> list[Item]:
         """Get items by name."""
         return self.repository.get_by_name(db, name=name)
 
     def get_available_items(
         self, db: Session, *, skip: int = 0, limit: int = 100
-    ) -> List[Item]:
+    ) -> list[Item]:
         """Get all available items."""
         return self.repository.get_available_items(db, skip=skip, limit=limit)
 
@@ -35,7 +34,7 @@ class ItemService(BaseService[Item, ItemCreate, ItemUpdate, ItemRepository]):
         max_price: Decimal,
         skip: int = 0,
         limit: int = 100,
-    ) -> List[Item]:
+    ) -> list[Item]:
         """Get items within price range with validation."""
         if min_price < 0:
             raise HTTPException(
@@ -53,7 +52,7 @@ class ItemService(BaseService[Item, ItemCreate, ItemUpdate, ItemRepository]):
 
     def search_items(
         self, db: Session, *, search_term: str, skip: int = 0, limit: int = 100
-    ) -> List[Item]:
+    ) -> list[Item]:
         """Search items by name or description."""
         if not search_term or len(search_term.strip()) < 2:
             raise HTTPException(
@@ -66,7 +65,7 @@ class ItemService(BaseService[Item, ItemCreate, ItemUpdate, ItemRepository]):
 
     def get_low_stock_items(
         self, db: Session, *, threshold: int = 10, skip: int = 0, limit: int = 100
-    ) -> List[Item]:
+    ) -> list[Item]:
         """Get items with low stock."""
         if threshold < 0:
             raise HTTPException(

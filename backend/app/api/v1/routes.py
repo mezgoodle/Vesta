@@ -18,7 +18,7 @@ api_router.include_router(users.router, prefix="/users", tags=["users"])
 
 
 @api_router.get("/")
-async def api_root() -> dict[str, str]:
+async def api_root() -> dict[str, str | dict]:
     """API root endpoint."""
     return {
         "message": "Welcome to Vesta API",

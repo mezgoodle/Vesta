@@ -13,7 +13,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 class UserBase(SQLModel):
     """Base user model with common fields."""
 
-    username: str = Field(index=True, min_length=3, max_length=50)
+    username: str = Field(index=True, min_length=3, max_length=50, unique=True)
     email: str = Field(index=True, unique=True, min_length=5, max_length=100)
     full_name: Optional[str] = Field(default=None, max_length=100)
     is_active: bool = Field(default=True)

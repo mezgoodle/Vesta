@@ -20,13 +20,9 @@ class ItemBase(SQLModel):
 class Item(ItemBase, BaseModel, table=True):
     """Item database model."""
 
-    pass
-
 
 class ItemCreate(ItemBase):
     """Item creation model."""
-
-    pass
 
 
 class ItemUpdate(SQLModel):
