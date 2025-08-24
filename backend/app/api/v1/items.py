@@ -1,13 +1,10 @@
-"""Item-related API routes."""
-
 from decimal import Decimal
-
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlmodel import Session
 
 from app.core.database import get_session
 from app.models.item import ItemCreate, ItemRead, ItemUpdate
 from app.services.item import ItemService
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlmodel import Session
 
 router = APIRouter()
 item_service = ItemService()
@@ -25,7 +22,6 @@ def get_items(
     available_only: bool = Query(False, description="Get only available items"),
     db: Session = Depends(get_session),
 ):
-    """Get multiple items."""
     if available_only:
         return item_service.get_available_items(db, skip=skip, limit=limit)
     return item_service.get_multi(db, skip=skip, limit=limit)
@@ -38,7 +34,6 @@ def search_items(
     limit: int = 100,
     db: Session = Depends(get_session),
 ):
-    """Search items by name or description."""
     return item_service.search_items(
         db, search_term=search_term, skip=skip, limit=limit
     )
@@ -52,7 +47,6 @@ def get_items_by_price_range(
     limit: int = 100,
     db: Session = Depends(get_session),
 ):
-    """Get items within price range."""
     return item_service.get_by_price_range(
         db, min_price=min_price, max_price=max_price, skip=skip, limit=limit
     )
@@ -65,7 +59,6 @@ def get_low_stock_items(
     limit: int = 100,
     db: Session = Depends(get_session),
 ):
-    """Get items with low stock."""
     return item_service.get_low_stock_items(
         db, threshold=threshold, skip=skip, limit=limit
     )
@@ -73,7 +66,6 @@ def get_low_stock_items(
 
 @router.get("/{item_id}", response_model=ItemRead)
 def get_item(item_id: int, db: Session = Depends(get_session)):
-    """Get an item by ID."""
     item = item_service.get(db, id=item_id)
     if not item:
         raise HTTPException(
@@ -84,7 +76,6 @@ def get_item(item_id: int, db: Session = Depends(get_session)):
 
 @router.put("/{item_id}", response_model=ItemRead)
 def update_item(item_id: int, item_in: ItemUpdate, db: Session = Depends(get_session)):
-    """Update an item."""
     return item_service.update(db, id=item_id, obj_in=item_in)
 
 
@@ -94,13 +85,11 @@ def update_item_quantity(
     new_quantity: int = Query(..., ge=0, description="New quantity"),
     db: Session = Depends(get_session),
 ):
-    """Update item quantity."""
     return item_service.update_quantity(db, item_id=item_id, new_quantity=new_quantity)
 
 
 @router.delete("/{item_id}", response_model=ItemRead)
 def delete_item(item_id: int, db: Session = Depends(get_session)):
-    """Delete an item."""
     item = item_service.delete(db, id=item_id)
     if not item:
         raise HTTPException(

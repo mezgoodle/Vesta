@@ -8,8 +8,6 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    """Application settings."""
-
     # Database settings
     database_url: str = "sqlite:///./vesta.db"
     database_echo: bool = False
@@ -41,5 +39,4 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    """Get cached settings instance."""
     return Settings()

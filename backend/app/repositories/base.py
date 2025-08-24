@@ -1,5 +1,3 @@
-"""Base repository for CRUD operations."""
-
 from typing import Any, Generic, Optional, TypeVar
 
 from fastapi.encoders import jsonable_encoder

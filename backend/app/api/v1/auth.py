@@ -1,12 +1,9 @@
-"""Authentication-related API routes."""
-
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
-from sqlmodel import Session
-
 from app.core.database import get_session
 from app.models.user import UserCreate, UserRead
 from app.services.user import UserService
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlmodel import Session
 
 router = APIRouter()
 user_service = UserService()
@@ -14,7 +11,6 @@ user_service = UserService()
 
 @router.post("/register", response_model=UserRead)
 def register(user_in: UserCreate, db: Session = Depends(get_session)):
-    """Register a new user."""
     return user_service.create(db, obj_in=user_in)
 
 
@@ -22,7 +18,6 @@ def register(user_in: UserCreate, db: Session = Depends(get_session)):
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_session)
 ) -> dict[str, str | UserRead]:
-    """Login user and return access token."""
     user = user_service.authenticate(
         db, email=form_data.username, password=form_data.password
     )
@@ -43,6 +38,5 @@ def login(
 
 @router.post("/logout")
 def logout() -> dict[str, str]:
-    """Logout user (invalidate token)."""
     # Note: In a real application, you would invalidate the token here
     return {"message": "Successfully logged out"}

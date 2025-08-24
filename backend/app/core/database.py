@@ -1,7 +1,3 @@
-"""
-Database configuration and session management.
-"""
-
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.core.settings import get_settings

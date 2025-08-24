@@ -1,5 +1,3 @@
-"""User repository for database operations."""
-
 from typing import Optional
 
 from sqlmodel import Session, select
@@ -15,18 +13,14 @@ from app.repositories.base import BaseRepository
 
 
 class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
-    """User repository for database operations."""
-
     def __init__(self) -> None:
         super().__init__(User)
 
     def get_by_email(self, db: Session, *, email: str) -> Optional[User]:
-        """Get user by email."""
         statement = select(User).where(User.email == email)
         return db.exec(statement).first()
 
     def get_by_username(self, db: Session, *, username: str) -> Optional[User]:
-        """Get user by username."""
         statement = select(User).where(User.username == username)
         return db.exec(statement).first()
 
@@ -53,7 +47,6 @@ class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
         return db_obj
 
     def authenticate(self, db: Session, *, email: str, password: str) -> Optional[User]:
-        """Authenticate user with email and password."""
         user = self.get_by_email(db, email=email)
         if not user:
             return None
@@ -62,9 +55,7 @@ class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
         return user
 
     def is_active(self, user: User) -> bool:
-        """Check if user is active."""
         return user.is_active
 
     def is_superuser(self, user: User) -> bool:
-        """Check if user is superuser."""
         return user.is_superuser

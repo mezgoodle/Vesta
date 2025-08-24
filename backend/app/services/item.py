@@ -17,13 +17,11 @@ class ItemService(BaseService[Item, ItemCreate, ItemUpdate, ItemRepository]):
         super().__init__(ItemRepository())
 
     def get_by_name(self, db: Session, *, name: str) -> list[Item]:
-        """Get items by name."""
         return self.repository.get_by_name(db, name=name)
 
     def get_available_items(
         self, db: Session, *, skip: int = 0, limit: int = 100
     ) -> list[Item]:
-        """Get all available items."""
         return self.repository.get_available_items(db, skip=skip, limit=limit)
 
     def get_by_price_range(
@@ -35,7 +33,6 @@ class ItemService(BaseService[Item, ItemCreate, ItemUpdate, ItemRepository]):
         skip: int = 0,
         limit: int = 100,
     ) -> list[Item]:
-        """Get items within price range with validation."""
         if min_price < 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

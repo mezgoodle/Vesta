@@ -1,7 +1,3 @@
-"""
-FastAPI application main module.
-"""
-
 from contextlib import asynccontextmanager
 
 from app.api.v1 import api_router as api_router_v1
