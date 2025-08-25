@@ -1,7 +1,7 @@
 from app.core.database import get_session
 from app.models.user import UserCreate, UserRead, UserUpdate
 from app.services.user import UserService
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session
 
 router = APIRouter()
@@ -15,7 +15,9 @@ def create_user(user_in: UserCreate, db: Session = Depends(get_session)) -> User
 
 @router.get("/", response_model=list[UserRead])
 def get_users(
-    skip: int = 0, limit: int = 100, db: Session = Depends(get_session)
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    db: Session = Depends(get_session),
 ) -> list[UserRead]:
     return user_service.get_multi(db, skip=skip, limit=limit)
 

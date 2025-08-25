@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: cloud-run-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   PROJECT_ID: vesta-470005
   SERVICE_NAME: vesta-cloud-run
