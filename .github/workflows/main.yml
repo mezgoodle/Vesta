@@ -10,7 +10,7 @@ env:
   PROJECT_ID: vesta-470005
   SERVICE_NAME: vesta-cloud-run
   REGION: europe-west1
-  ARTIFACT_REPO: vesta-backend
+  ARTIFACT_REPO: europe-west1-docker.pkg.dev/vesta-470005/vesta-backend
 
 jobs:
   deploy:
