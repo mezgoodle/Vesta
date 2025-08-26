@@ -26,6 +26,8 @@ jobs:
 
       - name: Set up Cloud SDK
         uses: "google-github-actions/setup-gcloud@v1"
+        with:
+          version: "latest"
 
       - name: Build and Push Docker image
         run: |-
