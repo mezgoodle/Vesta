@@ -1,9 +1,6 @@
 name: Deploy to Cloud Run
 
-on:
-  push:
-    branches:
-      - main
+on: workflow_dispatch
 
 concurrency:
   group: cloud-run-${{ github.ref }}
@@ -32,7 +29,8 @@ jobs:
 
       - name: Build and Push Docker image
         run: |-
-          gcloud builds submit --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          gcloud builds submit --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
 
       - name: Deploy to Cloud Run
         run: |-
