@@ -10,34 +10,35 @@ env:
   PROJECT_ID: vesta-470005
   SERVICE_NAME: vesta-cloud-run
   REGION: europe-west1
+  ARTIFACT_REPO: vesta-backend
 
 jobs:
   deploy:
+    permissions:
+      contents: "read"
+      id-token: "write"
+
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Authenticate with Google Cloud
-        id: "auth"
-        uses: "google-github-actions/auth@v1"
+        id: auth
+        uses: "google-github-actions/auth@v2"
         with:
           credentials_json: "${{ secrets.GCP_SA_KEY }}"
 
       - name: Set up Cloud SDK
-        uses: "google-github-actions/setup-gcloud@v1"
-        with:
-          version: "latest"
-
-      - name: Build and Push Docker image
-        run: |-
-          gcloud builds submit --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-            --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
-            --logging=CLOUD_LOGGING_ONLY
+        uses: "google-github-actions/setup-gcloud@v2"
 
       - name: Deploy to Cloud Run
-        run: |-
-          gcloud run deploy ${{ env.SERVICE_NAME }} \
-            --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-            --platform managed \
-            --region ${{ env.REGION }}
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}
+
+      - name: Show Output
+        run: echo "Successfully deployed to ${{ steps.deploy.outputs.url }}"
