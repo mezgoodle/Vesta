@@ -10,7 +10,7 @@ env:
   PROJECT_ID: vesta-470005
   SERVICE_NAME: vesta-cloud-run
   REGION: europe-west1
-  ARTIFACT_REPO: europe-west1-docker.pkg.dev/vesta-470005/vesta-backend
+  ARTIFACT_REPO: vesta-backend
 
 jobs:
   deploy:
@@ -38,7 +38,7 @@ jobs:
         with:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
-          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/${{ env.SERVICE_NAME }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REPO }}
 
       - name: Show Output
         run: echo "Successfully deployed to ${{ steps.deploy.outputs.url }}"
