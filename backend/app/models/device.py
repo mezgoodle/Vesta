@@ -1,14 +1,14 @@
 from typing import Optional
 
-from app.db.base import Base
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db.base import Base
 
 
 class SmartDevice(Base):
     __tablename__ = "smart_devices"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String)
     entity_id: Mapped[str] = mapped_column(String)
