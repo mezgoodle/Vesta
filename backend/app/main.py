@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI
 
+from app.api.v1.api import api_router
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine
@@ -70,6 +71,4 @@ async def test_home(
     return {"state": state}
 
 
-# Placeholder for API Routers
-# from app.api.v1 import endpoints
-# app.include_router(endpoints.router, prefix=settings.API_V1_STR)
+app.include_router(api_router, prefix=settings.API_V1_STR)
