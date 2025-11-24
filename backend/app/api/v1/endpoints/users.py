@@ -1,6 +1,5 @@
 from typing import Any, List
 
-from app import crud
 from app.api import deps
 from app.crud.crud_user import user as crud_user
 from app.schemas.user import User, UserCreate, UserUpdate
