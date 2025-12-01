@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any
 
 from app.api import deps
 from app.crud.crud_user import user as crud_user
@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException
 router = APIRouter()
 
 
-@router.get("/", response_model=List[User])
+@router.get("/", response_model=list[User])
 async def read_users(
     db: deps.SessionDep,
     skip: int = 0,

@@ -14,12 +14,12 @@ async def read_chat_history(
     db: deps.SessionDep,
     skip: int = 0,
     limit: int = 100,
-    user_id: int = None,
+    user_id: int | None = None,
 ) -> Any:
     """
     Retrieve chat history.
     """
-    if user_id:
+    if user_id is not None:
         chat_history = await crud_chat.get_by_user_id(
             db, user_id=user_id, skip=skip, limit=limit
         )
@@ -70,8 +70,7 @@ async def delete_chat_message(
     """
     Delete a chat message.
     """
-    chat_message = await crud_chat.get(db, id=chat_id)
+    chat_message = await crud_chat.remove(db, id=chat_id)
     if not chat_message:
         raise HTTPException(status_code=404, detail="Chat message not found")
-    chat_message = await crud_chat.remove(db, id=chat_id)
     return chat_message

@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any
 
 from app.api import deps
 from app.crud.crud_device import device as crud_device
@@ -9,12 +9,12 @@ from fastapi import APIRouter, HTTPException
 router = APIRouter()
 
 
-@router.get("/", response_model=List[SmartDevice])
+@router.get("/", response_model=list[SmartDevice])
 async def read_devices(
     db: deps.SessionDep,
     skip: int = 0,
     limit: int = 100,
-    user_id: int = None,
+    user_id: int | None = None,
 ) -> Any:
     """
     Retrieve smart devices.

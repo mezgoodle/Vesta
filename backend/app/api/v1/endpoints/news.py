@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any
 
 from app.api import deps
 from app.crud.crud_news import news as crud_news
@@ -13,12 +13,12 @@ from fastapi import APIRouter, HTTPException
 router = APIRouter()
 
 
-@router.get("/", response_model=List[NewsSubscription])
+@router.get("/", response_model=list[NewsSubscription])
 async def read_news_subscriptions(
     db: deps.SessionDep,
     skip: int = 0,
     limit: int = 100,
-    user_id: int = None,
+    user_id: int | None = None,
 ) -> Any:
     """
     Retrieve news subscriptions.

@@ -1,5 +1,3 @@
-from typing import List
-
 from app.crud.base import CRUDBase
 from app.models.news import NewsSubscription
 from app.schemas.news import NewsSubscriptionCreate, NewsSubscriptionUpdate
@@ -12,7 +10,7 @@ class CRUDNewsSubscription(
 ):
     async def get_by_user_id(
         self, db: AsyncSession, *, user_id: int, skip: int = 0, limit: int = 100
-    ) -> List[NewsSubscription]:
+    ) -> list[NewsSubscription]:
         result = await db.execute(
             select(NewsSubscription)
             .filter(NewsSubscription.user_id == user_id)

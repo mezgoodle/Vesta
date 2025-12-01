@@ -1,6 +1,10 @@
 import httpx
-from app.core.config import settings
+
+from app.core.config import get_settings
 from app.services.base import BaseLLMService
+
+settings = get_settings()
+
 
 class OpenAILLMService(BaseLLMService):
     def __init__(self):
@@ -18,8 +22,8 @@ class OpenAILLMService(BaseLLMService):
         #     }
         # )
         # return response.json()["choices"][0]["message"]["content"]
-        
+
         return f"Mock response for: {prompt}"
-    
+
     async def close(self):
         await self.client.aclose()

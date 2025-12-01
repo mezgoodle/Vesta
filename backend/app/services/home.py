@@ -1,7 +1,12 @@
+from typing import Any
+
 import httpx
-from typing import Any, Dict
-from app.core.config import settings
+
+from app.core.config import get_settings
 from app.services.base import BaseHomeService
+
+settings = get_settings()
+
 
 class HomeAssistantService(BaseHomeService):
     def __init__(self):
@@ -13,7 +18,7 @@ class HomeAssistantService(BaseHomeService):
         }
         self.client = httpx.AsyncClient(headers=self.headers, timeout=10.0)
 
-    async def get_state(self, entity_id: str) -> Dict[str, Any]:
+    async def get_state(self, entity_id: str) -> dict[str, Any]:
         # TODO: Implement actual HA API call
         # url = f"{self.base_url}/api/states/{entity_id}"
         # response = await self.client.get(url)
