@@ -1,74 +1,88 @@
 # Vesta Backend
 
-This is the backend service for the Vesta project, built with FastAPI.
+This is the backend service for the Vesta Smart Home Assistant, built with FastAPI.
 
-## Features
+## Prerequisites
 
-- FastAPI framework for high-performance API development
-- CORS middleware for cross-origin requests
-- Health check endpoint
-- Auto-generated API documentation
+- Python 3.8+
+- pip
 
 ## Installation
 
-1. Create a virtual environment:
+1.  **Navigate to the backend directory:**
+
+    ```bash
+    cd backend
+    ```
+
+2.  **Create a virtual environment (recommended):**
+
+    ```bash
+    python -m venv venv
+    ```
+
+3.  **Activate the virtual environment:**
+
+    -   **Windows:**
+        ```powershell
+        .\venv\Scripts\Activate
+        ```
+    -   **macOS/Linux:**
+        ```bash
+        source venv/bin/activate
+        ```
+
+4.  **Install dependencies:**
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+## Configuration
+
+1.  **Set up environment variables:**
+
+    Copy the `.env.example` file to a new file named `.env`:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    *Note: On Windows PowerShell, use `copy .env.example .env`*
+
+2.  **Edit `.env`:**
+
+    Open the `.env` file and fill in the required values:
+
+    ```env
+    OPENAI_API_KEY=your_openai_api_key
+    HOME_ASSISTANT_URL=http://homeassistant.local:8123
+    HOME_ASSISTANT_TOKEN=your_long_lived_access_token
+    TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+    ```
+
+## Running the Server
+
+Start the development server using Uvicorn:
 
 ```bash
-python -m venv venv
+uvicorn app.main:app --reload
 ```
 
-2. Activate the virtual environment:
+The API will be available at `http://127.0.0.1:8000`.
 
-```bash
-# On Windows
-venv\Scripts\activate
+## API Documentation
 
-# On macOS/Linux
-source venv/bin/activate
-```
+Once the server is running, you can access the interactive API documentation at:
 
-3. Install dependencies:
+-   **Swagger UI:** `http://127.0.0.1:8000/docs`
+-   **ReDoc:** `http://127.0.0.1:8000/redoc`
 
-```bash
-pip install -r requirements.txt
-```
+## Project Structure
 
-## Running the Application
-
-To start the development server:
-
-```bash
-fastapi dev main.py
-```
-
-Or using uvicorn directly:
-
-```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-The API will be available at:
-
-- **API**: <http://localhost:8000>
-- **Interactive Documentation**: <http://localhost:8000/docs>
-- **Alternative Documentation**: <http://localhost:8000/redoc>
-
-## API Endpoints
-
-- `GET /` - Welcome message
-- `GET /health` - Health check endpoint
-- `GET /api/v1/` - Welcome message
-- `GET /api/v1/status` - API status endpoint
-- `GET /api/v1/auth/*` - Authentication endpoints
-- `GET /api/v1/items/*` - Items management endpoints
-- `GET /api/v1/users/*` - Users management endpoints
-- `GET /health` - Health check endpoint (if implemented in main.py)
-
-## Development
-
-The application includes:
-
-- Automatic API documentation generation
-- CORS support for frontend integration
-- Hot reload during development
-- Type hints and validation with Pydantic
+-   `app/`: Main application package.
+    -   `core/`: Core configuration and settings.
+    -   `services/`: Business logic and external service integrations (LLM, Home Assistant).
+    -   `main.py`: Application entry point.
+-   `requirements.txt`: Python dependencies.
+-   `.env.example`: Template for environment variables.

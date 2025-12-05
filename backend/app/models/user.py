@@ -1,49 +1,31 @@
-from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-from passlib.context import CryptContext
-from sqlmodel import Field, SQLModel
+from sqlalchemy import BigInteger, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel
+from app.db.base import Base
 
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-class UserBase(SQLModel):
-    username: str = Field(index=True, min_length=3, max_length=50, unique=True)
-    email: str = Field(index=True, unique=True, min_length=5, max_length=100)
-    full_name: Optional[str] = Field(default=None, max_length=100)
-    is_active: bool = Field(default=True)
-    is_superuser: bool = Field(default=False)
+if TYPE_CHECKING:
+    from app.models.chat import ChatHistory
+    from app.models.device import SmartDevice
+    from app.models.news import NewsSubscription
 
 
-class User(UserBase, BaseModel, table=True):
-    hashed_password: str
+class User(Base):
+    __tablename__ = "users"
 
+    telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True, index=True)
+    full_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    username: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    timezone: Mapped[str] = mapped_column(String, default="UTC")
 
-class UserCreate(UserBase):
-    password: str = Field(min_length=6, max_length=100)
-
-
-class UserUpdate(SQLModel):
-    username: Optional[str] = Field(default=None, min_length=3, max_length=50)
-    email: Optional[str] = Field(default=None, min_length=5, max_length=100)
-    full_name: Optional[str] = Field(default=None, max_length=100)
-    is_active: Optional[bool] = Field(default=None)
-    is_superuser: Optional[bool] = Field(default=None)
-    password: Optional[str] = Field(default=None, min_length=6, max_length=100)
-
-
-class UserRead(UserBase):
-    id: int
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    # Relationships
+    chat_history: Mapped[list["ChatHistory"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    devices: Mapped[list["SmartDevice"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    news_subscriptions: Mapped[list["NewsSubscription"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
