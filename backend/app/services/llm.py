@@ -1,9 +1,7 @@
 import httpx
 
-from app.core.config import get_settings
+from app.core.config import settings
 from app.services.base import BaseLLMService
-
-settings = get_settings()
 
 
 class OpenAILLMService(BaseLLMService):
