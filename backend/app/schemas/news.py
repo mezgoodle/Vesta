@@ -1,7 +1,4 @@
 from datetime import time
-from typing import Optional
-
-from pydantic import BaseModel
 
 from app.schemas.base import BaseSchema, BaseSchemaInDB
 
@@ -18,9 +15,9 @@ class NewsSubscriptionCreate(NewsSubscriptionBase):
 
 
 class NewsSubscriptionUpdate(BaseSchema):
-    topic: Optional[str] = None
-    schedule_time: Optional[time] = None
-    is_active: Optional[bool] = None
+    topic: str | None = None
+    schedule_time: time | None = None
+    is_active: bool | None = None
 
 
 class NewsSubscriptionInDBBase(NewsSubscriptionBase, BaseSchemaInDB):

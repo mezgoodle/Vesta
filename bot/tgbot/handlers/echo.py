@@ -2,8 +2,8 @@ from aiogram import F, Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 from aiogram.utils.markdown import hbold
-
 from loader import dp
+
 from tgbot.config import Settings
 
 router = Router()
@@ -23,7 +23,6 @@ async def photo_msg(message: Message):
 @router.message()
 async def echo_handler(message: Message, config: Settings) -> None:
     try:
-        print(config)
         await message.send_copy(chat_id=message.chat.id)
     except TypeError:
         await message.answer("Nice try!")

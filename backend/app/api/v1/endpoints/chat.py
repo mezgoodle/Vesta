@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any
 
 from app.api import deps
 from app.crud.crud_chat import chat as crud_chat
@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 router = APIRouter()
 
 
-@router.get("/", response_model=List[ChatHistory])
+@router.get("/", response_model=list[ChatHistory])
 async def read_chat_history(
     db: deps.SessionDep,
     skip: int = 0,

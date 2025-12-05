@@ -1,5 +1,3 @@
-from typing import Optional
-
 from app.schemas.base import BaseSchema, BaseSchemaInDB
 
 
@@ -14,7 +12,7 @@ class ChatHistoryCreate(ChatHistoryBase):
 
 
 class ChatHistoryUpdate(BaseSchema):
-    content: Optional[str] = None
+    content: str | None = None
 
 
 class ChatHistoryInDBBase(ChatHistoryBase, BaseSchemaInDB):

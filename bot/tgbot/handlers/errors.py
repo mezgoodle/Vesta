@@ -1,17 +1,14 @@
-from typing import Optional
-
 from aiogram.utils.exceptions import (
-    TelegramAPIError,
-    MessageNotModified,
     CantParseEntities,
+    MessageNotModified,
+    TelegramAPIError,
 )
-from loguru import logger
-
 from loader import dp
+from loguru import logger
 
 
 @dp.errors_handler()
-async def errors_handler(update, exception) -> Optional[bool]:
+async def errors_handler(update, exception) -> bool | None:
     if isinstance(exception, MessageNotModified):
         logger.error("Message is not modified")
         # do something here?
