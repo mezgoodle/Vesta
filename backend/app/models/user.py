@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import BigInteger, String
+from sqlalchemy import BigInteger, Boolean, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -18,6 +18,7 @@ class User(Base):
     full_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     username: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     timezone: Mapped[str] = mapped_column(String, default="UTC")
+    is_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Relationships
     chat_history: Mapped[list["ChatHistory"]] = relationship(

@@ -2,7 +2,7 @@ from typing import Any
 
 from app.api import deps
 from app.crud.crud_user import user as crud_user
-from app.schemas.user import User, UserCreate, UserUpdate
+from app.schemas.user import User, UserApprovalUpdate, UserCreate, UserUpdate
 from fastapi import APIRouter, HTTPException
 
 router = APIRouter()
@@ -85,4 +85,37 @@ async def delete_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     user = await crud_user.remove(db, id=user_id)
+    return user
+
+
+@router.get("/allowed/telegram-ids", response_model=list[int])
+async def get_allowed_telegram_ids(
+    db: deps.SessionDep,
+) -> Any:
+    """
+    Get telegram_ids of all allowed users.
+    This endpoint returns a list of telegram_ids for users who are approved.
+    """
+    telegram_ids = await crud_user.get_allowed_telegram_ids(db)
+    return telegram_ids
+
+
+@router.patch("/telegram/{telegram_id}/approval", response_model=User)
+async def update_user_approval(
+    *,
+    db: deps.SessionDep,
+    telegram_id: int,
+    approval_in: UserApprovalUpdate,
+) -> Any:
+    """
+    Update user approval status by telegram_id.
+    This endpoint is used by admins to approve or reject users.
+    """
+    user = await crud_user.get_by_telegram_id(db, telegram_id=telegram_id)
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail=f"User with telegram_id {telegram_id} not found",
+        )
+    user = await crud_user.update(db, db_obj=user, obj_in=approval_in)
     return user
