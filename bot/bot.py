@@ -5,6 +5,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.utils.callback_answer import CallbackAnswerMiddleware
 from loader import bot, dp
 from tgbot.config import Settings, config
+from tgbot.infrastructure.user_service import user_service
 from tgbot.middlewares.acl import ACLMiddleware
 from tgbot.middlewares.settings import ConfigMiddleware
 from tgbot.middlewares.throttling import ThrottlingMiddleware
@@ -60,8 +61,8 @@ async def main() -> None:
     dp.shutdown.register(on_shutdown)
 
     user_cache = UserCache()
-    fake_users_from_db = [111, 222]
-    user_cache.load(fake_users_from_db)
+    users_from_db = await user_service.get_approved_users()
+    user_cache.load(users_from_db)
 
     dp.workflow_data.update(user_cache=user_cache)
 

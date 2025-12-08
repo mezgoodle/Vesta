@@ -20,7 +20,7 @@ class UserService(BaseAPIService):
         """
         Get list of approved users.
         """
-        endpoint = "/allowed/telegram-ids"
+        endpoint = "/api/v1/users/allowed/telegram-ids"
 
         status, data = await self._get(endpoint)
 
@@ -39,7 +39,7 @@ class UserService(BaseAPIService):
             user_id: ID of the user to update permissions for.
             permissions: Dictionary of permissions to update.
         """
-        endpoint = f"/telegram/{user_id}/approval"
+        endpoint = f"/api/v1/users/telegram/{user_id}/approval"
 
         status, data = await self._patch(endpoint, permissions)
 
