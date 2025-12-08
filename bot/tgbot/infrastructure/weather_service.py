@@ -64,5 +64,4 @@ class WeatherService(BaseAPIService):
             return "❌ Error formatting weather data. Please try again."
 
 
-# Create a singleton instance
 weather_service = WeatherService()

@@ -134,6 +134,42 @@ class BaseAPIService(ABC):
             logging.error(f"Unexpected error during PUT request to {url}: {e}")
             return 0, None
 
+    async def _patch(
+        self, endpoint: str, json_data: dict | None = None
+    ) -> tuple[int, dict | None]:
+        """
+        Make a PATCH request to the backend API.
+
+        Args:
+            endpoint: API endpoint path.
+            json_data: JSON payload.
+
+        Returns:
+            Tuple of (status_code, response_data).
+            Returns (0, None) if connection fails.
+        """
+        url = f"{self.base_url}{endpoint}"
+
+        try:
+            async with aiohttp.ClientSession(timeout=self.timeout) as session:
+                async with session.patch(url, json=json_data) as response:
+                    status = response.status
+
+                    if response.content_type == "application/json":
+                        data = await response.json()
+                    else:
+                        data = {"detail": await response.text()}
+
+                    logging.debug(f"PATCH {url} - Status: {status}")
+                    return status, data
+
+        except ClientError as e:
+            logging.error(f"Connection error to {url}: {e}")
+            return 0, None
+        except Exception as e:
+            logging.error(f"Unexpected error during PATCH request to {url}: {e}")
+            return 0, None
+
     async def _delete(self, endpoint: str) -> tuple[int, dict | None]:
         """
         Make a DELETE request to the backend API.
