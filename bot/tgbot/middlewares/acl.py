@@ -1,7 +1,7 @@
 from typing import Any, Awaitable, Callable, Dict
 
 from aiogram import BaseMiddleware
-from aiogram.types import TelegramObject
+from aiogram.types import Message, TelegramObject
 
 from tgbot.services.user_cache import UserCache
 
@@ -14,6 +14,8 @@ class ACLMiddleware(BaseMiddleware):
         data: Dict[str, Any],
     ) -> Any:
         user_cache: UserCache = data.get("user_cache")
+        if not isinstance(event, Message):
+            return await handler(event, data)
         message_text = event.text
 
         if message_text == "/start":
