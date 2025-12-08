@@ -5,8 +5,6 @@ from fastapi import Depends, FastAPI
 
 from app.api.v1.api import api_router
 from app.core.config import settings
-from app.db.base import Base
-from app.db.session import engine
 
 # Import models to ensure they are registered with Base
 from app.models import ChatHistory, NewsSubscription, SmartDevice, User  # noqa: F401
@@ -22,11 +20,6 @@ home_service = HomeAssistantService()
 async def lifespan(app: FastAPI):
     # Startup
     print("Starting up services...")
-
-    # Create tables (for development)
-    if settings.DEBUG:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
 
     yield
     # Shutdown
