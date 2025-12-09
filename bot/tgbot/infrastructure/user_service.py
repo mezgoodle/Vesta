@@ -27,9 +27,7 @@ class UserService(BaseAPIService):
         if status == 200:
             return data
         else:
-            return self._handle_error_response(
-                status, data, "getting list of approved users"
-            )
+            return []
 
     async def update_user_approval(self, user_id: int, permissions: dict) -> str:
         """

@@ -13,7 +13,10 @@ class ACLMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: Dict[str, Any],
     ) -> Any:
-        user_cache: UserCache = data.get("user_cache")
+        user_cache: UserCache | None = data.get("user_cache")
+        if not user_cache:
+            return await handler(event, data)
+
         if not isinstance(event, Message):
             return await handler(event, data)
         message_text = event.text

@@ -5,7 +5,6 @@ from tgbot.keyboards.inline.callbacks.permissions import PermissionsCallbackFact
 
 def permissions_markup(user_id: int) -> InlineKeyboardMarkup:
     markup = InlineKeyboardMarkup(
-        row_width=1,
         inline_keyboard=[
             [
                 InlineKeyboardButton(

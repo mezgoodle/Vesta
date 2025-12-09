@@ -11,11 +11,11 @@ dp.include_router(router)
 
 @router.message(Command("weather"))
 async def weather_command(message: Message, command: CommandObject):
-    args = command.args.split()
-
-    if not args:
+    if not command.args:
         await message.reply("❓ Please provide a city name.\nExample: /weather London")
         return
+
+    args = command.args.split()
 
     if len(args) > 1:
         await message.reply("❓ Please provide a city name.\nExample: /weather London")

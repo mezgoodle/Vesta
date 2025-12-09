@@ -23,14 +23,15 @@ class ThrottlingMiddleware(BaseMiddleware):
             handler=data, name="throttling_key", default="default"
         )
         if throttling_key is not None and throttling_key in self.caches:
+            cache = self.caches[throttling_key]
+            chat_id: int | None = None
             if isinstance(event, Message):
-                if event.chat.id in self.caches[throttling_key]:
+                chat_id = event.chat.id
+            elif isinstance(event, CallbackQuery) and event.message:
+                chat_id = event.message.chat.id
+
+            if chat_id is not None:
+                if chat_id in cache:
                     return
-                elif "chat" in event:
-                    self.caches[throttling_key][event.chat.id] = None
-            elif isinstance(event, CallbackQuery):
-                if event.message.chat.id in self.caches[throttling_key]:
-                    return
-                elif "chat" in event.message:
-                    self.caches[throttling_key][event.message.chat.id] = None
+                cache[chat_id] = None
         return await handler(event, data)
