@@ -40,6 +40,10 @@ class WeatherService:
 
             HTTPException: If city not found, API error, or unexpected error occurs
         """
+        if not city or not city.strip():
+            raise HTTPException(status_code=400, detail="City name is required")
+        city = city.strip()
+
         try:
             response = await self.client.get(
                 self.base_url,
@@ -70,15 +74,22 @@ class WeatherService:
 
             # Extract and transform data to our schema
 
-            weather_data = WeatherData(
-                city=data["name"],
-                temp=data["main"]["temp"],
-                description=data["weather"][0]["description"],
-                humidity=data["main"]["humidity"],
-                wind_speed=data["wind"]["speed"],
-            )
+            try:
+                weather_data = WeatherData(
+                    city=data["name"],
+                    temp=data["main"]["temp"],
+                    description=data["weather"][0]["description"],
+                    humidity=data["main"]["humidity"],
+                    wind_speed=data["wind"]["speed"],
+                )
 
-            return weather_data
+                return weather_data
+
+            except Exception as e:
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Invalid response structure from OpenWeatherMap API: {str(e)}",
+                )
 
         except HTTPException:
             # Re-raise HTTP exceptions
