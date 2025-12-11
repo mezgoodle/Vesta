@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # General
     DEBUG: bool = True
 
+    # GCP
+    GCP_LOG_NAME: str = "vesta-backend"
+
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True)
 
 
