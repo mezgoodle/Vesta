@@ -16,6 +16,8 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./vesta.db"
+
+    # General
     DEBUG: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True)

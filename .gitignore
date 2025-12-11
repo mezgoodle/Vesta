@@ -209,3 +209,6 @@ __marimo__/
 # Database
 *.sqlite
 *.db
+
+# Google Cloud
+logger_sa.json
