@@ -29,7 +29,9 @@ class UserService(BaseAPIService):
         else:
             return []
 
-    async def update_user_approval(self, user_id: int, permissions: dict) -> str:
+    async def update_user_approval(
+        self, user_id: int, permissions: dict
+    ) -> tuple[bool, str]:
         """
         Update user permissions.
 
@@ -42,11 +44,11 @@ class UserService(BaseAPIService):
         status, data = await self._patch(endpoint, permissions)
 
         if status == 200:
-            return f"✅ User '{user_id}' approved."
+            return True, f"✅ User '{user_id}' approved."
         elif status == 404:
-            return f"❌ User '{user_id}' not found. Please check the spelling."
+            return False, f"❌ User '{user_id}' not found. Please check the spelling."
         else:
-            return self._handle_error_response(
+            return False, self._handle_error_response(
                 status, data, f"updating user approval for {user_id}"
             )
 

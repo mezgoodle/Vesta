@@ -24,15 +24,18 @@ async def approve_handler(
     callback_data: PermissionsCallbackFactory,
     user_cache: UserCache,
 ) -> None:
-    result = await user_service.update_user_approval(
+    success, result = await user_service.update_user_approval(
         callback_data.user_id, {"is_allowed": True}
     )
-    user_cache.add(callback_data.user_id)
-    await callback.message.edit_text(result)
-    try:
-        await callback.bot.send_message(callback_data.user_id, "You are approved!")
-    except Exception:
-        pass
+    if success:
+        user_cache.add(callback_data.user_id)
+        await callback.message.edit_text(result)
+        try:
+            await callback.bot.send_message(callback_data.user_id, "You are approved!")
+        except Exception:
+            pass
+    else:
+        await callback.message.edit_text(result)
     await callback.answer()
 
 
