@@ -12,5 +12,10 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
         result = await db.execute(select(User).filter(User.telegram_id == telegram_id))
         return result.scalars().first()
 
+    async def get_allowed_telegram_ids(self, db: AsyncSession) -> list[int]:
+        """Get telegram_ids of all allowed users."""
+        result = await db.execute(select(User.telegram_id).filter(User.is_allowed))
+        return list(result.scalars().all())
+
 
 user = CRUDUser(User)

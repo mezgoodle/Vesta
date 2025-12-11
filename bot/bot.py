@@ -5,10 +5,13 @@ from aiogram import Bot, Dispatcher
 from aiogram.utils.callback_answer import CallbackAnswerMiddleware
 from loader import bot, dp
 from tgbot.config import Settings, config
+from tgbot.infrastructure.user_service import user_service
+from tgbot.middlewares.acl import ACLMiddleware
 from tgbot.middlewares.settings import ConfigMiddleware
 from tgbot.middlewares.throttling import ThrottlingMiddleware
 from tgbot.services.admins_notify import on_startup_notify
 from tgbot.services.setting_commands import set_default_commands
+from tgbot.services.user_cache import UserCache
 
 
 def register_all_handlers() -> None:
@@ -26,6 +29,7 @@ def register_global_middlewares(dp: Dispatcher, config: Settings):
     middlewares = [
         ConfigMiddleware(config),
         ThrottlingMiddleware(),
+        ACLMiddleware(),
     ]
 
     for middleware in middlewares:
@@ -55,6 +59,13 @@ async def on_shutdown(dispatcher: Dispatcher) -> None:
 async def main() -> None:
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
+
+    user_cache = UserCache()
+    users_from_db = await user_service.get_approved_users()
+    user_cache.load(users_from_db)
+
+    dp.workflow_data.update(user_cache=user_cache)
+
     # And the run events dispatching
     await dp.start_polling(bot)
     # * For the webhook usage:

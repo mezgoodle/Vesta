@@ -12,10 +12,11 @@ class Settings(BaseSettings):
     HOME_ASSISTANT_URL: str = "http://localhost:8123"
     HOME_ASSISTANT_TOKEN: str = "test-token"
     TELEGRAM_BOT_TOKEN: str = "test-bot-token"
+    OPENWEATHER_API_KEY: str = "test-weather-key"
 
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./vesta.db"
-    DEBUG: bool = False
+    DEBUG: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True)
 

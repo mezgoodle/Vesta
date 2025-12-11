@@ -7,6 +7,7 @@ class UserBase(BaseSchema):
     full_name: str | None = None
     username: str | None = None
     timezone: str = "UTC"
+    is_allowed: bool = False
 
 
 # Properties to receive on creation
@@ -19,6 +20,12 @@ class UserUpdate(BaseSchema):
     full_name: str | None = None
     username: str | None = None
     timezone: str | None = None
+    is_allowed: bool | None = None
+
+
+# Properties for user approval endpoint
+class UserApprovalUpdate(BaseSchema):
+    is_allowed: bool
 
 
 # Properties shared by models stored in DB
