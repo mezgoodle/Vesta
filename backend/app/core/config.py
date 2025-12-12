@@ -16,7 +16,13 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./vesta.db"
+
+    # General
     DEBUG: bool = True
+
+    # GCP
+    GCP_LOG_NAME: str = "vesta-backend"
+    GOOGLE_APPLICATION_CREDENTIALS: str = "logger_sa.json"
 
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True)
 
