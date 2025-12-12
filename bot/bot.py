@@ -5,8 +5,10 @@ from aiogram import Bot, Dispatcher
 from aiogram.utils.callback_answer import CallbackAnswerMiddleware
 from loader import bot, dp
 from tgbot.config import Settings, config
+from tgbot.infrastructure.logger import setup_logging
 from tgbot.infrastructure.user_service import user_service
 from tgbot.middlewares.acl import ACLMiddleware
+from tgbot.middlewares.logging import LoggingMiddleware
 from tgbot.middlewares.settings import ConfigMiddleware
 from tgbot.middlewares.throttling import ThrottlingMiddleware
 from tgbot.services.admins_notify import on_startup_notify
@@ -27,6 +29,7 @@ async def register_all_commands(bot: Bot) -> None:
 
 def register_global_middlewares(dp: Dispatcher, config: Settings):
     middlewares = [
+        LoggingMiddleware(),
         ConfigMiddleware(config),
         ThrottlingMiddleware(),
         ACLMiddleware(),
@@ -73,12 +76,9 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO,
-        filename="bot.log",
-        format="%(asctime)s :: %(levelname)s :: %(module)s.%(funcName)s :: %(lineno)d :: %(message)s",  # noqa: E501
-        filemode="w",
-    )
+    # Setup logging (GCP or local based on DEBUG setting)
+    setup_logging()
+
     try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
