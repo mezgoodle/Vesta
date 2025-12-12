@@ -45,10 +45,18 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     process_time = time.perf_counter() - start_time
 
-    # Log format: Method Path Status Duration
+    log_payload = {
+        "http_method": request.method,
+        "path": request.url.path,
+        "status_code": response.status_code,
+        "duration_sec": round(process_time, 4),
+        "client_ip": request.client.host if request.client else "unknown",
+        "user_agent": request.headers.get("user-agent", "unknown"),
+    }
+
     logging.info(
-        f"{request.method} {request.url.path} "
-        f"{response.status_code} {process_time:.4f}s"
+        f"{request.method} {request.url.path}",
+        extra={"json_fields": log_payload},
     )
 
     return response

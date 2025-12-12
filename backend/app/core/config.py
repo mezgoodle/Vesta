@@ -22,6 +22,7 @@ class Settings(BaseSettings):
 
     # GCP
     GCP_LOG_NAME: str = "vesta-backend"
+    GOOGLE_APPLICATION_CREDENTIALS: str = "logger_sa.json"
 
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True)
 
