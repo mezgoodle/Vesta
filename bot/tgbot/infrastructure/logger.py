@@ -34,6 +34,8 @@ def setup_logging() -> None:
     else:
         # Production / GCP logging
         try:
+            if not config.GOOGLE_APPLICATION_CREDENTIALS:
+                raise ValueError("GOOGLE_APPLICATION_CREDENTIALS is not set")
             client = google_logging.Client(
                 credentials=service_account.Credentials.from_service_account_file(
                     config.GOOGLE_APPLICATION_CREDENTIALS
