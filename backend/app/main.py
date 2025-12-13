@@ -42,24 +42,29 @@ app = FastAPI(
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start_time = time.perf_counter()
-    response = await call_next(request)
-    process_time = time.perf_counter() - start_time
+    status_code = 500
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        return response
+    except Exception as e:
+        logging.error(f"Error: {e}")
+    finally:
+        process_time = time.perf_counter() - start_time
 
-    log_payload = {
-        "http_method": request.method,
-        "path": request.url.path,
-        "status_code": response.status_code,
-        "duration_sec": round(process_time, 4),
-        "client_ip": request.client.host if request.client else "unknown",
-        "user_agent": request.headers.get("user-agent", "unknown"),
-    }
+        log_payload = {
+            "http_method": request.method,
+            "path": request.url.path,
+            "status_code": status_code,
+            "duration_sec": round(process_time, 4),
+            "client_ip": request.client.host if request.client else "unknown",
+            "user_agent": request.headers.get("user-agent", "unknown"),
+        }
 
-    logging.info(
-        f"{request.method} {request.url.path}",
-        extra={"json_fields": log_payload},
-    )
-
-    return response
+        logging.info(
+            f"{request.method} {request.url.path}",
+            extra={"json_fields": log_payload},
+        )
 
 
 # Dependency Injection

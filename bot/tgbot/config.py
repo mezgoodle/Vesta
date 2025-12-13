@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     # Logging
     DEBUG: bool = False
     GCP_LOG_NAME: str = "vesta-bot"
-    GOOGLE_APPLICATION_CREDENTIALS: str = "logger_sa.json"
+    GOOGLE_APPLICATION_CREDENTIALS: str = ""
 
     class Config:
         env_file = ".env"
