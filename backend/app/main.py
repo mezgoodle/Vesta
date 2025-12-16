@@ -1,10 +1,13 @@
+import logging
+import time
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 
 from app.api.v1.api import api_router
 from app.core.config import settings
+from app.core.logger import setup_logging
 
 # Import models to ensure they are registered with Base
 from app.models import ChatHistory, NewsSubscription, SmartDevice, User  # noqa: F401
@@ -19,6 +22,7 @@ home_service = HomeAssistantService()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    setup_logging()
     print("Starting up services...")
 
     yield
@@ -33,6 +37,34 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan,
 )
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.perf_counter()
+    status_code = 500
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        return response
+    except Exception as e:
+        logging.error(f"Error: {e}")
+    finally:
+        process_time = time.perf_counter() - start_time
+
+        log_payload = {
+            "http_method": request.method,
+            "path": request.url.path,
+            "status_code": status_code,
+            "duration_sec": round(process_time, 4),
+            "client_ip": request.client.host if request.client else "unknown",
+            "user_agent": request.headers.get("user-agent", "unknown"),
+        }
+
+        logging.info(
+            f"{request.method} {request.url.path}",
+            extra={"json_fields": log_payload},
+        )
 
 
 # Dependency Injection

@@ -209,3 +209,8 @@ __marimo__/
 # Database
 *.sqlite
 *.db
+
+# Google Cloud
+logger_sa.json
+*.service-account.json
+**/*service_account*.json

@@ -1,5 +1,5 @@
 from pydantic import SecretStr
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -7,9 +7,16 @@ class Settings(BaseSettings):
     admins: list[int] = [353057906]
     backend_base_url: str = "http://localhost:8000"
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    # Logging
+    DEBUG: bool = False
+    GCP_LOG_NAME: str = "vesta-bot"
+    GOOGLE_APPLICATION_CREDENTIALS: str = ""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_ignore_empty=True,
+    )
 
 
 config = Settings()
