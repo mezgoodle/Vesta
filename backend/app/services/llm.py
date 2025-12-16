@@ -1,4 +1,5 @@
 from google.genai import Client
+from google.genai.types import ThinkingConfig
 
 from app.core.config import settings
 
@@ -11,13 +12,11 @@ class LLMService:
 
     def generate_text(self, prompt: str) -> str:
         response = self.client.models.generate_content(
-            model=self.model, contents=prompt
+            model=self.model,
+            contents=prompt,
+            config=ThinkingConfig(thinking_config=0),
         )
         return response.text
 
     def close(self):
         self.client.close()
-
-
-service = LLMService()
-print(service.generate_text("Hello, how are you?"))
