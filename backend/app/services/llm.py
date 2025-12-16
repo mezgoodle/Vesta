@@ -1,27 +1,23 @@
-import httpx
+from google.genai import Client
 
 from app.core.config import settings
-from app.services.base import BaseLLMService
 
 
-class OpenAILLMService(BaseLLMService):
+class LLMService:
     def __init__(self):
-        self.api_key = settings.OPENAI_API_KEY
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self.api_key = settings.GOOGLE_API_KEY
+        self.client = Client(api_key=self.api_key)
+        self.model = settings.GOOGLE_MODEL_NAME
 
-    async def generate_text(self, prompt: str) -> str:
-        # TODO: Implement actual OpenAI API call
-        # response = await self.client.post(
-        #     "https://api.openai.com/v1/chat/completions",
-        #     headers={"Authorization": f"Bearer {self.api_key}"},
-        #     json={
-        #         "model": "gpt-4",
-        #         "messages": [{"role": "user", "content": prompt}]
-        #     }
-        # )
-        # return response.json()["choices"][0]["message"]["content"]
+    def generate_text(self, prompt: str) -> str:
+        response = self.client.models.generate_content(
+            model=self.model, contents=prompt
+        )
+        return response.text
 
-        return f"Mock response for: {prompt}"
+    def close(self):
+        self.client.close()
 
-    async def close(self):
-        await self.client.aclose()
+
+service = LLMService()
+print(service.generate_text("Hello, how are you?"))
