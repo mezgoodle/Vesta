@@ -12,10 +12,8 @@ from app.core.logger import setup_logging
 # Import models to ensure they are registered with Base
 from app.models import ChatHistory, NewsSubscription, SmartDevice, User  # noqa: F401
 from app.services.home import HomeAssistantService
-from app.services.llm import OpenAILLMService
 
 # Global service instances
-llm_service = OpenAILLMService()
 home_service = HomeAssistantService()
 
 
@@ -28,7 +26,6 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown
     print("Shutting down services...")
-    await llm_service.close()
     await home_service.close()
 
 
@@ -67,11 +64,6 @@ async def log_requests(request: Request, call_next):
         )
 
 
-# Dependency Injection
-def get_llm_service() -> OpenAILLMService:
-    return llm_service
-
-
 def get_home_service() -> HomeAssistantService:
     return home_service
 
@@ -79,14 +71,6 @@ def get_home_service() -> HomeAssistantService:
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
-
-
-@app.get("/test-llm")
-async def test_llm(
-    prompt: str, service: Annotated[OpenAILLMService, Depends(get_llm_service)]
-):
-    response = await service.generate_text(prompt)
-    return {"response": response}
 
 
 @app.get("/test-home")

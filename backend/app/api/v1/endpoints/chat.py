@@ -35,14 +35,14 @@ async def process_chat_message(
     5. Save assistant response to database
     6. Return response
     """
-    user = await crud_user.get(db, id=chat_request.user_id)
+    user = await crud_user.get_by_telegram_id(db, telegram_id=chat_request.user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
     user_message = await crud_chat.create(
         db,
         obj_in=ChatHistoryCreate(
-            user_id=chat_request.user_id,
+            user_id=user.id,
             role="user",
             content=chat_request.message,
         ),
@@ -51,7 +51,7 @@ async def process_chat_message(
     try:
         # Fetch last 20 messages for context (oldest to newest)
         history_records = await crud_chat.get_recent_by_user_id(
-            db, user_id=chat_request.user_id, limit=20
+            db, user_id=user.id, limit=20
         )
 
         # Call Gemini AI
@@ -64,7 +64,7 @@ async def process_chat_message(
         assistant_message = await crud_chat.create(
             db,
             obj_in=ChatHistoryCreate(
-                user_id=chat_request.user_id,
+                user_id=user.id,
                 role="assistant",
                 content=assistant_response_text,
             ),
