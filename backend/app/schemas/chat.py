@@ -21,3 +21,14 @@ class ChatHistoryInDBBase(ChatHistoryBase, BaseSchemaInDB):
 
 class ChatHistory(ChatHistoryInDBBase):
     pass
+
+
+class ChatRequest(BaseSchema):
+    user_id: int
+    message: str
+
+
+class ChatResponse(BaseSchema):
+    response: str
+    user_message_id: int
+    assistant_message_id: int
