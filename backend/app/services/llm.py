@@ -14,6 +14,11 @@ logger = logging.getLogger(__name__)
 
 class LLMService:
     def __init__(self):
+        if not settings.GOOGLE_API_KEY:
+            raise ValueError("GOOGLE_API_KEY is not set")
+        if not settings.GOOGLE_MODEL_NAME:
+            raise ValueError("GOOGLE_MODEL_NAME is not set")
+
         self.client = genai.Client(api_key=settings.GOOGLE_API_KEY)
         self.model = settings.GOOGLE_MODEL_NAME
 
@@ -36,7 +41,7 @@ class LLMService:
             mapped_history = self._map_history_to_gemini(history_records)
 
             # Create chat session with history
-            chat = self.client.chats.create(
+            chat = self.client.aio.chats.create(
                 model=self.model,
                 config=types.GenerateContentConfig(
                     system_instruction=settings.SYSTEM_INSTRUCTION
@@ -45,7 +50,7 @@ class LLMService:
             )
 
             # Send user message and get response
-            response = chat.send_message(user_text)
+            response = await chat.send_message(user_text)
 
             # Log token usage for GCP metrics
             self._log_token_usage(response)

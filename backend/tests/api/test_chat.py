@@ -62,7 +62,7 @@ async def test_process_chat_message_success(
         user = await crud_user.create(db_session, obj_in=user_in)
 
         # Send chat request
-        chat_request = {"user_id": user.telegram_id, "message": "Hello, AI!"}
+        chat_request = {"user_id": user.id, "message": "Hello, AI!"}
         response = await client.post(
             f"{settings.API_V1_STR}/chat/process", json=chat_request
         )
@@ -152,7 +152,7 @@ async def test_process_chat_message_llm_error(
         user = await crud_user.create(db_session, obj_in=user_in)
 
         # Send chat request
-        chat_request = {"user_id": user.telegram_id, "message": "This will fail"}
+        chat_request = {"user_id": user.id, "message": "This will fail"}
         response = await client.post(
             f"{settings.API_V1_STR}/chat/process", json=chat_request
         )
@@ -211,7 +211,7 @@ async def test_process_chat_message_with_history(
             await crud_chat.create(db_session, obj_in=chat_in)
 
         # Send new message
-        chat_request = {"user_id": user.telegram_id, "message": "Third question"}
+        chat_request = {"user_id": user.id, "message": "Third question"}
         response = await client.post(
             f"{settings.API_V1_STR}/chat/process", json=chat_request
         )

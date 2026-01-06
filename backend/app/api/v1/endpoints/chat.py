@@ -35,7 +35,7 @@ async def process_chat_message(
     5. Save assistant response to database
     6. Return response
     """
-    user = await crud_user.get_by_telegram_id(db, telegram_id=chat_request.user_id)
+    user = await crud_user.get(db, id=chat_request.user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -81,7 +81,7 @@ async def process_chat_message(
         logger.error(f"Error processing chat message: {e}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to process chat message: {str(e)}",
+            detail="Failed to process chat message",
         )
 
 
