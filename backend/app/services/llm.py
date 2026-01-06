@@ -109,9 +109,10 @@ class LLMService:
                 },
             )
 
-    def close(self):
+    async def close(self):
         """Close the Gemini client connection."""
-        self.client.close()
+        if self.client:
+            await self.client.close()
 
 
 async def llm_service():

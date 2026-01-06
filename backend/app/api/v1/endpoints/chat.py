@@ -39,19 +39,20 @@ async def process_chat_message(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    user_message = await crud_chat.create(
-        db,
-        obj_in=ChatHistoryCreate(
-            user_id=user.id,
-            role="user",
-            content=chat_request.message,
-        ),
-    )
-
     try:
         # Fetch last 20 messages for context (oldest to newest)
+        # We do this before saving the new message to avoid including it in history
         history_records = await crud_chat.get_recent_by_user_id(
             db, user_id=user.id, limit=20
+        )
+
+        user_message = await crud_chat.create(
+            db,
+            obj_in=ChatHistoryCreate(
+                user_id=user.id,
+                role="user",
+                content=chat_request.message,
+            ),
         )
 
         # Call Gemini AI

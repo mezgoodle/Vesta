@@ -35,7 +35,7 @@ class CRUDChatHistory(CRUDBase[ChatHistory, ChatHistoryCreate, ChatHistoryUpdate
         result = await db.execute(
             select(ChatHistory)
             .filter(ChatHistory.user_id == user_id)
-            .order_by(ChatHistory.created_at.desc())
+            .order_by(ChatHistory.created_at.desc(), ChatHistory.id.desc())
             .limit(limit)
         )
         # Reverse to get oldest to newest
