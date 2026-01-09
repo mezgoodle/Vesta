@@ -6,8 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.crud.crud_chat import chat as crud_chat
+from app.crud.crud_session import session as crud_session
 from app.crud.crud_user import user as crud_user
-from app.schemas.chat import ChatHistoryCreate
+from app.schemas.chat import ChatHistoryCreate, ChatSessionCreate
 from app.schemas.user import UserCreate
 
 
@@ -22,7 +23,12 @@ async def test_create_chat_message(
     user = await crud_user.create(db_session, obj_in=user_in)
 
     # Create chat message
-    chat_data = {"user_id": user.id, "role": "user", "content": "Hello, world!"}
+    chat_data = {
+        "user_id": user.id,
+        "role": "user",
+        "content": "Hello, world!",
+        "session_id": 1,
+    }
     response = await client.post(f"{settings.API_V1_STR}/chat/", json=chat_data)
 
     assert response.status_code == 200
@@ -61,6 +67,7 @@ async def test_process_chat_message_success(
     assert content["response"] == "This is a mocked AI response"
     assert "user_message_id" in content
     assert "assistant_message_id" in content
+    assert "session_id" in content
 
     # Verify messages were saved to database
     user_messages = await crud_chat.get_by_user_id(db_session, user_id=user.id)
@@ -70,11 +77,13 @@ async def test_process_chat_message_success(
     user_msg = next(msg for msg in user_messages if msg.role == "user")
     assert user_msg.content == "Hello, AI!"
     assert user_msg.user_id == user.id
+    assert user_msg.session_id == content["session_id"]
 
     # Verify assistant message
     assistant_msg = next(msg for msg in user_messages if msg.role == "assistant")
     assert assistant_msg.content == "This is a mocked AI response"
     assert assistant_msg.user_id == user.id
+    assert assistant_msg.session_id == content["session_id"]
 
     # Verify LLM service was called
     mock_llm_service.chat.assert_called_once()
@@ -145,6 +154,10 @@ async def test_process_chat_message_with_history(
     )
     user = await crud_user.create(db_session, obj_in=user_in)
 
+    # Create a session
+    session_in = ChatSessionCreate(user_id=user.id, title="History Session")
+    session = await crud_session.create(db_session, obj_in=session_in)
+
     # Create existing conversation history
     history_messages = [
         ("user", "First question"),
@@ -154,11 +167,20 @@ async def test_process_chat_message_with_history(
     ]
 
     for role, content in history_messages:
-        chat_in = ChatHistoryCreate(user_id=user.id, role=role, content=content)
+        chat_in = ChatHistoryCreate(
+            user_id=user.id,
+            role=role,
+            content=content,
+            session_id=session.id,
+        )
         await crud_chat.create(db_session, obj_in=chat_in)
 
     # Send new message
-    chat_request = {"user_id": user.id, "message": "Third question"}
+    chat_request = {
+        "user_id": user.id,
+        "message": "Third question",
+        "session_id": session.id,
+    }
     response = await client.post(
         f"{settings.API_V1_STR}/chat/process", json=chat_request
     )
@@ -187,3 +209,42 @@ async def test_process_chat_message_with_history(
     # Verify total messages in database (4 old + 1 user + 1 assistant = 6)
     all_messages = await crud_chat.get_by_user_id(db_session, user_id=user.id)
     assert len(all_messages) == 6
+
+
+@pytest.mark.asyncio
+async def test_process_chat_message_with_session(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    mock_llm_service: AsyncMock,
+) -> None:
+    """Test that session is properly passed to LLM service."""
+    # Setup mock
+    mock_llm_service.chat.return_value = "Response with context"
+
+    # Create a user
+    user_in = UserCreate(
+        telegram_id=999000111, full_name="History User", username="historyuser"
+    )
+    user = await crud_user.create(db_session, obj_in=user_in)
+
+    # Create a session
+    session_in = ChatSessionCreate(user_id=user.id, title="History Session")
+    session = await crud_session.create(db_session, obj_in=session_in)
+
+    # Send new message
+    chat_request = {
+        "user_id": user.id,
+        "message": "Hello",
+        "session_id": session.id,
+    }
+    response = await client.post(
+        f"{settings.API_V1_STR}/chat/process", json=chat_request
+    )
+
+    assert response.status_code == 200
+
+    content = response.json()
+    assert content["response"] == "Response with context"
+    assert content["user_message_id"] == 1
+    assert content["assistant_message_id"] == 2
+    assert content["session_id"] == session.id
