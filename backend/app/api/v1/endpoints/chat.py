@@ -5,12 +5,14 @@ from fastapi import APIRouter, HTTPException
 
 from app.api.deps import LLMServiceDep, SessionDep
 from app.crud.crud_chat import chat as crud_chat
+from app.crud.crud_session import session as crud_session
 from app.crud.crud_user import user as crud_user
 from app.schemas.chat import (
     ChatHistory,
     ChatHistoryCreate,
     ChatRequest,
     ChatResponse,
+    ChatSessionCreate,
 )
 
 router = APIRouter()
@@ -39,17 +41,34 @@ async def process_chat_message(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    current_session_id = chat_request.session_id
+
+    if not current_session_id:
+        current_session = await crud_chat.create(
+            db,
+            obj_in=ChatSessionCreate(
+                user_id=user.id,
+                title="New Chat",
+            ),
+        )
+        current_session_id = current_session.id
+    else:
+        current_session = await crud_session.get(db, id=current_session_id)
+        if not current_session:
+            raise HTTPException(status_code=404, detail="Session not found")
+
     try:
         # Fetch last 20 messages for context (oldest to newest)
         # We do this before saving the new message to avoid including it in history
-        history_records = await crud_chat.get_recent_by_user_id(
-            db, user_id=user.id, limit=20
+        history_records = await crud_chat.get_recent_by_session_id(
+            db, session_id=current_session_id, limit=20
         )
 
         user_message = await crud_chat.create(
             db,
             obj_in=ChatHistoryCreate(
                 user_id=user.id,
+                session_id=current_session_id,
                 role="user",
                 content=chat_request.message,
             ),
@@ -66,6 +85,7 @@ async def process_chat_message(
             db,
             obj_in=ChatHistoryCreate(
                 user_id=user.id,
+                session_id=current_session_id,
                 role="assistant",
                 content=assistant_response_text,
             ),
@@ -73,6 +93,7 @@ async def process_chat_message(
 
         return ChatResponse(
             response=assistant_response_text,
+            session_id=current_session_id,
             user_message_id=user_message.id,
             assistant_message_id=assistant_message.id,
         )

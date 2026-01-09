@@ -38,8 +38,22 @@ class CRUDChatHistory(CRUDBase[ChatHistory, ChatHistoryCreate, ChatHistoryUpdate
             .order_by(ChatHistory.created_at.desc(), ChatHistory.id.desc())
             .limit(limit)
         )
-        # Reverse to get oldest to newest
+
         return list(reversed(result.scalars().all()))
+
+    async def get_recent_by_session_id(
+        self, db: AsyncSession, *, session_id: int, limit: int = 20
+    ) -> list[ChatHistory]:
+        stmt = (
+            select(self.model)
+            .where(self.model.session_id == session_id)
+            .order_by(self.model.id.desc())
+            .limit(limit)
+        )
+        result = await db.execute(stmt)
+        items = result.scalars().all()
+
+        return list(reversed(items))
 
 
 chat = CRUDChatHistory(ChatHistory)
