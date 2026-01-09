@@ -5,6 +5,7 @@ class ChatHistoryBase(BaseSchema):
     role: str
     content: str
     user_id: int
+    session_id: int
 
 
 class ChatHistoryCreate(ChatHistoryBase):
@@ -26,9 +27,23 @@ class ChatHistory(ChatHistoryInDBBase):
 class ChatRequest(BaseSchema):
     user_id: int
     message: str
+    session_id: int | None = None
 
 
 class ChatResponse(BaseSchema):
     response: str
     user_message_id: int
     assistant_message_id: int
+    session_id: int
+
+
+class ChatSessionBase(BaseSchema):
+    title: str
+
+
+class ChatSessionCreate(ChatSessionBase):
+    user_id: int
+
+
+class ChatSession(ChatSessionBase, BaseSchemaInDB):
+    user_id: int
