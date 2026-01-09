@@ -47,3 +47,7 @@ class ChatSessionCreate(ChatSessionBase):
 
 class ChatSession(ChatSessionBase, BaseSchemaInDB):
     user_id: int
+
+
+class ChatSessionUpdate(BaseSchema):
+    title: str | None = None

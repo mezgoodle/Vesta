@@ -44,7 +44,7 @@ async def process_chat_message(
     current_session_id = chat_request.session_id
 
     if not current_session_id:
-        current_session = await crud_chat.create(
+        current_session = await crud_session.create(
             db,
             obj_in=ChatSessionCreate(
                 user_id=user.id,
