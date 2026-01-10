@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # GCP
     GCP_LOG_NAME: str = "vesta-backend"
     GOOGLE_APPLICATION_CREDENTIALS: str = ""
+    GOOGLE_API_KEY: str = ""
+    GOOGLE_MODEL_NAME: str = ""
+    SYSTEM_INSTRUCTION: str = "You are Vesta, a helpful smart home assistant."
 
     model_config = SettingsConfigDict(
         env_file=".env",

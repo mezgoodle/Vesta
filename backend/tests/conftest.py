@@ -1,12 +1,16 @@
 from typing import AsyncGenerator
+from unittest.mock import AsyncMock
 
 import pytest
-from app.db.base import Base
-from app.db.session import get_db
-from app.main import app
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
+
+from app.db.base import Base
+from app.db.session import get_db
+from app.main import app
+from app.services.llm import LLMService
+from app.services.llm import llm_service as llm_service_dep
 
 # Use in-memory SQLite database for tests
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -75,3 +79,23 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
         yield c
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def mock_llm_service() -> AsyncGenerator[AsyncMock, None]:
+    """
+    Fixture for mocked LLM service.
+    Overrides the llm_service dependency.
+    """
+    mock = AsyncMock(spec=LLMService)
+    mock.chat = AsyncMock()
+    mock.close = AsyncMock()
+
+    async def override_llm_service():
+        yield mock
+
+    app.dependency_overrides[llm_service_dep] = override_llm_service
+
+    yield mock
+
+    app.dependency_overrides.pop(llm_service_dep, None)

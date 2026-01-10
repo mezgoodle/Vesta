@@ -1,8 +1,9 @@
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.crud.base import CRUDBase
 from app.models.chat import ChatHistory
 from app.schemas.chat import ChatHistoryCreate, ChatHistoryUpdate
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class CRUDChatHistory(CRUDBase[ChatHistory, ChatHistoryCreate, ChatHistoryUpdate]):
@@ -16,6 +17,43 @@ class CRUDChatHistory(CRUDBase[ChatHistory, ChatHistoryCreate, ChatHistoryUpdate
             .limit(limit)
         )
         return result.scalars().all()
+
+    async def get_recent_by_user_id(
+        self, db: AsyncSession, *, user_id: int, limit: int = 20
+    ) -> list[ChatHistory]:
+        """
+        Get the most recent chat messages for a user, ordered oldest to newest.
+
+        Args:
+            db: Database session
+            user_id: User ID to fetch messages for
+            limit: Maximum number of messages to fetch (default: 20)
+
+        Returns:
+            List of ChatHistory records, ordered from oldest to newest
+        """
+        result = await db.execute(
+            select(ChatHistory)
+            .filter(ChatHistory.user_id == user_id)
+            .order_by(ChatHistory.created_at.desc(), ChatHistory.id.desc())
+            .limit(limit)
+        )
+
+        return list(reversed(result.scalars().all()))
+
+    async def get_recent_by_session_id(
+        self, db: AsyncSession, *, session_id: int, limit: int = 20
+    ) -> list[ChatHistory]:
+        stmt = (
+            select(self.model)
+            .where(self.model.session_id == session_id)
+            .order_by(self.model.id.desc())
+            .limit(limit)
+        )
+        result = await db.execute(stmt)
+        items = result.scalars().all()
+
+        return list(reversed(items))
 
 
 chat = CRUDChatHistory(ChatHistory)

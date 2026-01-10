@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
-    from app.models.chat import ChatHistory
+    from app.models.chat import ChatHistory, ChatSession
     from app.models.device import SmartDevice
     from app.models.news import NewsSubscription
 
@@ -28,5 +28,8 @@ class User(Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     news_subscriptions: Mapped[list["NewsSubscription"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    sessions: Mapped[list["ChatSession"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )

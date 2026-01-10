@@ -2,14 +2,6 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 
-class BaseLLMService(ABC):
-    """Abstract base class for LLM services."""
-
-    @abstractmethod
-    async def generate_text(self, prompt: str) -> str:
-        """Generate text from a prompt."""
-
-
 class BaseHomeService(ABC):
     """Abstract base class for Home Automation services."""
 

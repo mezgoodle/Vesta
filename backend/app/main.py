@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Request
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.api import api_router
 from app.core.config import settings
@@ -12,10 +14,8 @@ from app.core.logger import setup_logging
 # Import models to ensure they are registered with Base
 from app.models import ChatHistory, NewsSubscription, SmartDevice, User  # noqa: F401
 from app.services.home import HomeAssistantService
-from app.services.llm import OpenAILLMService
 
 # Global service instances
-llm_service = OpenAILLMService()
 home_service = HomeAssistantService()
 
 
@@ -28,7 +28,6 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown
     print("Shutting down services...")
-    await llm_service.close()
     await home_service.close()
 
 
@@ -43,12 +42,24 @@ app = FastAPI(
 async def log_requests(request: Request, call_next):
     start_time = time.perf_counter()
     status_code = 500
+    response = None
+
     try:
         response = await call_next(request)
         status_code = response.status_code
         return response
+    except StarletteHTTPException as http_exc:
+        status_code = http_exc.status_code
+        response = JSONResponse(
+            status_code=status_code, content={"detail": http_exc.detail}
+        )
+        return response
     except Exception as e:
-        logging.error(f"Error: {e}")
+        logging.error(f"Critical Error: {e}")
+        response = JSONResponse(
+            status_code=status_code, content={"detail": "Internal Server Error"}
+        )
+        return response
     finally:
         process_time = time.perf_counter() - start_time
 
@@ -67,11 +78,6 @@ async def log_requests(request: Request, call_next):
         )
 
 
-# Dependency Injection
-def get_llm_service() -> OpenAILLMService:
-    return llm_service
-
-
 def get_home_service() -> HomeAssistantService:
     return home_service
 
@@ -79,14 +85,6 @@ def get_home_service() -> HomeAssistantService:
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
-
-
-@app.get("/test-llm")
-async def test_llm(
-    prompt: str, service: Annotated[OpenAILLMService, Depends(get_llm_service)]
-):
-    response = await service.generate_text(prompt)
-    return {"response": response}
 
 
 @app.get("/test-home")
