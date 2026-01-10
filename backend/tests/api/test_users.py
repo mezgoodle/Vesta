@@ -37,6 +37,23 @@ async def test_read_users_api(client: AsyncClient, db_session: AsyncSession) -> 
 
 
 @pytest.mark.asyncio
+async def test_read_user_by_telegram_id_api(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    user_in = UserCreate(
+        telegram_id=202020202, full_name="Read User", username="readuser"
+    )
+    user = await crud_user.create(db_session, obj_in=user_in)
+
+    response = await client.get(
+        f"{settings.API_V1_STR}/users/telegram/{user.telegram_id}"
+    )
+    assert response.status_code == 200
+    content = response.json()
+    assert content["telegram_id"] == user_in.telegram_id
+
+
+@pytest.mark.asyncio
 async def test_read_user_by_id_api(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:

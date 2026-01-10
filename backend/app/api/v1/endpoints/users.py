@@ -101,6 +101,21 @@ async def get_allowed_telegram_ids(
     return telegram_ids
 
 
+@router.get("/telegram/{telegram_id}", response_model=User)
+async def get_user_by_telegram_id(
+    *,
+    db: deps.SessionDep,
+    telegram_id: int,
+) -> Any:
+    """
+    Get user by telegram id.
+    """
+    user = await crud_user.get_by_telegram_id(db, telegram_id=telegram_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
 @router.patch("/telegram/{telegram_id}/approval", response_model=User)
 async def update_user_approval(
     *,
