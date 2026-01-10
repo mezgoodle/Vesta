@@ -38,7 +38,7 @@ class ChatResponse(BaseSchema):
 
 
 class ChatSessionBase(BaseSchema):
-    title: str
+    title: str = "New Chat"
 
 
 class ChatSessionCreate(ChatSessionBase):
