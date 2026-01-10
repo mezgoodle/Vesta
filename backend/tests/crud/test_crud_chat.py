@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud.crud_chat import chat as crud_chat
-from app.crud.crud_session import session as crud_session
+from app.crud.crud_session import chat_session as crud_session
 from app.crud.crud_user import user as crud_user
 from app.schemas.chat import ChatHistoryCreate, ChatSessionCreate
 from app.schemas.user import UserCreate

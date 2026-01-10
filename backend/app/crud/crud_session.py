@@ -3,8 +3,8 @@ from app.models.chat import ChatSession
 from app.schemas.chat import ChatSessionCreate, ChatSessionUpdate
 
 
-class CRUDSession(CRUDBase[ChatSession, ChatSessionCreate, ChatSessionUpdate]):
+class CRUDChatSession(CRUDBase[ChatSession, ChatSessionCreate, ChatSessionUpdate]):
     pass
 
 
-session = CRUDSession(ChatSession)
+chat_session = CRUDChatSession(ChatSession)

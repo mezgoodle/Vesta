@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.api.deps import LLMServiceDep, SessionDep
 from app.crud.crud_chat import chat as crud_chat
-from app.crud.crud_session import session as crud_session
+from app.crud.crud_session import chat_session as crud_session
 from app.crud.crud_user import user as crud_user
 from app.schemas.chat import (
     ChatHistory,
@@ -57,6 +57,11 @@ async def process_chat_message(
         if not current_session:
             raise HTTPException(status_code=404, detail="Session not found")
 
+        if current_session.user_id != user.id:
+            raise HTTPException(
+                status_code=403, detail="Session does not belong to user"
+            )
+
     try:
         # Fetch last 20 messages for context (oldest to newest)
         # We do this before saving the new message to avoid including it in history
@@ -97,6 +102,9 @@ async def process_chat_message(
             user_message_id=user_message.id,
             assistant_message_id=assistant_message.id,
         )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
         logger.error(f"Error processing chat message: {e}")
