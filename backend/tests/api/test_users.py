@@ -1,9 +1,10 @@
 import pytest
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.config import settings
 from app.crud.crud_user import user as crud_user
 from app.schemas.user import UserCreate
-from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.mark.asyncio
@@ -150,6 +151,12 @@ async def test_get_allowed_telegram_ids(
     assert response.status_code == 200
     telegram_ids = response.json()
     assert isinstance(telegram_ids, list)
-    assert 707070707 in telegram_ids
-    assert 808080808 in telegram_ids
-    assert 909090909 not in telegram_ids
+
+    assert len(telegram_ids) == 2
+    assert isinstance(telegram_ids[0], dict)
+    assert isinstance(telegram_ids[1], dict)
+
+    assert 707070707 in telegram_ids[0].values()
+    assert 808080808 in telegram_ids[1].values()
+    assert 909090909 not in telegram_ids[0].values()
+    assert 909090909 not in telegram_ids[1].values()

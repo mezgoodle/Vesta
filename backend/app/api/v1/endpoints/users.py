@@ -1,9 +1,10 @@
 from typing import Any
 
+from fastapi import APIRouter, HTTPException
+
 from app.api import deps
 from app.crud.crud_user import user as crud_user
 from app.schemas.user import User, UserApprovalUpdate, UserCreate, UserUpdate
-from fastapi import APIRouter, HTTPException
 
 router = APIRouter()
 
@@ -88,13 +89,13 @@ async def delete_user(
     return user
 
 
-@router.get("/allowed/telegram-ids", response_model=list[int])
+@router.get("/allowed/telegram-ids", response_model=list[dict[str, int]])
 async def get_allowed_telegram_ids(
     db: deps.SessionDep,
 ) -> Any:
     """
-    Get telegram_ids of all allowed users.
-    This endpoint returns a list of telegram_ids for users who are approved.
+    Get telegram_ids and ids of all allowed users.
+    This endpoint returns a list of telegram_ids and ids for users who are approved.
     """
     telegram_ids = await crud_user.get_allowed_telegram_ids(db)
     return telegram_ids
