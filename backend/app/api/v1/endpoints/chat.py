@@ -12,6 +12,7 @@ from app.schemas.chat import (
     ChatHistoryCreate,
     ChatRequest,
     ChatResponse,
+    ChatSession,
     ChatSessionCreate,
 )
 
@@ -131,6 +132,25 @@ async def read_chat_history(
     else:
         chat_history = await crud_chat.get_multi(db, skip=skip, limit=limit)
     return chat_history
+
+
+@router.get("/sessions", response_model=list[ChatSession])
+async def read_chat_sessions(
+    db: SessionDep,
+    skip: int = 0,
+    limit: int = 100,
+    user_id: int | None = None,
+) -> Any:
+    """
+    Retrieve chat sessions.
+    """
+    if user_id is not None:
+        chat_sessions = await crud_session.get_by_user_id(
+            db, user_id=user_id, skip=skip, limit=limit
+        )
+    else:
+        chat_sessions = await crud_session.get_multi(db, skip=skip, limit=limit)
+    return chat_sessions
 
 
 @router.post("/", response_model=ChatHistory)

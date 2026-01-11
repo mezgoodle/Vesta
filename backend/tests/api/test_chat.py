@@ -13,6 +13,65 @@ from app.schemas.user import UserCreate
 
 
 @pytest.mark.asyncio
+async def test_read_chat_history(client: AsyncClient, db_session: AsyncSession) -> None:
+    # Create a user first
+    user_in = UserCreate(
+        telegram_id=111222333, full_name="Chat User", username="chatuser"
+    )
+    user = await crud_user.create(db_session, obj_in=user_in)
+
+    # Create chat session
+    chat_session_in = ChatSessionCreate(user_id=user.id, title="Chat Session")
+    chat_session = await crud_session.create(db_session, obj_in=chat_session_in)
+
+    # Create chat history
+    chat_history_in = ChatHistoryCreate(
+        user_id=user.id,
+        session_id=chat_session.id,
+        role="user",
+        content="Hello, world!",
+    )
+    chat_history = await crud_chat.create(db_session, obj_in=chat_history_in)
+    _ = await crud_chat.create(db_session, obj_in=chat_history_in)
+
+    response = await client.get(f"{settings.API_V1_STR}/chat/?user_id={user.id}")
+
+    assert response.status_code == 200
+    content = response.json()
+    assert len(content) == 2
+    assert content[0]["role"] == chat_history.role
+    assert content[0]["content"] == chat_history.content
+    assert content[0]["user_id"] == user.id
+    assert "id" in content[0]
+
+
+@pytest.mark.asyncio
+async def test_read_chat_sessions(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    # Create a user first
+    user_in = UserCreate(
+        telegram_id=111222333, full_name="Chat User", username="chatuser"
+    )
+    user = await crud_user.create(db_session, obj_in=user_in)
+
+    # Create chat session
+    chat_session_in = ChatSessionCreate(user_id=user.id, title="Chat Session")
+    chat_session = await crud_session.create(db_session, obj_in=chat_session_in)
+
+    response = await client.get(
+        f"{settings.API_V1_STR}/chat/sessions?user_id={user.id}"
+    )
+
+    assert response.status_code == 200
+    content = response.json()
+    assert len(content) == 1
+    assert content[0]["title"] == chat_session.title
+    assert content[0]["user_id"] == user.id
+    assert "id" in content[0]
+
+
+@pytest.mark.asyncio
 async def test_create_chat_message(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:

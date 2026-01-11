@@ -89,6 +89,43 @@ async def test_get_recent_by_user_id(db_session: AsyncSession) -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_sessions_recent_by_user_id(db_session: AsyncSession) -> None:
+    """Test get_recent_by_user_id returns messages in correct order with limit."""
+    # Create a user
+    user_in = UserCreate(
+        telegram_id=444555666, full_name="Recent Chat User", username="recentchat"
+    )
+    user = await crud_user.create(db_session, obj_in=user_in)
+
+    # Create multiple sessions
+    sessions = [
+        ChatSessionCreate(user_id=user.id, title="Session 1"),
+        ChatSessionCreate(user_id=user.id, title="Session 2"),
+        ChatSessionCreate(user_id=user.id, title="Session 3"),
+    ]
+
+    for session in sessions:
+        await crud_session.create(db_session, obj_in=session)
+
+    recent = await crud_session.get_by_user_id(db_session, user_id=user.id)
+
+    assert len(recent) == 3
+    assert recent[0].title == "Session 1"
+    assert recent[1].title == "Session 2"
+    assert recent[2].title == "Session 3"
+
+    # Test getting all messages
+    all_recent = await crud_session.get_by_user_id(
+        db_session, user_id=user.id, limit=20
+    )
+    assert len(all_recent) == 3
+    # First message should be the oldest
+    assert all_recent[0].title == "Session 1"
+    # Last message should be the newest
+    assert all_recent[-1].title == "Session 3"
+
+
+@pytest.mark.asyncio
 async def test_get_recent_by_session_id(db_session: AsyncSession) -> None:
     """Test get_recent_by_session_id returns messages in correct order with limit."""
     # Create a user
