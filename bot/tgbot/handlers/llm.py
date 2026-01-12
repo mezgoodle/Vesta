@@ -27,6 +27,12 @@ async def get_chats_command(message: Message, user_cache: UserCache, config: Set
     return await message.answer("Select a session", reply_markup=markup)
 
 
+@router.message(Command("reset"))
+async def reset_state_handler(message: Message, state: FSMContext):
+    await state.clear()
+    return await message.answer("State reset!")
+
+
 @router.callback_query(SessionCallbackFactory.filter())
 async def approve_handler(
     callback: CallbackQuery,
@@ -69,4 +75,21 @@ async def user_message_handler(
     session_id = data.get("session_id")
     session_title = data.get("session_title")
 
-    return
+    _ = await message.bot.send_chat_action(chat_id=message.chat.id, action="typing")
+
+    response = await llm_service.process_prompt(
+        prompt=text,
+        user_id=user_cache.get_user_id_in_db(message.from_user.id),
+        session_id=session_id,
+    )
+    if not response:
+        return await message.answer("Something went wrong")
+
+    await message.answer(response.get("response"))
+    session_title = session_title or response.get("session_title")
+    await state.update_data(session_title=session_title)
+    await state.set_state(ChatMessage.message)
+    await message.answer(
+        f"You will continue the conversation in {hbold(session_title)} session (type /chats to see all sessions). There is no need to type /new to continue the conversation, just send your message."
+    )
+    return await message.answer("To end the conversation, type /reset")

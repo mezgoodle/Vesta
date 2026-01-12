@@ -49,9 +49,3 @@ async def echo_handler(message: Message, config: Settings) -> None:
         await message.send_copy(chat_id=message.chat.id)
     except TypeError:
         await message.answer("Nice try!")
-
-
-@router.message(Command("reset"))
-async def reset_state_handler(message: Message, state: FSMContext):
-    await state.clear()
-    return await message.answer("State reset!")
