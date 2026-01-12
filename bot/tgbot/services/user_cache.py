@@ -15,7 +15,7 @@ class UserCache:
     def is_allowed(self, telegram_id: int) -> bool:
         return telegram_id in self._allowed_ids
 
-    def get_user_id(self, telegram_id: int) -> int | None:
+    def get_user_id_in_db(self, telegram_id: int) -> int | None:
         return self._allowed_ids.get(telegram_id)
 
     def __repr__(self):
