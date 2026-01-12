@@ -10,7 +10,9 @@ def create_markup(sessions: list[dict]) -> InlineKeyboardMarkup:
         builder.add(
             InlineKeyboardButton(
                 text=session["title"],
-                callback_data=SessionCallbackFactory(session_id=session["id"]).pack(),
+                callback_data=SessionCallbackFactory(
+                    session_id=session["id"], session_title=session["title"]
+                ).pack(),
             )
         )
     builder.adjust(2)

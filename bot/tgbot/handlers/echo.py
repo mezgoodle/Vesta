@@ -1,5 +1,6 @@
 from aiogram import F, Router
-from aiogram.filters import CommandStart
+from aiogram.filters import Command, CommandStart
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.utils.markdown import hbold
 from loader import bot, dp
@@ -48,3 +49,9 @@ async def echo_handler(message: Message, config: Settings) -> None:
         await message.send_copy(chat_id=message.chat.id)
     except TypeError:
         await message.answer("Nice try!")
+
+
+@router.message(Command("reset"))
+async def reset_state_handler(message: Message, state: FSMContext):
+    await state.clear()
+    return await message.answer("State reset!")
