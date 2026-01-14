@@ -32,15 +32,15 @@ class LLMService(BaseAPIService):
         else:
             return {}
 
-    async def get_sessions_by_user_id(self, user_id: int) -> list[int]:
+    async def get_sessions_by_user_id(self, user_id: int) -> list[dict]:
         """
 
         Get list of sessions for user.
         """
 
-        endpoint = f"/api/v1/chat/sessions?user_id={user_id}"
+        endpoint = "/api/v1/chat/sessions"
 
-        status, data = await self._get(endpoint)
+        status, data = await self._get(endpoint, params={"user_id": user_id})
 
         if status == 200:
             return data

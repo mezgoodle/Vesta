@@ -7,7 +7,10 @@ class UserCache:
 
     def load(self, user_ids: Iterable[dict]) -> None:
         for u in user_ids:
-            self._allowed_ids[u["telegram_id"]] = u["id"]
+            telegram_id = u.get("telegram_id")
+            user_id = u.get("id")
+            if telegram_id is not None and user_id is not None:
+                self._allowed_ids[telegram_id] = user_id
 
     def add(self, user_id: int, telegram_id: int) -> None:
         self._allowed_ids[telegram_id] = user_id

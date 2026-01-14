@@ -18,9 +18,11 @@ dp.include_router(router)
 
 @router.message(Command("chats"))
 async def get_chats_command(message: Message, user_cache: UserCache, config: Settings):
-    sessions = await llm_service.get_sessions_by_user_id(
-        user_cache.get_user_id_in_db(message.from_user.id)
-    )
+    user_id = user_cache.get_user_id_in_db(message.from_user.id)
+    if not user_id:
+        return await message.answer("You are not allowed to use this bot")
+
+    sessions = await llm_service.get_sessions_by_user_id(user_id)
     if not sessions:
         return await message.answer("You have no sessions")
     markup = sessions_keyboard.create_markup(sessions)
@@ -34,10 +36,9 @@ async def reset_state_handler(message: Message, state: FSMContext):
 
 
 @router.callback_query(SessionCallbackFactory.filter())
-async def approve_handler(
+async def session_select_handler(
     callback: CallbackQuery,
     callback_data: SessionCallbackFactory,
-    user_cache: UserCache,
     state: FSMContext,
 ) -> None:
     await state.update_data(
@@ -49,9 +50,7 @@ async def approve_handler(
 
 
 @router.message(Command("new"))
-async def new_message_command(
-    message: Message, state: FSMContext, user_cache: UserCache
-):
+async def new_message_command(message: Message, state: FSMContext):
     data = await state.get_data()
     if session_title := data.get("session_title"):
         await message.answer(
@@ -70,6 +69,9 @@ async def user_message_handler(
     message: Message, state: FSMContext, user_cache: UserCache
 ):
     text = message.text
+    if not text:
+        return await message.answer("Please send a text message.")
+
     await state.update_data(message=text)
     data = await state.get_data()
     session_id = data.get("session_id")
@@ -85,11 +87,16 @@ async def user_message_handler(
     if not response:
         return await message.answer("Something went wrong")
 
-    await message.answer(response.get("response"))
+    llm_response = response.get("response")
+    if not llm_response:
+        return await message.answer("Received an empty response from the assistant.")
+
+    await message.answer(llm_response)
+
     session_title = session_title or response.get("session_title")
     await state.update_data(session_title=session_title)
     await state.set_state(ChatMessage.message)
-    await message.answer(
-        f"You will continue the conversation in {hbold(session_title)} session (type /chats to see all sessions). There is no need to type /new to continue the conversation, just send your message."
+    return await message.answer(
+        f"Session: {hbold(session_title)}\n"
+        f"Continue typing to chat, or /chats to switch sessions, /reset to end."
     )
-    return await message.answer("To end the conversation, type /reset")
