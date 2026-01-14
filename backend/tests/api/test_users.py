@@ -170,10 +170,9 @@ async def test_get_allowed_telegram_ids(
     assert isinstance(telegram_ids, list)
 
     assert len(telegram_ids) == 2
-    assert isinstance(telegram_ids[0], dict)
-    assert isinstance(telegram_ids[1], dict)
+    assert all(isinstance(item, dict) for item in telegram_ids)
 
-    assert 707070707 in telegram_ids[0].values()
-    assert 808080808 in telegram_ids[1].values()
-    assert 909090909 not in telegram_ids[0].values()
-    assert 909090909 not in telegram_ids[1].values()
+    all_telegram_ids = {item["telegram_id"] for item in telegram_ids}
+    assert 707070707 in all_telegram_ids
+    assert 808080808 in all_telegram_ids
+    assert 909090909 not in all_telegram_ids

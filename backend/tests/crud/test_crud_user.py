@@ -37,7 +37,7 @@ async def test_get_user_by_telegram_id(db_session: AsyncSession) -> None:
 
 @pytest.mark.asyncio
 async def test_get_allowed_telegram_ids(db_session: AsyncSession) -> None:
-    telegram_id = 123456789
+    telegram_id = 555555555
     user_in = UserCreate(
         telegram_id=telegram_id,
         full_name="Test User",
@@ -45,7 +45,9 @@ async def test_get_allowed_telegram_ids(db_session: AsyncSession) -> None:
         timezone="UTC",
         is_allowed=True,
     )
-    await crud_user.create(db_session, obj_in=user_in)
-
+    created_user = await crud_user.create(db_session, obj_in=user_in)
     telegram_ids = await crud_user.get_allowed_telegram_ids(db_session)
-    assert telegram_ids == [{"id": 1, "telegram_id": telegram_id}]
+
+    assert len(telegram_ids) == 1
+    assert telegram_ids[0]["id"] == created_user.id
+    assert telegram_ids[0]["telegram_id"] == telegram_id
