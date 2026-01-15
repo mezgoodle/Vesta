@@ -52,7 +52,7 @@ async def test_read_user_by_telegram_id_api(
     )
     assert response.status_code == 200
     content = response.json()
-    assert content["telegram_id"] == user_in.telegram_id
+    assert content["telegram_id"] == user.telegram_id
 
 
 @pytest.mark.asyncio
