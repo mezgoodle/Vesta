@@ -28,7 +28,7 @@ async def approve_handler(
         callback_data.user_id, {"is_allowed": True}
     )
     if success:
-        user_cache.add(callback_data.user_id)
+        user_cache.add(success["id"], callback_data.user_id)
         await callback.message.edit_text(result)
         try:
             await callback.bot.send_message(callback_data.user_id, "You are approved!")

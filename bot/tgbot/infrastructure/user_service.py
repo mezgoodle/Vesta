@@ -1,12 +1,10 @@
-from typing import Optional
-
 from tgbot.infrastructure.base_service import BaseAPIService
 
 
 class UserService(BaseAPIService):
     """Service for weather forecast operations."""
 
-    def __init__(self, base_url: Optional[str] = None, timeout: int = 10):
+    def __init__(self, base_url: str | None = None, timeout: int = 10):
         """
         Initialize the forecast service.
 
@@ -31,7 +29,7 @@ class UserService(BaseAPIService):
 
     async def update_user_approval(
         self, user_id: int, permissions: dict
-    ) -> tuple[bool, str]:
+    ) -> tuple[dict | None, str]:
         """
         Update user permissions.
 
@@ -44,13 +42,26 @@ class UserService(BaseAPIService):
         status, data = await self._patch(endpoint, permissions)
 
         if status == 200:
-            return True, f"✅ User '{user_id}' approved."
+            return data, f"✅ User '{user_id}' approved."
         elif status == 404:
-            return False, f"❌ User '{user_id}' not found. Please check the spelling."
+            return None, f"❌ User '{user_id}' not found. Please check the spelling."
         else:
-            return False, self._handle_error_response(
+            return None, self._handle_error_response(
                 status, data, f"updating user approval for {user_id}"
             )
+
+    async def get_user_by_telegram_id(self, telegram_id: int) -> dict | None:
+        """
+        Get user by telegram id.
+        """
+        endpoint = f"/api/v1/users/telegram/{telegram_id}"
+
+        status, data = await self._get(endpoint)
+
+        if status == 200:
+            return data
+        else:
+            return None
 
 
 user_service = UserService()

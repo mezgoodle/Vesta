@@ -1,7 +1,8 @@
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.crud.crud_user import user as crud_user
 from app.schemas.user import UserCreate
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.mark.asyncio
@@ -32,3 +33,21 @@ async def test_get_user_by_telegram_id(db_session: AsyncSession) -> None:
     assert user
     assert user.telegram_id == telegram_id
     assert user.username == "anotheruser"
+
+
+@pytest.mark.asyncio
+async def test_get_allowed_telegram_ids(db_session: AsyncSession) -> None:
+    telegram_id = 555555555
+    user_in = UserCreate(
+        telegram_id=telegram_id,
+        full_name="Test User",
+        username="testuser",
+        timezone="UTC",
+        is_allowed=True,
+    )
+    created_user = await crud_user.create(db_session, obj_in=user_in)
+    telegram_ids = await crud_user.get_allowed_telegram_ids(db_session)
+
+    assert len(telegram_ids) == 1
+    assert telegram_ids[0]["id"] == created_user.id
+    assert telegram_ids[0]["telegram_id"] == telegram_id

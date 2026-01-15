@@ -1,9 +1,10 @@
 import pytest
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.config import settings
 from app.crud.crud_user import user as crud_user
 from app.schemas.user import UserCreate
-from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.mark.asyncio
@@ -33,6 +34,25 @@ async def test_read_users_api(client: AsyncClient, db_session: AsyncSession) -> 
     assert response.status_code == 200
     content = response.json()
     assert len(content) >= 1
+
+
+@pytest.mark.asyncio
+async def test_read_user_by_telegram_id_api(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    user_in = UserCreate(
+        telegram_id=212121212,
+        full_name="Telegram Read User",
+        username="telegramreaduser",
+    )
+    user = await crud_user.create(db_session, obj_in=user_in)
+
+    response = await client.get(
+        f"{settings.API_V1_STR}/users/telegram/{user.telegram_id}"
+    )
+    assert response.status_code == 200
+    content = response.json()
+    assert content["telegram_id"] == user.telegram_id
 
 
 @pytest.mark.asyncio
@@ -150,6 +170,11 @@ async def test_get_allowed_telegram_ids(
     assert response.status_code == 200
     telegram_ids = response.json()
     assert isinstance(telegram_ids, list)
-    assert 707070707 in telegram_ids
-    assert 808080808 in telegram_ids
-    assert 909090909 not in telegram_ids
+
+    assert len(telegram_ids) == 2
+    assert all(isinstance(item, dict) for item in telegram_ids)
+
+    all_telegram_ids = {item["telegram_id"] for item in telegram_ids}
+    assert 707070707 in all_telegram_ids
+    assert 808080808 in all_telegram_ids
+    assert 909090909 not in all_telegram_ids

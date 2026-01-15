@@ -2,6 +2,8 @@ name: Bot CI
 
 on:
   push:
+    branches:
+      - main
     paths:
       - "bot/**"
       - ".github/workflows/bot.yml"
