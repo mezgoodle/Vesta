@@ -13,6 +13,7 @@ class CRUDChatSession(CRUDBase[ChatSession, ChatSessionCreate, ChatSessionUpdate
         result = await db.execute(
             select(ChatSession)
             .filter(ChatSession.user_id == user_id)
+            .order_by(ChatSession.created_at.desc())
             .offset(skip)
             .limit(limit)
         )

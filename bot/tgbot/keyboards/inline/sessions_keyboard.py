@@ -12,7 +12,7 @@ def create_markup(sessions: list[dict]) -> InlineKeyboardMarkup:
         session_id = session.get("id")
         if not session_id:
             continue
-        session_title = session["title"]
+        session_title = session.get("title", "Untitled")
         session_title = (
             session_title[:MAX_TITLE_LENGTH] + "..."
             if len(session_title) > MAX_TITLE_LENGTH

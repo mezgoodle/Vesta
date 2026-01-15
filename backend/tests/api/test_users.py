@@ -41,7 +41,9 @@ async def test_read_user_by_telegram_id_api(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     user_in = UserCreate(
-        telegram_id=202020202, full_name="Read User", username="readuser"
+        telegram_id=212121212,
+        full_name="Telegram Read User",
+        username="telegramreaduser",
     )
     user = await crud_user.create(db_session, obj_in=user_in)
 
