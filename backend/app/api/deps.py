@@ -1,8 +1,8 @@
 from typing import Annotated
 
+import jwt
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import APIKeyHeader, OAuth2PasswordBearer
-from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -74,7 +74,7 @@ async def get_current_user(
         if user_id is None:
             raise credentials_exception
         token_data = TokenPayload(sub=int(user_id))
-    except (JWTError, ValueError):
+    except (jwt.JWTError, ValueError):
         raise credentials_exception
 
     user = await crud_user.get(db, id=token_data.sub)

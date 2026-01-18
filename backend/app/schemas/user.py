@@ -9,7 +9,7 @@ class UserBase(BaseSchema):
     timezone: str = "UTC"
     is_allowed: bool = False
     email: str | None = None
-    is_superuser: bool
+    is_superuser: bool = False
 
 
 # Properties to receive on creation
@@ -24,6 +24,8 @@ class UserUpdate(BaseSchema):
     timezone: str | None = None
     password: str | None = None
     is_allowed: bool | None = None
+    email: str | None = None
+    is_superuser: bool | None = None
 
 
 # Properties for user approval endpoint
