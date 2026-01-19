@@ -3,6 +3,7 @@ from typing import Annotated
 import jwt
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import APIKeyHeader, OAuth2PasswordBearer
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -18,14 +19,15 @@ WeatherServiceDep = Annotated[WeatherService, Depends(weather_service)]
 LLMServiceDep = Annotated[LLMService, Depends(llm_service)]
 
 reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/login/access-token"
+    tokenUrl=f"{settings.API_V1_STR}/login/access-token",
+    auto_error=False,
 )
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 async def get_current_user(
     db: SessionDep,
-    token: str = Depends(reusable_oauth2),
+    token: str | None = Depends(reusable_oauth2),
     api_key: str | None = Security(api_key_header),
 ) -> User:
     """
@@ -53,18 +55,17 @@ async def get_current_user(
     )
 
     if api_key and api_key == settings.BACKEND_API_KEY:
-        result = await db.execute(
-            crud_user.model.__table__.select()
-            .where(crud_user.model.is_superuser)
-            .limit(1)
-        )
-        system_user = result.first()
+        result = await db.execute(select(User).where(User.is_superuser).limit(1))
+        system_user = result.scalars().first()
         if system_user:
-            return User(**dict(system_user._mapping))
+            return system_user
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No system user found for API key authentication",
         )
+
+    if not token:
+        raise credentials_exception
 
     try:
         payload = jwt.decode(

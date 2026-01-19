@@ -26,13 +26,12 @@ async def create_superuser():
             password=password,
             full_name="System Admin",
             username="admin",
+            is_allowed=True,
+            is_superuser=True,
         )
 
         user = await crud_user.create(db, obj_in=user_in)
 
-        user.is_superuser = True
-        user.is_allowed = True
-        db.add(user)
         await db.commit()
 
         logger.info(f"Superuser {email} created successfully!")
