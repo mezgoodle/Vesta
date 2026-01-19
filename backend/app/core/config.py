@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     # General
     DEBUG: bool = True
 
+    # Superuser
+    SUPERUSER_EMAIL: str = "admin@admin.com"
+    SUPERUSER_PASSWORD: str = "admin"
+
     # Security - JWT Authentication
     SECRET_KEY: str = "your-secret-key-here-change-in-production"
     ALGORITHM: str = "HS256"

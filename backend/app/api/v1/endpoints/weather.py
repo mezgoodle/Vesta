@@ -1,6 +1,7 @@
-from app.api.deps import WeatherServiceDep
-from app.schemas.weather import WeatherData
 from fastapi import APIRouter
+
+from app.api.deps import CurrentUser, WeatherServiceDep
+from app.schemas.weather import WeatherData
 
 router = APIRouter()
 
@@ -9,6 +10,7 @@ router = APIRouter()
 async def get_current_weather(
     city: str,
     service: WeatherServiceDep,
+    current_user: CurrentUser,
 ) -> WeatherData:
     """
     Get current weather data for a city.
