@@ -9,6 +9,7 @@ class UserBase(BaseSchema):
     timezone: str = "UTC"
     is_allowed: bool = False
     email: str | None = None
+    is_daily_summary_enabled: bool = False
     is_superuser: bool = False
 
 
@@ -25,6 +26,7 @@ class UserUpdate(BaseSchema):
     password: str | None = None
     is_allowed: bool | None = None
     email: str | None = None
+    is_daily_summary_enabled: bool | None = None
     is_superuser: bool | None = None
 
 

@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str = ""
     GOOGLE_MODEL_NAME: str = ""
     SYSTEM_INSTRUCTION: str = "You are Vesta, a helpful smart home assistant."
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",
