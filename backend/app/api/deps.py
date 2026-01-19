@@ -1,3 +1,4 @@
+from secrets import compare_digest
 from typing import Annotated
 
 import jwt
@@ -54,7 +55,7 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    if api_key and api_key == settings.BACKEND_API_KEY:
+    if api_key and compare_digest(api_key, settings.BACKEND_API_KEY):
         result = await db.execute(select(User).where(User.is_superuser).limit(1))
         system_user = result.scalars().first()
         if system_user:

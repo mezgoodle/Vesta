@@ -34,7 +34,7 @@ async def create_superuser():
 
         await db.commit()
 
-        logger.info(f"Superuser {email} created successfully!")
+        logger.info("Superuser created successfully!")
 
 
 if __name__ == "__main__":
