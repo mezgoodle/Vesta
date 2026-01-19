@@ -103,21 +103,22 @@ async def test_process_chat_message_success(
     client: AsyncClient,
     db_session: AsyncSession,
     mock_llm_service: AsyncMock,
+    auth_user: dict,
 ) -> None:
     """Test successful chat message processing with mocked LLM service."""
     # Setup mock
     mock_llm_service.chat.return_value = "This is a mocked AI response"
 
-    # Create a user
-    user_in = UserCreate(
-        telegram_id=777888999, full_name="Process User", username="processuser"
-    )
-    user = await crud_user.create(db_session, obj_in=user_in)
+    # Use authenticated user
+    user = auth_user["user"]
+    headers = auth_user["headers"]
 
-    # Send chat request
+    # Send chat request with authentication
     chat_request = {"user_id": user.id, "message": "Hello, AI!"}
     response = await client.post(
-        f"{settings.API_V1_STR}/chat/process", json=chat_request
+        f"{settings.API_V1_STR}/chat/process",
+        json=chat_request,
+        headers=headers,
     )
 
     # Verify response
@@ -150,12 +151,18 @@ async def test_process_chat_message_success(
 
 @pytest.mark.asyncio
 async def test_process_chat_message_user_not_found(
-    client: AsyncClient, db_session: AsyncSession, mock_llm_service: AsyncMock
+    client: AsyncClient,
+    db_session: AsyncSession,
+    mock_llm_service: AsyncMock,
+    auth_user: dict,
 ) -> None:
     """Test error handling when user doesn't exist."""
+    headers = auth_user["headers"]
     chat_request = {"user_id": 99999, "message": "Hello"}
     response = await client.post(
-        f"{settings.API_V1_STR}/chat/process", json=chat_request
+        f"{settings.API_V1_STR}/chat/process",
+        json=chat_request,
+        headers=headers,
     )
 
     assert response.status_code == 404
@@ -168,21 +175,22 @@ async def test_process_chat_message_llm_error(
     client: AsyncClient,
     db_session: AsyncSession,
     mock_llm_service: AsyncMock,
+    auth_user: dict,
 ) -> None:
     """Test error handling when LLM service fails."""
     # Setup mock to raise an exception
     mock_llm_service.chat.side_effect = Exception("LLM API error")
 
-    # Create a user
-    user_in = UserCreate(
-        telegram_id=888999000, full_name="Error User", username="erroruser"
-    )
-    user = await crud_user.create(db_session, obj_in=user_in)
+    # Use authenticated user
+    user = auth_user["user"]
+    headers = auth_user["headers"]
 
-    # Send chat request
+    # Send chat request with authentication
     chat_request = {"user_id": user.id, "message": "This will fail"}
     response = await client.post(
-        f"{settings.API_V1_STR}/chat/process", json=chat_request
+        f"{settings.API_V1_STR}/chat/process",
+        json=chat_request,
+        headers=headers,
     )
 
     # Verify error response
@@ -202,16 +210,15 @@ async def test_process_chat_message_with_history(
     client: AsyncClient,
     db_session: AsyncSession,
     mock_llm_service: AsyncMock,
+    auth_user: dict,
 ) -> None:
     """Test that conversation history is properly passed to LLM service."""
     # Setup mock
     mock_llm_service.chat.return_value = "Response with context"
 
-    # Create a user
-    user_in = UserCreate(
-        telegram_id=999000111, full_name="History User", username="historyuser"
-    )
-    user = await crud_user.create(db_session, obj_in=user_in)
+    # Use authenticated user
+    user = auth_user["user"]
+    headers = auth_user["headers"]
 
     # Create a session
     session_in = ChatSessionCreate(user_id=user.id, title="History Session")
@@ -234,14 +241,16 @@ async def test_process_chat_message_with_history(
         )
         await crud_chat.create(db_session, obj_in=chat_in)
 
-    # Send new message
+    # Send new message with authentication
     chat_request = {
         "user_id": user.id,
         "message": "Third question",
         "session_id": session.id,
     }
     response = await client.post(
-        f"{settings.API_V1_STR}/chat/process", json=chat_request
+        f"{settings.API_V1_STR}/chat/process",
+        json=chat_request,
+        headers=headers,
     )
 
     assert response.status_code == 200
@@ -275,29 +284,30 @@ async def test_process_chat_message_with_session(
     client: AsyncClient,
     db_session: AsyncSession,
     mock_llm_service: AsyncMock,
+    auth_user: dict,
 ) -> None:
     """Test that session is properly passed to LLM service."""
     # Setup mock
     mock_llm_service.chat.return_value = "Response with context"
 
-    # Create a user
-    user_in = UserCreate(
-        telegram_id=999000111, full_name="History User", username="historyuser"
-    )
-    user = await crud_user.create(db_session, obj_in=user_in)
+    # Use authenticated user
+    user = auth_user["user"]
+    headers = auth_user["headers"]
 
     # Create a session
     session_in = ChatSessionCreate(user_id=user.id, title="History Session")
     session = await crud_session.create(db_session, obj_in=session_in)
 
-    # Send new message
+    # Send new message with authentication
     chat_request = {
         "user_id": user.id,
         "message": "Hello",
         "session_id": session.id,
     }
     response = await client.post(
-        f"{settings.API_V1_STR}/chat/process", json=chat_request
+        f"{settings.API_V1_STR}/chat/process",
+        json=chat_request,
+        headers=headers,
     )
 
     assert response.status_code == 200
