@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     bot_token: SecretStr
     admins: list[int] = [353057906]
     backend_base_url: str = "http://localhost:8000"
+    backend_api_key: SecretStr
 
     # Logging
     DEBUG: bool = False
