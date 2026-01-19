@@ -20,6 +20,18 @@ class Settings(BaseSettings):
     # General
     DEBUG: bool = True
 
+    # Superuser
+    SUPERUSER_EMAIL: str = "admin@admin.com"
+    SUPERUSER_PASSWORD: str = "admin"
+
+    # Security - JWT Authentication
+    SECRET_KEY: str = "your-secret-key-here-change-in-production"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
+    # Security - API Key for service-to-service communication
+    BACKEND_API_KEY: str = "your-backend-api-key-here"
+
     # GCP
     GCP_LOG_NAME: str = "vesta-backend"
     GOOGLE_APPLICATION_CREDENTIALS: str = ""

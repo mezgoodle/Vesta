@@ -3,7 +3,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
-from app.api.deps import LLMServiceDep, SessionDep
+from app.api.deps import CurrentUser, LLMServiceDep, SessionDep
 from app.crud.crud_chat import chat as crud_chat
 from app.crud.crud_session import chat_session as crud_session
 from app.crud.crud_user import user as crud_user
@@ -26,6 +26,7 @@ async def process_chat_message(
     db: SessionDep,
     chat_request: ChatRequest,
     llm_service: LLMServiceDep,
+    current_user: CurrentUser,
 ) -> Any:
     """
     Process a chat message with Gemini AI.

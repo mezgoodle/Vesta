@@ -19,6 +19,11 @@ class User(Base):
     username: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     timezone: Mapped[str] = mapped_column(String, default="UTC")
     is_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
+    email: Mapped[Optional[str]] = mapped_column(
+        String, unique=True, index=True, nullable=True
+    )
+    hashed_password: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Relationships
     chat_history: Mapped[list["ChatHistory"]] = relationship(
