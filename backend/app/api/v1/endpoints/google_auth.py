@@ -44,8 +44,8 @@ async def google_login(
 @router.get("/callback")
 async def google_callback(
     db: SessionDep,
-    code: str = Query(..., description="Authorization code from Google"),
-    state: str = Query(..., description="State parameter containing user_id"),
+    code: str | None = Query(None, description="Authorization code from Google"),
+    state: str | None = Query(None, description="State parameter containing user_id"),
     error: str | None = Query(None, description="Error from Google OAuth"),
 ) -> HTMLResponse:
     """
