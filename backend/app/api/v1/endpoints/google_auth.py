@@ -116,3 +116,9 @@ async def google_callback(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to complete authentication: {str(e)}",
         ) from e
+    except Exception:
+        # Unexpected error during token exchange
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal Server Error",
+        )
