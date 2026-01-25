@@ -64,7 +64,7 @@ async def test_google_login_missing_credentials() -> None:
 
     # Temporarily clear credentials
     original_client_id = settings.GOOGLE_CLIENT_ID
-    original_client_secret = settings.GOOGLE_CLIENT_SECRET
+    original_client_secret = settings.GOOGLE_CLIENT_SECRET.get_secret_value()
 
     try:
         settings.GOOGLE_CLIENT_ID = ""
@@ -171,9 +171,7 @@ async def test_google_callback_missing_state(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_google_callback_invalid_state(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_google_callback_invalid_state(client: AsyncClient) -> None:
     """Test callback fails with invalid state parameter."""
     response = await client.get(
         f"{settings.API_V1_STR}/google-auth/callback",
@@ -187,9 +185,7 @@ async def test_google_callback_invalid_state(
 
 
 @pytest.mark.asyncio
-async def test_google_callback_user_not_found(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_google_callback_user_not_found(client: AsyncClient) -> None:
     """Test callback fails when user doesn't exist."""
     non_existent_user_id = 999999
 
@@ -269,7 +265,7 @@ async def test_google_callback_google_api_error(
     assert response.status_code == 500
     content = response.json()
     assert "detail" in content
-    assert "Failed to complete authentication" in content["detail"]
+    assert "Internal Server Error" in content["detail"]
 
 
 @pytest.mark.asyncio

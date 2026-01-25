@@ -1,10 +1,12 @@
 """Google OAuth2 authentication endpoints."""
 
+from html import escape
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from google.auth.exceptions import GoogleAuthError
 
 from app.api.deps import SessionDep
 from app.services.google_auth import google_auth_service
@@ -99,7 +101,7 @@ async def google_callback(
         return templates.TemplateResponse(
             request=request,
             name="success.html",
-            context={"email": result.get("email", "N/A")},
+            context={"email": escape(result.get("email", "N/A"))},
         )
 
     except ValueError as e:
@@ -108,7 +110,7 @@ async def google_callback(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         ) from e
-    except Exception as e:
+    except GoogleAuthError as e:
         # Token exchange or database error
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
