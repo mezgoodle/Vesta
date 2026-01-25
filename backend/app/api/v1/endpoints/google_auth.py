@@ -1,12 +1,19 @@
 """Google OAuth2 authentication endpoints."""
 
-from fastapi import APIRouter, HTTPException, Query, status
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 
 from app.api.deps import SessionDep
 from app.services.google_auth import google_auth_service
 
 router = APIRouter()
+
+current_dir = Path(__file__).resolve().parent
+
+templates = Jinja2Templates(directory=str(current_dir / "templates"))
 
 
 @router.get("/login")
@@ -43,6 +50,7 @@ async def google_login(
 
 @router.get("/callback")
 async def google_callback(
+    request: Request,
     db: SessionDep,
     code: str | None = Query(None, description="Authorization code from Google"),
     state: str | None = Query(None, description="State parameter containing user_id"),
@@ -70,41 +78,12 @@ async def google_callback(
     """
     # Check if user denied access
     if error:
-        error_html = """
-        <html>
-            <head>
-                <title>Authorization Denied</title>
-                <style>
-                    body {
-                        font-family: Arial, sans-serif;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        height: 100vh;
-                        margin: 0;
-                        background-color: #f5f5f5;
-                    }
-                    .container {
-                        text-align: center;
-                        padding: 40px;
-                        background-color: white;
-                        border-radius: 8px;
-                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                    }
-                    h1 { color: #d32f2f; }
-                    p { color: #666; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h1>❌ Authorization Denied</h1>
-                    <p>You denied access to your Google Calendar.</p>
-                    <p>You can close this window.</p>
-                </div>
-            </body>
-        </html>
-        """
-        return HTMLResponse(content=error_html, status_code=400)
+        return templates.TemplateResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            request=request,
+            name="error.html",
+            context={"request": request},
+        )
 
     # Validate required parameters
     if not code or not state:
@@ -117,47 +96,11 @@ async def google_callback(
     try:
         result = await google_auth_service.exchange_code_for_token(code, state, db)
 
-        success_html = f"""
-        <html>
-            <head>
-                <title>Authentication Successful</title>
-                <style>
-                    body {{
-                        font-family: Arial, sans-serif;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        height: 100vh;
-                        margin: 0;
-                        background-color: #f5f5f5;
-                    }}
-                    .container {{
-                        text-align: center;
-                        padding: 40px;
-                        background-color: white;
-                        border-radius: 8px;
-                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                    }}
-                    h1 {{ color: #4caf50; }}
-                    p {{ color: #666; }}
-                    .email {{ 
-                        color: #1976d2; 
-                        font-weight: bold;
-                        margin: 10px 0;
-                    }}
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h1>✅ Authentication Successful!</h1>
-                    <p>Your Google Calendar has been connected.</p>
-                    <p class="email">{result.get("email", "N/A")}</p>
-                    <p>You can close this window now.</p>
-                </div>
-            </body>
-        </html>
-        """
-        return HTMLResponse(content=success_html, status_code=200)
+        return templates.TemplateResponse(
+            request=request,
+            name="success.html",
+            context={"email": result.get("email", "N/A")},
+        )
 
     except ValueError as e:
         # Invalid state, user not found, or missing refresh token
