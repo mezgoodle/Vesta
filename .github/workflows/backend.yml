@@ -43,6 +43,10 @@ jobs:
       - name: Run tests with coverage
         run: |
           pytest --cov=app --cov-report=term --cov-report=xml --cov-report=html
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REDIRECT_URI: ${{ secrets.GOOGLE_REDIRECT_URI }}
 
       # - name: Upload coverage reports
       #   uses: codecov/codecov-action@v4
