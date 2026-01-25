@@ -23,6 +23,8 @@ class User(Base):
         String, unique=True, index=True, nullable=True
     )
     hashed_password: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    google_refresh_token: Mapped[str | None] = mapped_column(String, nullable=True)
+    is_daily_summary_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Relationships
