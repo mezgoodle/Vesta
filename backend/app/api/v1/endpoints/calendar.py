@@ -1,5 +1,3 @@
-"""Calendar API endpoints."""
-
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Query, status
