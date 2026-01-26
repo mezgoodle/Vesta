@@ -13,12 +13,17 @@ from app.crud.crud_user import user as crud_user
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.token import TokenPayload
+from app.services.google_calendar import (
+    GoogleCalendarService,
+    google_calendar_service,
+)
 from app.services.llm import LLMService, llm_service
 from app.services.weather import WeatherService, weather_service
 
 SessionDep = Annotated[AsyncSession, Depends(get_db)]
 WeatherServiceDep = Annotated[WeatherService, Depends(weather_service)]
 LLMServiceDep = Annotated[LLMService, Depends(llm_service)]
+CalendarServiceDep = Annotated[GoogleCalendarService, Depends(google_calendar_service)]
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token",

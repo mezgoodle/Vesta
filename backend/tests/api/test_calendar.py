@@ -1,6 +1,5 @@
 """Tests for Calendar API endpoints."""
 
-from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -11,7 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.crud.crud_user import user as crud_user
+from app.main import app
 from app.schemas.user import UserCreate
+from app.services.google_calendar import google_calendar_service
 
 
 @pytest.mark.asyncio
@@ -34,46 +35,37 @@ async def test_get_today_events_success(
         db_session, db_obj=user, obj_in={"google_refresh_token": "test_refresh_token"}
     )
 
-    # Mock Google Calendar API response
-    mock_events = [
-        {
-            "summary": "Team Standup",
-            "start": {"dateTime": "2026-01-26T09:00:00Z"},
-            "end": {"dateTime": "2026-01-26T10:00:00Z"},
-        },
-        {
-            "summary": "Client Meeting",
-            "start": {"dateTime": "2026-01-26T14:00:00Z"},
-            "end": {"dateTime": "2026-01-26T15:30:00Z"},
-        },
-        {
-            "summary": "Company Holiday",
-            "start": {"date": "2026-01-26"},
-            "end": {"date": "2026-01-27"},
-        },
+    # Mock calendar service
+    mock_service = AsyncMock()
+    mock_service.get_today_events.return_value = [
+        "09:00 - 10:00: Team Standup",
+        "14:00 - 15:30: Client Meeting",
+        "All day: Company Holiday",
     ]
 
-    with patch("app.services.google_calendar.build") as mock_build:
-        mock_service = MagicMock()
-        mock_events_list = MagicMock()
-        mock_events_list.execute.return_value = {"items": mock_events}
-        mock_service.events.return_value.list.return_value = mock_events_list
-        mock_build.return_value = mock_service
+    # Override dependency
+    async def override_calendar_service():
+        return mock_service
 
+    app.dependency_overrides[google_calendar_service] = override_calendar_service
+
+    try:
         response = await client.get(
             f"{settings.API_V1_STR}/calendar/events/today",
             params={"user_id": user.id},
         )
 
-    assert response.status_code == 200
-    data = response.json()
-    assert "events" in data
-    assert "count" in data
-    assert data["count"] == 3
-    assert len(data["events"]) == 3
-    assert "09:00 - 10:00: Team Standup" in data["events"]
-    assert "14:00 - 15:30: Client Meeting" in data["events"]
-    assert "All day: Company Holiday" in data["events"]
+        assert response.status_code == 200
+        data = response.json()
+        assert "events" in data
+        assert "count" in data
+        assert data["count"] == 3
+        assert len(data["events"]) == 3
+        assert "09:00 - 10:00: Team Standup" in data["events"]
+        assert "14:00 - 15:30: Client Meeting" in data["events"]
+        assert "All day: Company Holiday" in data["events"]
+    finally:
+        app.dependency_overrides.clear()
 
 
 @pytest.mark.asyncio
@@ -137,21 +129,30 @@ async def test_get_today_events_expired_token(
         db_session, db_obj=user, obj_in={"google_refresh_token": "expired_token"}
     )
 
-    # Mock RefreshError
-    with patch("app.services.google_calendar.build") as mock_build:
-        mock_build.side_effect = RefreshError("Token expired")
+    # Mock calendar service to raise RefreshError
+    mock_service = AsyncMock()
+    mock_service.get_today_events.side_effect = RefreshError("Token expired")
 
+    async def override_calendar_service():
+        return mock_service
+
+    app.dependency_overrides[google_calendar_service] = override_calendar_service
+
+    try:
         response = await client.get(
             f"{settings.API_V1_STR}/calendar/events/today",
             params={"user_id": user.id},
         )
 
-    assert response.status_code == 403
-    data = response.json()
-    assert "detail" in data
-    assert (
-        "expired" in data["detail"].lower() or "re-authorize" in data["detail"].lower()
-    )
+        assert response.status_code == 403
+        data = response.json()
+        assert "detail" in data
+        assert (
+            "expired" in data["detail"].lower()
+            or "re-authorize" in data["detail"].lower()
+        )
+    finally:
+        app.dependency_overrides.clear()
 
 
 @pytest.mark.asyncio
@@ -183,38 +184,34 @@ async def test_get_upcoming_events_success(
         db_session, db_obj=user, obj_in={"google_refresh_token": "test_refresh_token"}
     )
 
-    # Mock Google Calendar API response
-    mock_events = [
-        {
-            "summary": "Future Meeting 1",
-            "start": {"dateTime": "2026-01-27T10:00:00Z"},
-            "end": {"dateTime": "2026-01-27T11:00:00Z"},
-        },
-        {
-            "summary": "Future Meeting 2",
-            "start": {"dateTime": "2026-01-28T14:00:00Z"},
-            "end": {"dateTime": "2026-01-28T15:00:00Z"},
-        },
+    # Mock calendar service
+    mock_service = AsyncMock()
+    mock_service.get_upcoming_events.return_value = [
+        "10:00 - 11:00: Future Meeting 1",
+        "14:00 - 15:00: Future Meeting 2",
     ]
 
-    with patch("app.services.google_calendar.build") as mock_build:
-        mock_service = MagicMock()
-        mock_events_list = MagicMock()
-        mock_events_list.execute.return_value = {"items": mock_events}
-        mock_service.events.return_value.list.return_value = mock_events_list
-        mock_build.return_value = mock_service
+    async def override_calendar_service():
+        return mock_service
 
+    app.dependency_overrides[google_calendar_service] = override_calendar_service
+
+    try:
         response = await client.get(
             f"{settings.API_V1_STR}/calendar/events/upcoming",
             params={"user_id": user.id, "days": 7},
         )
 
-    assert response.status_code == 200
-    data = response.json()
-    assert "events" in data
-    assert "count" in data
-    assert data["count"] == 2
-    assert len(data["events"]) == 2
+        assert response.status_code == 200
+        data = response.json()
+        assert "events" in data
+        assert "count" in data
+        assert data["count"] == 2
+        assert len(data["events"]) == 2
+        assert "10:00 - 11:00: Future Meeting 1" in data["events"]
+        assert "14:00 - 15:00: Future Meeting 2" in data["events"]
+    finally:
+        app.dependency_overrides.clear()
 
 
 @pytest.mark.asyncio
@@ -391,24 +388,30 @@ async def test_google_api_error_handling(
         db_session, db_obj=user, obj_in={"google_refresh_token": "test_refresh_token"}
     )
 
-    # Mock HttpError from Google API
-    with patch("app.services.google_calendar.build") as mock_build:
-        mock_service = MagicMock()
-        mock_service.events.return_value.list.side_effect = HttpError(
-            resp=MagicMock(status=500),
-            content=b"Internal Server Error",
-        )
-        mock_build.return_value = mock_service
+    # Mock calendar service to raise HttpError
+    mock_service = AsyncMock()
+    mock_service.get_today_events.side_effect = HttpError(
+        resp=MagicMock(status=500),
+        content=b"Internal Server Error",
+    )
 
+    async def override_calendar_service():
+        return mock_service
+
+    app.dependency_overrides[google_calendar_service] = override_calendar_service
+
+    try:
         response = await client.get(
             f"{settings.API_V1_STR}/calendar/events/today",
             params={"user_id": user.id},
         )
 
-    assert response.status_code == 500
-    data = response.json()
-    assert "detail" in data
-    assert "Google API error" in data["detail"]
+        assert response.status_code == 500
+        data = response.json()
+        assert "detail" in data
+        assert "Google API error" in data["detail"]
+    finally:
+        app.dependency_overrides.clear()
 
 
 @pytest.mark.asyncio

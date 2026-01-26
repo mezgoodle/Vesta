@@ -6,9 +6,8 @@ from fastapi import APIRouter, HTTPException, Query, status
 from google.auth.exceptions import RefreshError
 from googleapiclient.errors import HttpError
 
-from app.api.deps import SessionDep
+from app.api.deps import CalendarServiceDep, SessionDep
 from app.schemas.calendar import CalendarEventList
-from app.services.google_calendar import google_calendar_service
 
 router = APIRouter()
 
@@ -16,6 +15,7 @@ router = APIRouter()
 @router.get("/events/today", response_model=CalendarEventList)
 async def get_today_events(
     db: SessionDep,
+    calendar_service: CalendarServiceDep,
     user_id: int = Query(..., description="User ID to fetch events for"),
 ) -> CalendarEventList:
     """
@@ -23,6 +23,7 @@ async def get_today_events(
 
     Args:
         db: Database session
+        calendar_service: Google Calendar service
         user_id: The ID of the user whose events to fetch
 
     Returns:
@@ -35,7 +36,7 @@ async def get_today_events(
         HTTPException: 500 for Google API errors
     """
     try:
-        events = await google_calendar_service.get_today_events(user_id, db)
+        events = await calendar_service.get_today_events(user_id, db)
         return CalendarEventList(events=events, count=len(events))
     except ValueError as e:
         error_msg = str(e).lower()
@@ -63,6 +64,7 @@ async def get_today_events(
 @router.get("/events/upcoming", response_model=CalendarEventList)
 async def get_upcoming_events(
     db: SessionDep,
+    calendar_service: CalendarServiceDep,
     user_id: int = Query(..., description="User ID to fetch events for"),
     days: int = Query(
         7,
@@ -76,6 +78,7 @@ async def get_upcoming_events(
 
     Args:
         db: Database session
+        calendar_service: Google Calendar service
         user_id: The ID of the user whose events to fetch
         days: Number of days to fetch events for (default: 7, max: 30)
 
@@ -89,7 +92,7 @@ async def get_upcoming_events(
         HTTPException: 500 for Google API errors
     """
     try:
-        events = await google_calendar_service.get_upcoming_events(user_id, db, days)
+        events = await calendar_service.get_upcoming_events(user_id, db, days)
         return CalendarEventList(events=events, count=len(events))
     except ValueError as e:
         error_msg = str(e).lower()
@@ -117,6 +120,7 @@ async def get_upcoming_events(
 @router.get("/events/range", response_model=CalendarEventList)
 async def get_events_in_range(
     db: SessionDep,
+    calendar_service: CalendarServiceDep,
     user_id: int = Query(..., description="User ID to fetch events for"),
     start: datetime = Query(..., description="Start datetime (ISO 8601)"),
     end: datetime = Query(..., description="End datetime (ISO 8601)"),
@@ -126,6 +130,7 @@ async def get_events_in_range(
 
     Args:
         db: Database session
+        calendar_service: Google Calendar service
         user_id: The ID of the user whose events to fetch
         start: Start datetime in ISO 8601 format
         end: End datetime in ISO 8601 format
@@ -155,9 +160,7 @@ async def get_events_in_range(
         )
 
     try:
-        events = await google_calendar_service.get_events_in_range(
-            user_id, start, end, db
-        )
+        events = await calendar_service.get_events_in_range(user_id, start, end, db)
         return CalendarEventList(events=events, count=len(events))
     except ValueError as e:
         error_msg = str(e).lower()
