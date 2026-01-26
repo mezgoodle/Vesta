@@ -1,7 +1,8 @@
 """Google Calendar service for fetching user events."""
 
 import asyncio
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
+from typing import Any
 
 from google.auth.exceptions import RefreshError
 from google.oauth2.credentials import Credentials
@@ -20,16 +21,28 @@ class GoogleCalendarService:
         """Initialize the Google Calendar Service."""
         self.token_uri = "https://oauth2.googleapis.com/token"
 
-    async def get_today_events(self, user_id: int, db: AsyncSession) -> list[str]:
+    async def _fetch_events_raw(
+        self,
+        user_id: int,
+        time_min: datetime,
+        time_max: datetime,
+        db: AsyncSession,
+    ) -> list[dict[str, Any]]:
         """
-        Fetch today's calendar events for a specific user.
+        Fetch raw calendar events from Google Calendar API.
+
+        This is a helper method that handles credential reconstruction,
+        service building, and API calls. It's used by all public methods
+        to follow DRY principles.
 
         Args:
             user_id: The ID of the user whose events to fetch
+            time_min: Start of the time range (inclusive)
+            time_max: End of the time range (inclusive)
             db: Database session
 
         Returns:
-            List of formatted event strings (e.g., "10:00 - 11:00: Meeting with Team")
+            List of raw event dictionaries from Google Calendar API
 
         Raises:
             ValueError: If user not found or no refresh token available
@@ -70,26 +83,24 @@ class GoogleCalendarService:
 
         # 4. Query Events
         try:
-            # Calculate timeMin (start of today in UTC)
-            # Note: Using UTC for now. In the future, we can use user.timezone
-            now = datetime.utcnow()
-            time_min = datetime.combine(now.date(), time.min).isoformat() + "Z"
-            time_max = datetime.combine(now.date(), time.max).isoformat() + "Z"
+            # Format time range for Google Calendar API (RFC3339)
+            time_min_str = time_min.isoformat() + "Z"
+            time_max_str = time_max.isoformat() + "Z"
 
             # Call the Calendar API in a thread pool to avoid blocking
             events_result = await asyncio.to_thread(
                 lambda: service.events()
                 .list(
                     calendarId="primary",
-                    timeMin=time_min,
-                    timeMax=time_max,
+                    timeMin=time_min_str,
+                    timeMax=time_max_str,
                     singleEvents=True,
                     orderBy="startTime",
                 )
                 .execute()
             )
 
-            events = events_result.get("items", [])
+            return events_result.get("items", [])
 
         except RefreshError as e:
             raise RefreshError(
@@ -106,7 +117,107 @@ class GoogleCalendarService:
         except Exception as e:
             raise Exception(f"Failed to fetch calendar events: {str(e)}") from e
 
-        # 5. Format Output
+    async def get_today_events(self, user_id: int, db: AsyncSession) -> list[str]:
+        """
+        Fetch today's calendar events for a specific user.
+
+        Args:
+            user_id: The ID of the user whose events to fetch
+            db: Database session
+
+        Returns:
+            List of formatted event strings (e.g., "10:00 - 11:00: Meeting with Team")
+
+        Raises:
+            ValueError: If user not found or no refresh token available
+            RefreshError: If the refresh token is expired or revoked
+            HttpError: If there's an error communicating with Google Calendar API
+        """
+        # Calculate today's date range (UTC)
+        now = datetime.utcnow()
+        time_min = datetime.combine(now.date(), time.min)
+        time_max = datetime.combine(now.date(), time.max)
+
+        # Fetch raw events using the helper method
+        events = await self._fetch_events_raw(user_id, time_min, time_max, db)
+
+        # Format and return events
+        return self._format_events(events)
+
+    async def get_upcoming_events(
+        self, user_id: int, db: AsyncSession, days: int = 7
+    ) -> list[str]:
+        """
+        Fetch upcoming calendar events for a specific user.
+
+        Args:
+            user_id: The ID of the user whose events to fetch
+            db: Database session
+            days: Number of days to fetch events for (default: 7)
+
+        Returns:
+            List of formatted event strings
+
+        Raises:
+            ValueError: If user not found or no refresh token available
+            RefreshError: If the refresh token is expired or revoked
+            HttpError: If there's an error communicating with Google Calendar API
+        """
+        # Calculate date range from now to now + days
+        now = datetime.utcnow()
+        time_min = now
+        time_max = now + timedelta(days=days)
+
+        # Fetch raw events using the helper method
+        events = await self._fetch_events_raw(user_id, time_min, time_max, db)
+
+        # Format and return events
+        return self._format_events(events)
+
+    async def get_events_in_range(
+        self,
+        user_id: int,
+        start_date: datetime,
+        end_date: datetime,
+        db: AsyncSession,
+    ) -> list[str]:
+        """
+        Fetch calendar events within a specific date range.
+
+        Args:
+            user_id: The ID of the user whose events to fetch
+            start_date: Start of the date range
+            end_date: End of the date range
+            db: Database session
+
+        Returns:
+            List of formatted event strings
+
+        Raises:
+            ValueError: If user not found, no refresh token, or invalid date range
+            RefreshError: If the refresh token is expired or revoked
+            HttpError: If there's an error communicating with Google Calendar API
+        """
+        # Validate date range
+        if end_date <= start_date:
+            raise ValueError("end_date must be after start_date")
+
+        # Fetch raw events using the helper method
+        events = await self._fetch_events_raw(user_id, start_date, end_date, db)
+
+        # Format and return events
+        return self._format_events(events)
+
+    def _format_events(self, events: list[dict[str, Any]]) -> list[str]:
+        """
+        Format raw event data into human-readable strings.
+
+        Args:
+            events: List of raw event dictionaries from Google Calendar API
+
+        Returns:
+            List of formatted event strings
+        """
         formatted_events = []
         for event in events:
             # Get event start time
