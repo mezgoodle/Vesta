@@ -170,5 +170,8 @@ class GoogleCalendarService:
         return None
 
 
+google_calendar_service_instance = GoogleCalendarService()
+
+
 def google_calendar_service() -> GoogleCalendarService:
-    return GoogleCalendarService()
+    return google_calendar_service_instance

@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from google.auth.exceptions import RefreshError
 from googleapiclient.errors import HttpError
 
-from app.api.deps import CalendarServiceDep, CurrentUser, SessionDep
+from app.api.deps import CalendarServiceDep, SessionDep, TargetUserId
 from app.schemas.calendar import CalendarEventList
 
 router = APIRouter()
@@ -14,8 +14,7 @@ router = APIRouter()
 async def get_today_events(
     db: SessionDep,
     calendar_service: CalendarServiceDep,
-    current_user: CurrentUser,
-    user_id: int | None = Query(None, description="User ID to fetch events for"),
+    user_id: TargetUserId,
 ) -> CalendarEventList:
     """
     Get today's calendar events for a specific user.
@@ -34,7 +33,6 @@ async def get_today_events(
         HTTPException: 400 for other validation errors
         HTTPException: 500 for Google API errors
     """
-    user_id = user_id or current_user.id
     try:
         events = await calendar_service.get_today_events(user_id, db)
         return CalendarEventList(events=events, count=len(events))
@@ -65,8 +63,7 @@ async def get_today_events(
 async def get_upcoming_events(
     db: SessionDep,
     calendar_service: CalendarServiceDep,
-    current_user: CurrentUser,
-    user_id: int | None = Query(None, description="User ID to fetch events for"),
+    user_id: TargetUserId,
     days: int = Query(
         7,
         ge=1,
@@ -92,7 +89,6 @@ async def get_upcoming_events(
         HTTPException: 400 for validation errors
         HTTPException: 500 for Google API errors
     """
-    user_id = user_id or current_user.id
     try:
         events = await calendar_service.get_upcoming_events(user_id, db, days)
         return CalendarEventList(events=events, count=len(events))
@@ -123,8 +119,7 @@ async def get_upcoming_events(
 async def get_events_in_range(
     db: SessionDep,
     calendar_service: CalendarServiceDep,
-    current_user: CurrentUser,
-    user_id: int | None = Query(None, description="User ID to fetch events for"),
+    user_id: TargetUserId,
     start: datetime = Query(..., description="Start datetime (ISO 8601)"),
     end: datetime = Query(..., description="End datetime (ISO 8601)"),
 ) -> CalendarEventList:
@@ -147,7 +142,6 @@ async def get_events_in_range(
         HTTPException: 400 for validation errors (invalid date range)
         HTTPException: 500 for Google API errors
     """
-    user_id = user_id or current_user.id
     # Validate date range
     if end <= start:
         raise HTTPException(

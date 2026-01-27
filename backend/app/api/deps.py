@@ -2,7 +2,7 @@ from secrets import compare_digest
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, Security, status
+from fastapi import Depends, HTTPException, Query, Security, status
 from fastapi.security import APIKeyHeader, OAuth2PasswordBearer
 from jwt import PyJWTError
 from sqlalchemy import select
@@ -105,3 +105,17 @@ async def get_current_active_superuser(
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
 CurrentSuperUser = Annotated[User, Depends(get_current_active_superuser)]
+
+
+async def get_target_user_id(
+    current_user: CurrentUser,
+    user_id: Annotated[
+        int | None, Query(description="User ID to fetch events for")
+    ] = None,
+) -> int:
+    if current_user.email == settings.SUPERUSER_EMAIL:
+        return user_id or current_user.id
+    return current_user.id
+
+
+TargetUserId = Annotated[int, Depends(get_target_user_id)]
