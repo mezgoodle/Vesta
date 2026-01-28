@@ -1,6 +1,15 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import chat, devices, google_auth, login, news, users, weather
+from app.api.v1.endpoints import (
+    calendar,
+    chat,
+    devices,
+    google_auth,
+    login,
+    news,
+    users,
+    weather,
+)
 
 api_router = APIRouter()
 api_router.include_router(login.router, prefix="/login", tags=["login"])
@@ -12,3 +21,4 @@ api_router.include_router(weather.router, prefix="/weather", tags=["weather"])
 api_router.include_router(
     google_auth.router, prefix="/google-auth", tags=["google-auth"]
 )
+api_router.include_router(calendar.router, prefix="/calendar", tags=["calendar"])
