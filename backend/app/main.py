@@ -10,7 +10,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api.v1.api import api_router
 from app.core.config import settings
 from app.core.logger import setup_logging
-from app.core.scheduler import setup_scheduler
+from app.core.scheduler import shutdown_scheduler, start_scheduler
 from app.models import ChatHistory, NewsSubscription, SmartDevice, User  # noqa: F401
 from app.services.home import HomeAssistantService
 
@@ -23,10 +23,11 @@ async def lifespan(app: FastAPI):
     # Startup
     setup_logging()
     print("Starting up services...")
-    setup_scheduler()
+    start_scheduler()
     yield
     # Shutdown
     print("Shutting down services...")
+    shutdown_scheduler()
     await home_service.close()
 
 

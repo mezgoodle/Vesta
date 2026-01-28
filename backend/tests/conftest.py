@@ -136,7 +136,6 @@ async def auth_superuser(db_session: AsyncSession) -> dict:
     Create an authenticated superuser and return user data with JWT token.
     Useful for testing endpoints that require superuser privileges.
     """
-    from app.core.config import settings
     from app.core.security import create_access_token
     from app.crud.crud_user import user as crud_user
     from app.schemas.user import UserCreate
@@ -145,7 +144,7 @@ async def auth_superuser(db_session: AsyncSession) -> dict:
         telegram_id=987654321,
         full_name="Test Superuser",
         username="testsuperuser",
-        email=settings.SUPERUSER_EMAIL,
+        email="testsuperuser@example.com",
         password="superpassword123",
         is_superuser=True,
     )

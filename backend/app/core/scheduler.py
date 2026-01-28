@@ -17,6 +17,7 @@ scheduler = AsyncIOScheduler()
 
 async def send_daily_digests():
     logger.info("🌅 Starting Daily Morning Digest...")
+    service = LLMService()
 
     async with AsyncSessionLocal() as db:
         # 1. Знаходимо юзерів, які хочуть дайджест і мають токен
@@ -56,12 +57,12 @@ async def send_daily_digests():
 
                 # 4. Генеруємо текст через Gemini
                 # (Тут важливо: ми не передаємо історію чату, це окремий запит)
-                service = LLMService()
+
                 digest_text = await service.chat(prompt, [])
 
                 # 5. Відправляємо в Телеграм (прямий запит)
-                async with httpx.AsyncClient() as client:
-                    await client.post(
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    response = await client.post(
                         f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage",
                         data={
                             "chat_id": user.telegram_id,
@@ -69,6 +70,7 @@ async def send_daily_digests():
                             "parse_mode": "HTML",
                         },
                     )
+                    response.raise_for_status()
 
                 logger.info(f"Digest sent to user {user.id}")
 
@@ -76,9 +78,19 @@ async def send_daily_digests():
                 logger.error(f"Failed to send digest to user {user.id}: {e}")
 
 
-def setup_scheduler():
-    # scheduler.add_job(
-    #     send_daily_digests, "cron", hour=8, minute=0, timezone="Europe/Kiev"
-    # )
-    scheduler.add_job(send_daily_digests, "interval", seconds=10)
+def start_scheduler():
+    logger.info("Starting scheduler...")
+    scheduler.add_job(
+        send_daily_digests, "cron", hour=8, minute=0, timezone="Europe/Kiev"
+    )
     scheduler.start()
+    logger.info("Scheduler started successfully")
+
+
+def shutdown_scheduler():
+    logger.info("Shutting down scheduler...")
+    if scheduler.running:
+        scheduler.shutdown(wait=True)
+        logger.info("Scheduler shut down successfully")
+    else:
+        logger.info("Scheduler was not running")

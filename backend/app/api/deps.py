@@ -113,7 +113,7 @@ async def get_target_user_id(
         int | None, Query(description="User ID to fetch events for")
     ] = None,
 ) -> int:
-    if current_user.email == settings.SUPERUSER_EMAIL:
+    if current_user.is_superuser:
         return user_id or current_user.id
     return current_user.id
 
