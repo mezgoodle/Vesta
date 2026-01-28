@@ -128,3 +128,33 @@ async def auth_user(db_session: AsyncSession) -> dict:
         "token": access_token,
         "headers": {"Authorization": f"Bearer {access_token}"},
     }
+
+
+@pytest.fixture
+async def auth_superuser(db_session: AsyncSession) -> dict:
+    """
+    Create an authenticated superuser and return user data with JWT token.
+    Useful for testing endpoints that require superuser privileges.
+    """
+    from app.core.config import settings
+    from app.core.security import create_access_token
+    from app.crud.crud_user import user as crud_user
+    from app.schemas.user import UserCreate
+
+    user_in = UserCreate(
+        telegram_id=987654321,
+        full_name="Test Superuser",
+        username="testsuperuser",
+        email=settings.SUPERUSER_EMAIL,
+        password="superpassword123",
+        is_superuser=True,
+    )
+    user = await crud_user.create(db_session, obj_in=user_in)
+
+    access_token = create_access_token(subject=user.id)
+
+    return {
+        "user": user,
+        "token": access_token,
+        "headers": {"Authorization": f"Bearer {access_token}"},
+    }
