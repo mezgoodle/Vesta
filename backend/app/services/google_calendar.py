@@ -167,8 +167,6 @@ class GoogleCalendarService:
         except (ValueError, AttributeError):
             return None
 
-        return None
-
 
 google_calendar_service_instance = GoogleCalendarService()
 

@@ -176,21 +176,20 @@ async def test_get_today_events_expired_token(
 
 
 @pytest.mark.asyncio
-async def test_get_today_events_missing_user_id(
+async def test_get_today_events_defaults_to_current_user(
     client: AsyncClient, auth_user: dict
 ) -> None:
-    """Test that endpoint works without user_id for regular users (uses current user)."""
-    # For regular users, when user_id is not provided, it defaults to current_user.id
-    # This should work if the user has a Google refresh token
+    """Test that endpoint defaults to current user when user_id is omitted."""
+    # When user_id is not provided, it defaults to current_user.id
+    # Since the user doesn't have a refresh token, it should return 401
     headers = auth_user["headers"]
 
-    # Since the user doesn't have a refresh token, it should return 401
     response = await client.get(
         f"{settings.API_V1_STR}/calendar/events/today",
         headers=headers,
     )
 
-    assert response.status_code == 401  # Not authorized (no refresh token)
+    assert response.status_code == 401
     data = response.json()
     assert "detail" in data
 
@@ -292,7 +291,7 @@ async def test_get_upcoming_events_invalid_days(
     # Test days < 1
     response = await client.get(
         f"{settings.API_V1_STR}/calendar/events/upcoming",
-        params={"user_id": 1, "days": 0},
+        params={"user_id": auth_user["user"].id, "days": 0},
         headers=headers,
     )
     assert response.status_code == 422
@@ -362,7 +361,7 @@ async def test_get_events_in_range_invalid_range(
 
     response = await client.get(
         f"{settings.API_V1_STR}/calendar/events/range",
-        params={"user_id": 1, "start": start_date, "end": end_date},
+        params={"user_id": auth_user["user"].id, "start": start_date, "end": end_date},
         headers=headers,
     )
 
@@ -383,7 +382,7 @@ async def test_get_events_in_range_exceeds_max_range(
 
     response = await client.get(
         f"{settings.API_V1_STR}/calendar/events/range",
-        params={"user_id": 1, "start": start_date, "end": end_date},
+        params={"user_id": auth_user["user"].id, "start": start_date, "end": end_date},
         headers=headers,
     )
 
@@ -402,7 +401,7 @@ async def test_get_events_in_range_missing_parameters(
     # Missing start
     response = await client.get(
         f"{settings.API_V1_STR}/calendar/events/range",
-        params={"user_id": 1, "end": "2026-02-01T00:00:00Z"},
+        params={"user_id": auth_user["user"].id, "end": "2026-02-01T00:00:00Z"},
         headers=headers,
     )
     assert response.status_code == 422
@@ -410,7 +409,7 @@ async def test_get_events_in_range_missing_parameters(
     # Missing end
     response = await client.get(
         f"{settings.API_V1_STR}/calendar/events/range",
-        params={"user_id": 1, "start": "2026-02-01T00:00:00Z"},
+        params={"user_id": auth_user["user"].id, "start": "2026-02-01T00:00:00Z"},
         headers=headers,
     )
     assert response.status_code == 422
