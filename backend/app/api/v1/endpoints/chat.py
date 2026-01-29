@@ -85,6 +85,8 @@ async def process_chat_message(
         assistant_response_text = await llm_service.chat(
             user_text=chat_request.message,
             history_records=history_records,
+            user_id=user.id,
+            db=db,
         )
 
         # Save assistant response to database
