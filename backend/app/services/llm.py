@@ -226,35 +226,45 @@ class LLMService:
         function_name = function_call.name
         args = dict(function_call.args)
 
-        try:
-            if function_name == "get_current_weather":
-                weather_service = WeatherService()
-                try:
-                    city = args.get("city", "")
-                    weather_data = (
-                        await weather_service.get_current_weather_by_city_name(
-                            city=city
-                        )
-                    )
-                    return weather_data.model_dump()
-                finally:
-                    await weather_service.close()
-
-            elif function_name == "get_calendar_events":
-                calendar_service = GoogleCalendarService()
-                days = args.get("days", 7)
-                events = await calendar_service.get_upcoming_events(
-                    user_id=user_id,
-                    db=db,
-                    days=days,
+        # Function registry mapping function names to their execution logic
+        async def get_current_weather():
+            weather_service = WeatherService()
+            try:
+                city = args.get("city", "")
+                weather_data = await weather_service.get_current_weather_by_city_name(
+                    city=city
                 )
-                return {
-                    "events": [event.model_dump() for event in events],
-                    "count": len(events),
-                }
+                return weather_data.model_dump()
+            finally:
+                await weather_service.close()
 
-            else:
+        async def get_calendar_events():
+            calendar_service = GoogleCalendarService()
+            days = args.get("days", 7)
+            events = await calendar_service.get_upcoming_events(
+                user_id=user_id,
+                db=db,
+                days=days,
+            )
+            return {
+                "events": [event.model_dump() for event in events],
+                "count": len(events),
+            }
+
+        # Registry of available functions
+        functions = {
+            "get_current_weather": get_current_weather,
+            "get_calendar_events": get_calendar_events,
+        }
+
+        try:
+            # Get and call the function
+            func = functions.get(function_name)
+
+            if not func:
                 return {"error": f"Unknown function: {function_name}"}
+
+            return await func()
 
         except Exception as e:
             logger.error(
