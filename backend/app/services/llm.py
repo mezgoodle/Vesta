@@ -1,6 +1,6 @@
 import datetime
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytz
 from google import genai
@@ -27,65 +27,6 @@ class LLMService:
         self.client = genai.Client(api_key=settings.GOOGLE_API_KEY)
         self.model = settings.GOOGLE_MODEL_NAME
 
-        # Define function declarations for tools
-        get_current_weather_function = {
-            "name": "get_current_weather",
-            "description": "Get the current weather information for a specified city. Use this when the user asks about weather conditions, temperature, or climate in a specific location.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "city": {
-                        "type": "string",
-                        "description": "The name of the city to get weather for (e.g., 'London', 'New York', 'Tokyo')",
-                    },
-                },
-                "required": ["city"],
-            },
-        }
-
-        get_calendar_events_function = {
-            "name": "get_calendar_events",
-            "description": "Get upcoming calendar events for the authenticated user. Use this when the user asks about their schedule, meetings, or appointments.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "days": {
-                        "type": "integer",
-                        "description": "Number of days to look ahead for events (default: 7)",
-                    },
-                },
-                "required": [],
-            },
-        }
-
-        # Configure tools for Gemini
-        self.tools = [
-            types.Tool(
-                function_declarations=[
-                    get_current_weather_function,
-                    get_calendar_events_function,
-                ]
-            )
-        ]
-
-    def _build_config(self) -> types.GenerateContentConfig:
-        """
-        Build GenerateContentConfig with tools and function calling enabled.
-        """
-        tz = pytz.timezone("Europe/Kiev")
-        now = datetime.datetime.now(tz)
-        current_time_str = now.strftime("%Y-%m-%d %H:%M (%A)")
-
-        dynamic_system_instruction = (
-            f"{settings.SYSTEM_INSTRUCTION}\n"
-            f"Current Date and Time: {current_time_str}.\n"
-            f"User's Location: Ukraine (default for weather)."
-        )
-        return types.GenerateContentConfig(
-            system_instruction=dynamic_system_instruction,
-            tools=self.tools,
-        )
-
     async def chat(
         self,
         user_text: str,
@@ -94,7 +35,7 @@ class LLMService:
         db: AsyncSession,
     ) -> str:
         """
-        Send a chat message to Gemini with conversation history and function calling support.
+        Send a chat message to Gemini with automatic function calling support.
 
         Args:
             user_text: The user's message
@@ -108,67 +49,122 @@ class LLMService:
         Raises:
             Exception: If the API call fails
         """
+
+        # Define tool functions as closures (capture user_id and db from outer scope)
+        async def get_current_weather(city: str) -> str:
+            """
+            Get the current weather information for a specified city.
+
+            Use this function when the user asks about weather conditions, temperature,
+            humidity, wind speed, or general climate in a specific location.
+
+            Args:
+                city: The name of the city to get weather for (e.g., 'London', 'New York', 'Tokyo', 'Kyiv')
+
+            Returns:
+                A formatted string with weather information including temperature in Celsius,
+                weather description, humidity percentage, and wind speed in m/s.
+            """
+            try:
+                weather_service = WeatherService()
+                try:
+                    weather_data = (
+                        await weather_service.get_current_weather_by_city_name(
+                            city=city
+                        )
+                    )
+                    return (
+                        f"Weather in {weather_data.city}: "
+                        f"{weather_data.description}, "
+                        f"Temperature: {weather_data.temp}°C, "
+                        f"Humidity: {weather_data.humidity}%, "
+                        f"Wind Speed: {weather_data.wind_speed} m/s"
+                    )
+                finally:
+                    await weather_service.close()
+            except Exception as e:
+                logger.error(f"Weather API error for {city}: {e}")
+                return f"Unable to fetch weather data for {city}. Error: {str(e)}"
+
+        async def get_calendar_events(days: int = 7) -> str:
+            """
+            Get upcoming calendar events for the authenticated user.
+
+            Use this function when the user asks about their schedule, meetings,
+            appointments, or what's on their calendar.
+
+            Args:
+                days: Number of days to look ahead for events. Default is 7 days.
+                     Use 1 for today, 7 for this week, 30 for this month.
+
+            Returns:
+                A formatted string listing upcoming calendar events with their titles,
+                start times, end times, and locations (if available). Returns a message
+                if no events are found.
+            """
+            try:
+                calendar_service = GoogleCalendarService()
+                events = await calendar_service.get_upcoming_events(
+                    user_id=user_id,  # Captured from outer scope!
+                    db=db,  # Captured from outer scope!
+                    days=days,
+                )
+
+                if not events:
+                    return f"No events found in the next {days} days."
+
+                result = f"Upcoming events (next {days} days):\n"
+                for i, event in enumerate(events, 1):
+                    if event.start_time:
+                        start = event.start_time.strftime("%Y-%m-%d %H:%M")
+                    else:
+                        start = "All day"
+
+                    result += f"{i}. {event.summary} - {start}"
+
+                    if event.location:
+                        result += f" at {event.location}"
+
+                    if event.description:
+                        # Truncate long descriptions
+                        desc = (
+                            event.description[:100] + "..."
+                            if len(event.description) > 100
+                            else event.description
+                        )
+                        result += f" ({desc})"
+
+                    result += "\n"
+
+                return result.strip()
+
+            except Exception as e:
+                logger.error(f"Calendar API error for user {user_id}: {e}")
+                return f"Unable to fetch calendar events. Error: {str(e)}"
+
         try:
             # Map DB history to Gemini format
             mapped_history = self._map_history_to_gemini(history_records)
 
-            # Create chat session with history and tools
-            chat = self.client.aio.chats.create(
-                model=self.model,
-                config=self._build_config(),
-                history=mapped_history,
+            # Build config with tools
+            config = self._build_config_with_tools(
+                [
+                    get_current_weather,
+                    get_calendar_events,
+                ]
             )
 
-            # Send user message and get response
-            response = await chat.send_message(user_text)
+            # Prepare contents (history + current message)
+            contents = [*mapped_history, user_text]
 
-            # Function calling execution loop
-            max_iterations = 5  # Prevent infinite loops
-            iteration = 0
+            # Generate content with automatic function calling
+            response = await self.client.aio.models.generate_content(
+                model=self.model,
+                contents=contents,
+                config=config,
+            )
 
-            while iteration < max_iterations:
-                iteration += 1
-
-                # Check if response contains function calls
-                function_call_detected = False
-
-                if response.candidates and response.candidates[0].content.parts:
-                    for part in response.candidates[0].content.parts:
-                        # Check if this part is a function call
-                        if hasattr(part, "function_call") and part.function_call:
-                            function_call_detected = True
-                            function_call = part.function_call
-
-                            logger.info(
-                                f"Function call detected: {function_call.name}",
-                                extra={
-                                    "json_fields": {
-                                        "event": "function_call",
-                                        "function_name": function_call.name,
-                                        "args": dict(function_call.args),
-                                    }
-                                },
-                            )
-
-                            # Execute the function
-                            result = await self._execute_function(
-                                function_call, user_id, db
-                            )
-
-                            # Send function result back to Gemini
-                            response = await chat.send_message(
-                                types.Part.from_function_response(
-                                    name=function_call.name,
-                                    response=result,
-                                )
-                            )
-                            break  # Process one function call at a time
-
-                # If no function call detected, we have the final text response
-                if not function_call_detected:
-                    break
-
-            # Log token usage for GCP metrics (accumulated across all turns)
+            # Log token usage
             self._log_token_usage(response)
 
             return response.text
@@ -179,6 +175,31 @@ class LLMService:
                 extra={"json_fields": {"event": "llm_error", "error": str(e)}},
             )
             raise
+
+    def _build_config_with_tools(self, tools: list) -> types.GenerateContentConfig:
+        """
+        Build GenerateContentConfig with dynamic tools and system instruction.
+
+        Args:
+            tools: List of Python async functions to use as tools
+
+        Returns:
+            GenerateContentConfig with automatic function calling enabled
+        """
+        tz = pytz.timezone("Europe/Kiev")
+        now = datetime.datetime.now(tz)
+        current_time_str = now.strftime("%Y-%m-%d %H:%M (%A)")
+
+        dynamic_system_instruction = (
+            f"{settings.SYSTEM_INSTRUCTION}\n"
+            f"Current Date and Time: {current_time_str}.\n"
+            f"User's Location: Ukraine (default for weather)."
+        )
+
+        return types.GenerateContentConfig(
+            system_instruction=dynamic_system_instruction,
+            tools=tools,  # Pass Python functions directly
+        )
 
     def _map_history_to_gemini(
         self, history_records: list["ChatHistory"]
@@ -208,77 +229,6 @@ class LLMService:
                 )
             )
         return mapped_history
-
-    async def _execute_function(
-        self, function_call: Any, user_id: int, db: AsyncSession
-    ) -> dict[str, Any]:
-        """
-        Execute the requested function and return result.
-
-        Args:
-            function_call: The function call object from Gemini
-            user_id: The authenticated user's ID
-            db: Database session
-
-        Returns:
-            Dictionary containing the function result or error
-        """
-        function_name = function_call.name
-        args = dict(function_call.args)
-
-        # Function registry mapping function names to their execution logic
-        async def get_current_weather():
-            weather_service = WeatherService()
-            try:
-                city = args.get("city", "")
-                weather_data = await weather_service.get_current_weather_by_city_name(
-                    city=city
-                )
-                return weather_data.model_dump()
-            finally:
-                await weather_service.close()
-
-        async def get_calendar_events():
-            calendar_service = GoogleCalendarService()
-            days = args.get("days", 7)
-            events = await calendar_service.get_upcoming_events(
-                user_id=user_id,
-                db=db,
-                days=days,
-            )
-            return {
-                "events": [event.model_dump() for event in events],
-                "count": len(events),
-            }
-
-        # Registry of available functions
-        functions = {
-            "get_current_weather": get_current_weather,
-            "get_calendar_events": get_calendar_events,
-        }
-
-        try:
-            # Get and call the function
-            func = functions.get(function_name)
-
-            if not func:
-                return {"error": f"Unknown function: {function_name}"}
-
-            return await func()
-
-        except Exception as e:
-            logger.error(
-                f"Function execution error: {function_name} - {e}",
-                extra={
-                    "json_fields": {
-                        "event": "function_execution_error",
-                        "function_name": function_name,
-                        "error": str(e),
-                    }
-                },
-            )
-            # Return error to LLM so it can inform the user politely
-            return {"error": str(e)}
 
     def _log_token_usage(self, response) -> None:
         """
