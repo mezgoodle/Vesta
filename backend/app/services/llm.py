@@ -8,7 +8,6 @@ from google.genai import types
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.services import llm_tools
 from app.services.google_calendar import GoogleCalendarService
 from app.services.weather import WeatherService
 
@@ -28,10 +27,45 @@ class LLMService:
         self.client = genai.Client(api_key=settings.GOOGLE_API_KEY)
         self.model = settings.GOOGLE_MODEL_NAME
 
-        # Define available tools for function calling
+        # Define function declarations for tools
+        get_current_weather_function = {
+            "name": "get_current_weather",
+            "description": "Get the current weather information for a specified city. Use this when the user asks about weather conditions, temperature, or climate in a specific location.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "city": {
+                        "type": "string",
+                        "description": "The name of the city to get weather for (e.g., 'London', 'New York', 'Tokyo')",
+                    },
+                },
+                "required": ["city"],
+            },
+        }
+
+        get_calendar_events_function = {
+            "name": "get_calendar_events",
+            "description": "Get upcoming calendar events for the authenticated user. Use this when the user asks about their schedule, meetings, or appointments.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "days": {
+                        "type": "integer",
+                        "description": "Number of days to look ahead for events (default: 7)",
+                    },
+                },
+                "required": [],
+            },
+        }
+
+        # Configure tools for Gemini
         self.tools = [
-            llm_tools.get_current_weather,
-            llm_tools.get_calendar_events,
+            types.Tool(
+                function_declarations=[
+                    get_current_weather_function,
+                    get_calendar_events_function,
+                ]
+            )
         ]
 
     def _build_config(self) -> types.GenerateContentConfig:
@@ -49,6 +83,7 @@ class LLMService:
         )
         return types.GenerateContentConfig(
             system_instruction=dynamic_system_instruction,
+            tools=self.tools,
         )
 
     async def chat(
@@ -82,7 +117,6 @@ class LLMService:
                 model=self.model,
                 config=self._build_config(),
                 history=mapped_history,
-                tools=self.tools,
             )
 
             # Send user message and get response
