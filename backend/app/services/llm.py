@@ -50,7 +50,6 @@ class LLMService:
             Exception: If the API call fails
         """
 
-        # Define tool functions as closures (capture user_id and db from outer scope)
         async def get_current_weather(city: str) -> str:
             """
             Get the current weather information for a specified city.
@@ -105,8 +104,8 @@ class LLMService:
             try:
                 calendar_service = GoogleCalendarService()
                 events = await calendar_service.get_upcoming_events(
-                    user_id=user_id,  # Captured from outer scope!
-                    db=db,  # Captured from outer scope!
+                    user_id=user_id,
+                    db=db,
                     days=days,
                 )
 
@@ -126,7 +125,6 @@ class LLMService:
                         result += f" at {event.location}"
 
                     if event.description:
-                        # Truncate long descriptions
                         desc = (
                             event.description[:100] + "..."
                             if len(event.description) > 100
@@ -143,10 +141,8 @@ class LLMService:
                 return f"Unable to fetch calendar events. Error: {str(e)}"
 
         try:
-            # Map DB history to Gemini format
             mapped_history = self._map_history_to_gemini(history_records)
 
-            # Build config with tools
             config = self._build_config_with_tools(
                 [
                     get_current_weather,
@@ -154,17 +150,14 @@ class LLMService:
                 ]
             )
 
-            # Prepare contents (history + current message)
             contents = [*mapped_history, user_text]
 
-            # Generate content with automatic function calling
             response = await self.client.aio.models.generate_content(
                 model=self.model,
                 contents=contents,
                 config=config,
             )
 
-            # Log token usage
             self._log_token_usage(response)
 
             return response.text
@@ -198,7 +191,7 @@ class LLMService:
 
         return types.GenerateContentConfig(
             system_instruction=dynamic_system_instruction,
-            tools=tools,  # Pass Python functions directly
+            tools=tools,
         )
 
     def _map_history_to_gemini(
@@ -219,12 +212,9 @@ class LLMService:
         """
         mapped_history = []
         for record in history_records:
-            # Map assistant role to model for Gemini
-            gemini_role = "model" if record.role == "assistant" else record.role
-
             mapped_history.append(
                 types.Content(
-                    role=gemini_role,
+                    role=record.role,
                     parts=[types.Part(text=record.content)],
                 )
             )
