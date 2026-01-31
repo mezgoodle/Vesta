@@ -29,15 +29,22 @@ async def process_chat_message(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Process a chat message with Gemini AI.
-
-    Flow:
-    1. Validate user exists
-    2. Save user message to database
-    3. Fetch last 20 messages for context
-    4. Call Gemini AI with history
-    5. Save assistant response to database
-    6. Return response
+    Process an incoming user chat message, invoke the LLM for a response, persist both messages, and return the assistant reply and identifiers.
+    
+    Parameters:
+        db (SessionDep): Database session dependency used to read/write sessions and chat history.
+        chat_request (ChatRequest): Request payload containing `user_id`, `message`, and optional `session_id`.
+        llm_service (LLMServiceDep): LLM client used to generate the assistant response; receives the user text, session history, user id, and db.
+        current_user (CurrentUser): Authenticated user context (unused for validation beyond dependency).
+    
+    Returns:
+        ChatResponse: Contains the assistant response text, the chat session id, the created user message id, and the created assistant message id.
+    
+    Raises:
+        HTTPException: 
+            - 404 if the user or specified session is not found.
+            - 403 if the specified session does not belong to the user.
+            - 500 if an unexpected error occurs while processing the message.
     """
     user = await crud_user.get(db, id=chat_request.user_id)
     if not user:

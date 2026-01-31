@@ -19,6 +19,18 @@ logger = logging.getLogger(__name__)
 
 class LLMService:
     def __init__(self):
+        """
+        Initialize the LLMService by validating required settings and creating the Google GenAI client.
+        
+        Validates that GOOGLE_API_KEY and GOOGLE_MODEL_NAME are configured in settings; if valid, constructs a genai.Client stored on self.client and stores the model name on self.model.
+        
+        Raises:
+            ValueError: If GOOGLE_API_KEY or GOOGLE_MODEL_NAME is not set.
+        
+        Attributes:
+            client: genai.Client instance created with GOOGLE_API_KEY.
+            model: Name of the Google model from GOOGLE_MODEL_NAME.
+        """
         if not settings.GOOGLE_API_KEY:
             raise ValueError("GOOGLE_API_KEY is not set")
         if not settings.GOOGLE_MODEL_NAME:
@@ -52,17 +64,13 @@ class LLMService:
 
         async def get_current_weather(city: str) -> str:
             """
-            Get the current weather information for a specified city.
-
-            Use this function when the user asks about weather conditions, temperature,
-            humidity, wind speed, or general climate in a specific location.
-
-            Args:
-                city: The name of the city to get weather for (e.g., 'London', 'New York', 'Tokyo', 'Kyiv')
-
+            Retrieve a human-readable summary of the current weather for a given city.
+            
+            Parameters:
+                city (str): Name of the city to query (e.g., "Kyiv", "New York"). May include country or region to disambiguate.
+            
             Returns:
-                A formatted string with weather information including temperature in Celsius,
-                weather description, humidity percentage, and wind speed in m/s.
+                str: On success, a formatted summary containing city, weather description, temperature in Celsius, humidity percentage, and wind speed in m/s. On failure, an error message string describing the inability to fetch weather data.
             """
             try:
                 weather_service = WeatherService()
@@ -87,19 +95,13 @@ class LLMService:
 
         async def get_calendar_events(days: int = 7) -> str:
             """
-            Get upcoming calendar events for the authenticated user.
-
-            Use this function when the user asks about their schedule, meetings,
-            appointments, or what's on their calendar.
-
-            Args:
-                days: Number of days to look ahead for events. Default is 7 days.
-                     Use 1 for today, 7 for this week, 30 for this month.
-
+            Retrieve and format the authenticated user's upcoming calendar events.
+            
+            Parameters:
+                days (int): Number of days to look ahead for events (e.g., 1 for today, 7 for this week, 30 for this month). Defaults to 7.
+            
             Returns:
-                A formatted string listing upcoming calendar events with their titles,
-                start times, end times, and locations (if available). Returns a message
-                if no events are found.
+                str: A human-readable list of upcoming events for the next `days` days. Each entry is numbered and includes the event title, start time (or "All day" if no start time), optional location, and a truncated description. If no events are found or an error occurs, returns a descriptive message.
             """
             try:
                 calendar_service = GoogleCalendarService()
@@ -171,13 +173,15 @@ class LLMService:
 
     def _build_config_with_tools(self, tools: list) -> types.GenerateContentConfig:
         """
-        Build GenerateContentConfig with dynamic tools and system instruction.
-
-        Args:
-            tools: List of Python async functions to use as tools
-
+        Create a GenerateContentConfig that embeds a dynamic system instruction and the provided tool functions.
+        
+        The system instruction includes the current date and time (Europe/Kiev) and a default user location hint. This config is intended for model interactions that may invoke the provided async tool functions.
+        
+        Parameters:
+            tools (list): A list of async Python callables exposed to the model for automatic function-calling.
+        
         Returns:
-            GenerateContentConfig with automatic function calling enabled
+            types.GenerateContentConfig: A config object containing the assembled system instruction and the provided tools.
         """
         tz = pytz.timezone("Europe/Kiev")
         now = datetime.datetime.now(tz)
@@ -198,17 +202,16 @@ class LLMService:
         self, history_records: list["ChatHistory"]
     ) -> list[types.Content]:
         """
-        Convert DB chat history to Gemini Content format.
-
-        Maps:
-        - DB role "assistant" -> Gemini role "model"
-        - DB role "user" -> Gemini role "user"
-
-        Args:
-            history_records: List of ChatHistory DB records
-
+        Convert chat history records into Gemini Content objects.
+        
+        Each ChatHistory record is converted to a types.Content with the role taken from record.role
+        and a single Part containing record.content.
+        
+        Parameters:
+            history_records (list[ChatHistory]): Database chat history records to convert.
+        
         Returns:
-            List of Gemini Content objects
+            list[types.Content]: Gemini Content objects corresponding to the input records.
         """
         mapped_history = []
         for record in history_records:
