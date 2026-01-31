@@ -81,9 +81,9 @@ class LLMService:
                     )
                 finally:
                     await weather_service.close()
-            except Exception as e:
-                logger.error(f"Weather API error for {city}: {e}")
-                return f"Unable to fetch weather data for {city}. Error: {str(e)}"
+            except Exception:
+                logger.error(f"Weather API error for {city}")
+                return f"Unable to fetch weather data for {city}."
 
         async def get_calendar_events(days: int = 7) -> str:
             """
@@ -102,6 +102,7 @@ class LLMService:
                 if no events are found.
             """
             try:
+                days = max(1, min(days, 30))
                 calendar_service = GoogleCalendarService()
                 events = await calendar_service.get_upcoming_events(
                     user_id=user_id,
@@ -136,9 +137,9 @@ class LLMService:
 
                 return result.strip()
 
-            except Exception as e:
-                logger.error(f"Calendar API error for user {user_id}: {e}")
-                return f"Unable to fetch calendar events. Error: {str(e)}"
+            except Exception:
+                logger.error(f"Calendar API error for user {user_id}")
+                return "Unable to fetch calendar events."
 
         try:
             mapped_history = self._map_history_to_gemini(history_records)
@@ -150,7 +151,10 @@ class LLMService:
                 ]
             )
 
-            contents = [*mapped_history, user_text]
+            contents = [
+                *mapped_history,
+                types.Content(role="user", parts=[types.Part(text=user_text)]),
+            ]
 
             response = await self.client.aio.models.generate_content(
                 model=self.model,
@@ -162,10 +166,9 @@ class LLMService:
 
             return response.text
 
-        except Exception as e:
+        except Exception:
             logger.error(
-                f"Gemini API error: {e}",
-                extra={"json_fields": {"event": "llm_error", "error": str(e)}},
+                "Gemini API error", extra={"json_fields": {"event": "llm_error"}}
             )
             raise
 
