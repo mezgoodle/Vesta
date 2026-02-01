@@ -164,7 +164,10 @@ class LLMService:
 
             self._log_token_usage(response)
 
-            return response.text
+            if response.text:
+                return response.text
+            else:
+                return "I couldn't generate a response. Please try again."
 
         except Exception:
             logger.error(
