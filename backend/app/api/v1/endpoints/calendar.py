@@ -5,7 +5,11 @@ from google.auth.exceptions import RefreshError
 from googleapiclient.errors import HttpError
 
 from app.api.deps import CalendarServiceDep, SessionDep, TargetUserId
-from app.schemas.calendar import CalendarEventList
+from app.schemas.calendar import (
+    CalendarEventCreate,
+    CalendarEventList,
+    CalendarEventResponse,
+)
 
 router = APIRouter()
 
@@ -160,6 +164,59 @@ async def get_events_in_range(
     try:
         events = await calendar_service.get_events_in_range(user_id, start, end, db)
         return CalendarEventList(events=events, count=len(events))
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if "not authorized" in error_msg or "no refresh token" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=str(e),
+            ) from e
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+    except RefreshError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Google Calendar access expired. Please re-authorize.",
+        ) from e
+    except HttpError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Google API error: {str(e)}",
+        ) from e
+
+
+@router.post(
+    "/events", response_model=CalendarEventResponse, status_code=status.HTTP_201_CREATED
+)
+async def create_calendar_event(
+    event_data: CalendarEventCreate,
+    db: SessionDep,
+    calendar_service: CalendarServiceDep,
+    user_id: TargetUserId,
+) -> CalendarEventResponse:
+    """
+    Create a new calendar event for the authenticated user.
+
+    Args:
+        event_data: Event creation data (summary, start_time, end_time, description)
+        db: Database session
+        calendar_service: Google Calendar service
+        user_id: The ID of the user creating the event
+
+    Returns:
+        CalendarEventResponse with event details including htmlLink
+
+    Raises:
+        HTTPException: 401 if user not authenticated with Google
+        HTTPException: 403 if refresh token expired/revoked
+        HTTPException: 400 for validation errors
+        HTTPException: 500 for Google API errors
+    """
+    try:
+        created_event = await calendar_service.create_event(user_id, event_data, db)
+        return CalendarEventResponse(**created_event)
     except ValueError as e:
         error_msg = str(e).lower()
         if "not authorized" in error_msg or "no refresh token" in error_msg:

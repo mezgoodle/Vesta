@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime, time, timedelta
 from typing import Any
 
+import pytz
 from google.auth.exceptions import RefreshError
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -10,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.crud.crud_user import user as crud_user
-from app.schemas.calendar import CalendarEvent
+from app.schemas.calendar import CalendarEvent, CalendarEventCreate
 
 
 class GoogleCalendarService:
@@ -166,6 +167,134 @@ class GoogleCalendarService:
             return datetime.fromisoformat(dt_string)
         except (ValueError, AttributeError):
             return None
+
+    def _calculate_duration_minutes(
+        self, start_time: datetime, end_time: datetime
+    ) -> int:
+        """Calculate duration in minutes between start and end times."""
+        duration = end_time - start_time
+        return int(duration.total_seconds() / 60)
+
+    async def create_event(
+        self, user_id: int, event_data: CalendarEventCreate, db: AsyncSession
+    ) -> dict[str, Any]:
+        """
+        Create a new calendar event for the user.
+
+        Args:
+            user_id: The ID of the user
+            event_data: Event creation data
+            db: Database session
+
+        Returns:
+            Dictionary containing event details including htmlLink
+
+        Raises:
+            ValueError: If user not found or not authenticated
+            RefreshError: If token refresh fails
+            HttpError: If Google API call fails
+        """
+        # Get user and validate authentication
+        user = await crud_user.get(db, id=user_id)
+        if not user:
+            raise ValueError(f"User with ID {user_id} not found")
+
+        if not user.google_refresh_token:
+            raise ValueError(
+                f"User {user_id} has not authorized Google Calendar access. "
+                "Please complete OAuth flow first."
+            )
+
+        # Create credentials
+        try:
+            credentials = Credentials(
+                token=None,
+                refresh_token=user.google_refresh_token,
+                token_uri=self.token_uri,
+                client_id=settings.GOOGLE_CLIENT_ID,
+                client_secret=settings.GOOGLE_CLIENT_SECRET.get_secret_value(),
+            )
+        except Exception as e:
+            raise ValueError(f"Failed to create credentials: {str(e)}") from e
+
+        # Build calendar service
+        try:
+            service = await asyncio.to_thread(
+                build, "calendar", "v3", credentials=credentials
+            )
+        except Exception as e:
+            raise ValueError(f"Failed to build calendar service: {str(e)}") from e
+
+        # Prepare timezone-aware datetimes
+        tz = pytz.timezone("Europe/Kiev")
+
+        # Ensure start_time is timezone-aware
+        if event_data.start_time.tzinfo is None:
+            # If naive, assume it's in Europe/Kiev timezone
+            start_time = tz.localize(event_data.start_time)
+        else:
+            # If already timezone-aware, convert to Europe/Kiev
+            start_time = event_data.start_time.astimezone(tz)
+
+        # Ensure end_time is timezone-aware
+        if event_data.end_time.tzinfo is None:
+            # If naive, assume it's in Europe/Kiev timezone
+            end_time = tz.localize(event_data.end_time)
+        else:
+            # If already timezone-aware, convert to Europe/Kiev
+            end_time = event_data.end_time.astimezone(tz)
+
+        # Construct event body for Google Calendar API
+        event_body = {
+            "summary": event_data.summary,
+            "start": {
+                "dateTime": start_time.isoformat(),
+                "timeZone": "Europe/Kiev",
+            },
+            "end": {
+                "dateTime": end_time.isoformat(),
+                "timeZone": "Europe/Kiev",
+            },
+        }
+
+        # Add optional description
+        if event_data.description:
+            event_body["description"] = event_data.description
+
+        # Create the event
+        try:
+            created_event = await asyncio.to_thread(
+                lambda: service.events()
+                .insert(calendarId="primary", body=event_body)
+                .execute()
+            )
+
+            return {
+                "summary": created_event.get("summary"),
+                "start_time": self._parse_datetime(
+                    created_event.get("start", {}).get("dateTime")
+                ),
+                "end_time": self._parse_datetime(
+                    created_event.get("end", {}).get("dateTime")
+                ),
+                "html_link": created_event.get("htmlLink"),
+                "description": created_event.get("description"),
+            }
+
+        except RefreshError as e:
+            raise RefreshError(
+                f"Failed to refresh access token for user {user_id}. "
+                "The refresh token may be expired or revoked. "
+                "Please re-authorize the application."
+            ) from e
+        except HttpError as e:
+            raise HttpError(
+                resp=e.resp,
+                content=e.content,
+                uri=e.uri,
+            ) from e
+        except Exception as e:
+            raise Exception(f"Failed to create calendar event: {str(e)}") from e
 
 
 google_calendar_service_instance = GoogleCalendarService()
