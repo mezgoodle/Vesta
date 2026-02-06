@@ -17,6 +17,7 @@ class GoogleAuthService:
     SCOPES = [
         "openid",
         "https://www.googleapis.com/auth/calendar.readonly",
+        "https://www.googleapis.com/auth/calendar.events.owned",
         "https://www.googleapis.com/auth/userinfo.email",
     ]
 

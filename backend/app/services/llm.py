@@ -8,6 +8,7 @@ from google.genai import types
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.schemas.calendar import CalendarEventCreate
 from app.services.google_calendar import GoogleCalendarService
 from app.services.weather import WeatherService
 
@@ -141,6 +142,92 @@ class LLMService:
                 logger.error(f"Calendar API error for user {user_id}")
                 return "Unable to fetch calendar events."
 
+        async def schedule_event_tool(
+            summary: str,
+            start_time_iso: str,
+            duration_minutes: int = 60,
+            description: str = "",
+        ) -> str:
+            """
+            Schedule a new event in the user's Google Calendar.
+
+            Use this function when the user wants to create, schedule, or add an event
+            to their calendar. This includes meetings, appointments, reminders, or any
+            time-blocked activity.
+
+            IMPORTANT: The start_time_iso parameter MUST include both date and time in
+            ISO 8601 format. Examples:
+            - '2026-02-15T14:00:00' (February 15, 2026 at 2:00 PM)
+            - '2026-03-01T09:30:00' (March 1, 2026 at 9:30 AM)
+            - '2026-12-25T18:00:00' (December 25, 2026 at 6:00 PM)
+
+            The time will be interpreted in Europe/Kiev timezone.
+
+            Args:
+                summary: The title/name of the event (e.g., 'Team Meeting', 'Doctor Appointment')
+                start_time_iso: Start date and time in ISO 8601 format (YYYY-MM-DDTHH:MM:SS).
+                               MUST include both date and time components.
+                duration_minutes: Duration of the event in minutes. Default is 60 minutes (1 hour).
+                                 Common values: 30 (half hour), 60 (1 hour), 90 (1.5 hours), 120 (2 hours)
+                description: Optional description or notes for the event
+
+            Returns:
+                A success message with a link to the created event in Google Calendar,
+                or an error message if the event could not be created.
+            """
+            try:
+                # Parse the ISO datetime string
+                try:
+                    start_time = datetime.datetime.fromisoformat(start_time_iso)
+                except ValueError as e:
+                    return (
+                        f"Invalid datetime format: {start_time_iso}. "
+                        "Please use ISO 8601 format (YYYY-MM-DDTHH:MM:SS). "
+                        f"Error: {str(e)}"
+                    )
+
+                # Calculate end_time from duration
+                end_time = start_time + datetime.timedelta(minutes=duration_minutes)
+
+                # Create event data
+                event_data = CalendarEventCreate(
+                    summary=summary,
+                    start_time=start_time,
+                    end_time=end_time,
+                    description=description if description else None,
+                )
+
+                # Create the event
+                calendar_service = GoogleCalendarService()
+                created_event = await calendar_service.create_event(
+                    user_id=user_id,
+                    event_data=event_data,
+                    db=db,
+                )
+
+                # Format response
+                start_time = created_event.get("start_time")
+                end_time = created_event.get("end_time")
+
+                if start_time and end_time:
+                    start_formatted = start_time.strftime("%B %d, %Y at %H:%M")
+                    end_formatted = end_time.strftime("%H:%M")
+                    time_info = f"📅 {start_formatted} - {end_formatted}\n"
+                else:
+                    time_info = ""
+
+                return (
+                    f"✅ Event '{summary}' successfully created!\n"
+                    f"{time_info}"
+                    f"🔗 View event: {created_event['html_link']}"
+                )
+
+            except Exception as e:
+                logger.error(
+                    f"Failed to create calendar event for user {user_id}: {str(e)}"
+                )
+                return f"Unable to create calendar event. Error: {str(e)}"
+
         try:
             mapped_history = self._map_history_to_gemini(history_records)
 
@@ -148,6 +235,7 @@ class LLMService:
                 [
                     get_current_weather,
                     get_calendar_events,
+                    schedule_event_tool,
                 ]
             )
 

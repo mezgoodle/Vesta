@@ -22,3 +22,22 @@ class CalendarEventList(BaseModel):
 class EventsRangeRequest(BaseModel):
     start: datetime = Field(..., description="Start datetime (ISO 8601)")
     end: datetime = Field(..., description="End datetime (ISO 8601)")
+
+
+class CalendarEventCreate(CalendarEvent):
+    """Schema for creating a new calendar event.
+
+    Extends CalendarEvent without modifications. Duration can be calculated
+    in the service layer if needed.
+    """
+
+    pass
+
+
+class CalendarEventResponse(CalendarEvent):
+    """Schema for calendar event creation response.
+
+    Extends CalendarEvent with the html_link field for the Google Calendar URL.
+    """
+
+    html_link: str = Field(..., description="Link to the event in Google Calendar")
