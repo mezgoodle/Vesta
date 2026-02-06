@@ -8,13 +8,13 @@ Handlers are organized by feature area to keep the code modular and maintainable
 
 ### Key Handlers
 
-- **[admin.py](file:///c:/Projects/Vesta/bot/tgbot/handlers/admin.py)**: Commands restricted to bot administrators (e.g., user approval, system status).
-- **[start.py](file:///c:/Projects/Vesta/bot/tgbot/handlers/start.py)**: Handles the `/start` command, user registration, and initial onboarding.
-- **[chat.py](file:///c:/Projects/Vesta/bot/tgbot/handlers/chat.py)**: Processes general text messages using the LLM service for conversational responses.
-- **[devices.py](file:///c:/Projects/Vesta/bot/tgbot/handlers/devices.py)**: Control logic for smart home devices (listing, toggling state).
-- **[weather.py](file:///c:/Projects/Vesta/bot/tgbot/handlers/weather.py)**: Handles weather inquiries.
-- **[calendar.py](file:///c:/Projects/Vesta/bot/tgbot/handlers/calendar.py)**: Calendar event viewing and creation flows.
-- **[news.py](file:///c:/Projects/Vesta/bot/tgbot/handlers/news.py)**: News subscription management and feed viewing.
+- **[admin.py](./admin.py)**: Commands restricted to bot administrators (e.g., user approval, system status).
+- **[start.py](./start.py)**: Handles the `/start` command, user registration, and initial onboarding.
+- **[chat.py](./chat.py)**: Processes general text messages using the LLM service for conversational responses.
+- **[devices.py](./devices.py)**: Control logic for smart home devices (listing, toggling state).
+- **[weather.py](./weather.py)**: Handles weather inquiries.
+- **[calendar.py](./calendar.py)**: Calendar event viewing and creation flows.
+- **[news.py](./news.py)**: News subscription management and feed viewing.
 
 ## Handler Registration
 

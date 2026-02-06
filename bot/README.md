@@ -93,7 +93,7 @@ The bot will start polling for updates and respond to user messages.
 
 ## Project Structure
 
-```
+```text
 bot/
 ├── tgbot/
 │   ├── config.py                # Bot configuration

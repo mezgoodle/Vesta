@@ -4,7 +4,7 @@ This directory contains the core business logic and external service integration
 
 ## Services Overview
 
-### [GoogleAuthService](file:///c:/Projects/Vesta/backend/app/services/google_auth.py)
+### [GoogleAuthService](./google_auth.py)
 
 Handles the OAuth 2.0 authentication flow with Google APIs.
 
@@ -14,7 +14,7 @@ Handles the OAuth 2.0 authentication flow with Google APIs.
   - Refreshing access tokens
   - Storing and retrieving user credentials from the database
 
-### [GoogleCalendarService](file:///c:/Projects/Vesta/backend/app/services/google_calendar.py)
+### [GoogleCalendarService](./google_calendar.py)
 
 Manages interactions with the Google Calendar API.
 
@@ -24,7 +24,7 @@ Manages interactions with the Google Calendar API.
   - Parsing natural language time references (via LLM helper or direct parsing)
   - Formatting events for user display
 
-### [HomeAssistantService](file:///c:/Projects/Vesta/backend/app/services/home.py)
+### [HomeAssistantService](./home.py)
 
 Acts as the bridge between Vesta and your Home Assistant instance.
 
@@ -33,7 +33,7 @@ Acts as the bridge between Vesta and your Home Assistant instance.
   - Controlling devices (turn on/off, set values)
   - interfacing with the Home Assistant REST API and WebSocket API
 
-### [LLMService](file:///c:/Projects/Vesta/backend/app/services/llm.py)
+### [LLMService](./llm.py)
 
 Powered by OpenAI or Google Gemini, this service processes natural language user inputs.
 
@@ -43,7 +43,7 @@ Powered by OpenAI or Google Gemini, this service processes natural language user
   - Extracting structured data from natural language (e.g., for calendar events)
   - Reasoning about device states and weather
 
-### [WeatherService](file:///c:/Projects/Vesta/backend/app/services/weather.py)
+### [WeatherService](./weather.py)
 
 Integrates with OpenWeatherMap to provide real-time weather data.
 

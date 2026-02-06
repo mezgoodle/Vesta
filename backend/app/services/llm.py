@@ -206,14 +206,19 @@ class LLMService:
                 )
 
                 # Format response
-                start_formatted = created_event["start_time"].strftime(
-                    "%B %d, %Y at %H:%M"
-                )
-                end_formatted = created_event["end_time"].strftime("%H:%M")
+                start_time = created_event.get("start_time")
+                end_time = created_event.get("end_time")
+
+                if start_time and end_time:
+                    start_formatted = start_time.strftime("%B %d, %Y at %H:%M")
+                    end_formatted = end_time.strftime("%H:%M")
+                    time_info = f"📅 {start_formatted} - {end_formatted}\n"
+                else:
+                    time_info = ""
 
                 return (
                     f"✅ Event '{summary}' successfully created!\n"
-                    f"📅 {start_formatted} - {end_formatted}\n"
+                    f"{time_info}"
                     f"🔗 View event: {created_event['html_link']}"
                 )
 

@@ -4,7 +4,7 @@ This directory contains the FastAPI router configuration, endpoint definitions, 
 
 ## Structure
 
-```
+```text
 api/
 ├── deps.py              # Dependency Injection
 └── v1/
@@ -14,7 +14,7 @@ api/
 
 ## Key Components
 
-### [Dependency Injection (deps.py)](file:///c:/Projects/Vesta/backend/app/api/deps.py)
+### [Dependency Injection (deps.py)](./deps.py)
 
 Uses FastAPI's `Depends` system to decouple components and manage request lifecycle.
 
@@ -22,11 +22,11 @@ Uses FastAPI's `Depends` system to decouple components and manage request lifecy
 - **`get_current_user`**: Validates JWT tokens and returns the authenticated user context.
 - **`get_current_active_superuser`**: Ensures the user has admin privileges.
 
-### [API Router (v1/api.py)](file:///c:/Projects/Vesta/backend/app/api/v1/api.py)
+### [API Router (./v1/api.py)](./v1/api.py)
 
 Aggregates all endpoint routers into a single `api_router`. This is where the top-level routing structure is defined (e.g., `/users`, `/calendar`).
 
-### Endpoints (v1/endpoints/)
+### Endpoints (./v1/endpoints/)
 
 Each module in this directory corresponds to a resource or feature area:
 

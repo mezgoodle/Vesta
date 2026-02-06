@@ -171,7 +171,7 @@ pytest -v
 
 ## Project Structure
 
-```
+```text
 backend/
 ├── app/
 │   ├── api/

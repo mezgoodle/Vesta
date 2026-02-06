@@ -19,6 +19,7 @@ class GoogleCalendarService:
 
     def __init__(self) -> None:
         self.token_uri = "https://oauth2.googleapis.com/token"
+        self.timezone = "Europe/Kiev"
 
     async def _fetch_events_raw(
         self,
@@ -37,38 +38,24 @@ class GoogleCalendarService:
                 "Please complete OAuth flow first."
             )
 
-        try:
-            credentials = Credentials(
-                token=None,
-                refresh_token=user.google_refresh_token,
-                token_uri=self.token_uri,
-                client_id=settings.GOOGLE_CLIENT_ID,
-                client_secret=settings.GOOGLE_CLIENT_SECRET.get_secret_value(),
-            )
-        except Exception as e:
-            raise ValueError(f"Failed to create credentials: {str(e)}") from e
-
-        try:
-            service = await asyncio.to_thread(
-                build, "calendar", "v3", credentials=credentials
-            )
-        except Exception as e:
-            raise ValueError(f"Failed to build calendar service: {str(e)}") from e
+        service = await self._get_calendar_service(user_id, db)
 
         try:
             time_min_str = time_min.isoformat() + "Z"
             time_max_str = time_max.isoformat() + "Z"
 
             events_result = await asyncio.to_thread(
-                lambda: service.events()
-                .list(
-                    calendarId="primary",
-                    timeMin=time_min_str,
-                    timeMax=time_max_str,
-                    singleEvents=True,
-                    orderBy="startTime",
+                lambda: (
+                    service.events()
+                    .list(
+                        calendarId="primary",
+                        timeMin=time_min_str,
+                        timeMax=time_max_str,
+                        singleEvents=True,
+                        orderBy="startTime",
+                    )
+                    .execute()
                 )
-                .execute()
             )
 
             return events_result.get("items", [])
@@ -119,6 +106,35 @@ class GoogleCalendarService:
         events = await self._fetch_events_raw(user_id, start_date, end_date, db)
         return self._format_events(events)
 
+    async def _get_calendar_service(self, user_id: int, db: AsyncSession):
+        user = await crud_user.get(db, id=user_id)
+        if not user:
+            raise ValueError(f"User with ID {user_id} not found")
+
+        if not user.google_refresh_token:
+            raise ValueError(
+                f"User {user_id} has not authorized Google Calendar access. "
+                "Please complete OAuth flow first."
+            )
+
+        try:
+            credentials = Credentials(
+                token=None,
+                refresh_token=user.google_refresh_token,
+                token_uri=self.token_uri,
+                client_id=settings.GOOGLE_CLIENT_ID,
+                client_secret=settings.GOOGLE_CLIENT_SECRET.get_secret_value(),
+            )
+        except Exception as e:
+            raise ValueError(f"Failed to create credentials: {str(e)}") from e
+
+        try:
+            return await asyncio.to_thread(
+                build, "calendar", "v3", credentials=credentials
+            )
+        except Exception as e:
+            raise ValueError(f"Failed to build calendar service: {str(e)}") from e
+
     def _format_events(self, events: list[dict[str, Any]]) -> list["CalendarEvent"]:
         formatted_events = []
         for event in events:
@@ -168,13 +184,6 @@ class GoogleCalendarService:
         except (ValueError, AttributeError):
             return None
 
-    def _calculate_duration_minutes(
-        self, start_time: datetime, end_time: datetime
-    ) -> int:
-        """Calculate duration in minutes between start and end times."""
-        duration = end_time - start_time
-        return int(duration.total_seconds() / 60)
-
     async def create_event(
         self, user_id: int, event_data: CalendarEventCreate, db: AsyncSession
     ) -> dict[str, Any]:
@@ -205,28 +214,14 @@ class GoogleCalendarService:
                 "Please complete OAuth flow first."
             )
 
-        # Create credentials
-        try:
-            credentials = Credentials(
-                token=None,
-                refresh_token=user.google_refresh_token,
-                token_uri=self.token_uri,
-                client_id=settings.GOOGLE_CLIENT_ID,
-                client_secret=settings.GOOGLE_CLIENT_SECRET.get_secret_value(),
-            )
-        except Exception as e:
-            raise ValueError(f"Failed to create credentials: {str(e)}") from e
+        service = await self._get_calendar_service(user_id, db)
 
-        # Build calendar service
-        try:
-            service = await asyncio.to_thread(
-                build, "calendar", "v3", credentials=credentials
-            )
-        except Exception as e:
-            raise ValueError(f"Failed to build calendar service: {str(e)}") from e
+        # Validate required fields for timed events
+        if event_data.start_time is None or event_data.end_time is None:
+            raise ValueError("start_time and end_time are required for creating events")
 
         # Prepare timezone-aware datetimes
-        tz = pytz.timezone("Europe/Kiev")
+        tz = pytz.timezone(self.timezone)
 
         # Ensure start_time is timezone-aware
         if event_data.start_time.tzinfo is None:
@@ -249,11 +244,11 @@ class GoogleCalendarService:
             "summary": event_data.summary,
             "start": {
                 "dateTime": start_time.isoformat(),
-                "timeZone": "Europe/Kiev",
+                "timeZone": self.timezone,
             },
             "end": {
                 "dateTime": end_time.isoformat(),
-                "timeZone": "Europe/Kiev",
+                "timeZone": self.timezone,
             },
         }
 
@@ -264,9 +259,11 @@ class GoogleCalendarService:
         # Create the event
         try:
             created_event = await asyncio.to_thread(
-                lambda: service.events()
-                .insert(calendarId="primary", body=event_body)
-                .execute()
+                lambda: (
+                    service.events()
+                    .insert(calendarId="primary", body=event_body)
+                    .execute()
+                )
             )
 
             return {
