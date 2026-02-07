@@ -100,5 +100,23 @@ class UserService(BaseAPIService):
                 status, data, f"creating user '{user_data['telegram_id']}'"
             )
 
+    async def start_google_auth(self, user_id: int) -> tuple[dict | None, str]:
+        """
+        Start Google authentication.
+
+        Args:
+            user_id: ID of the user to start authentication for.
+        """
+        endpoint = "/api/v1/google-auth/login"
+
+        status, data = await self._get(endpoint, params={"user_id": user_id})
+
+        if status == 200:
+            return data, f"✅ Google authentication started for user '{user_id}'."
+        else:
+            return None, self._handle_error_response(
+                status, data, f"starting google authentication for user '{user_id}'"
+            )
+
 
 user_service = UserService()
