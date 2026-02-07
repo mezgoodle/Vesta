@@ -28,7 +28,11 @@ class UserService(BaseAPIService):
             return []
 
     async def update_user_approval(
-        self, user_id: int, permissions: dict
+        self,
+        user_id: int,
+        permissions: dict,
+        full_name: str | None = None,
+        username: str | None = None,
     ) -> tuple[dict | None, str]:
         """
         Update user permissions.
@@ -44,7 +48,22 @@ class UserService(BaseAPIService):
         if status == 200:
             return data, f"✅ User '{user_id}' approved."
         elif status == 404:
-            return None, f"❌ User '{user_id}' not found. Please check the spelling."
+            user_data = {
+                "telegram_id": user_id,
+                "full_name": full_name,
+                "username": username,
+                "is_allowed": True,
+            }
+            data, _ = await self.create_user(user_data)
+            if data:
+                return (
+                    data,
+                    f"✅ User '{user_id}' created. If you want to change permissions, text @sylvenis.",
+                )
+            else:
+                return None, self._handle_error_response(
+                    status, data, f"creating user '{user_id}'"
+                )
         else:
             return None, self._handle_error_response(
                 status, data, f"updating user approval for {user_id}"
@@ -62,6 +81,24 @@ class UserService(BaseAPIService):
             return data
         else:
             return None
+
+    async def create_user(self, user_data: dict) -> tuple[dict | None, str]:
+        """
+        Create a new user.
+
+        Args:
+            user_data: Dictionary of user data to create.
+        """
+        endpoint = "/api/v1/users"
+
+        status, data = await self._post(endpoint, user_data)
+
+        if status == 201:
+            return data, f"✅ User '{user_data['telegram_id']}' created."
+        else:
+            return None, self._handle_error_response(
+                status, data, f"creating user '{user_data['telegram_id']}'"
+            )
 
 
 user_service = UserService()

@@ -11,6 +11,7 @@ from app.api.v1.api import api_router
 from app.core.config import settings
 from app.core.logger import setup_logging
 from app.core.scheduler import shutdown_scheduler, start_scheduler
+from app.initial_data import create_superuser
 from app.models import ChatHistory, NewsSubscription, SmartDevice, User  # noqa: F401
 from app.services.home import HomeAssistantService
 
@@ -24,6 +25,8 @@ async def lifespan(app: FastAPI):
     setup_logging()
     print("Starting up services...")
     start_scheduler()
+    print("Create initial superuser...")
+    await create_superuser()
     yield
     # Shutdown
     print("Shutting down services...")

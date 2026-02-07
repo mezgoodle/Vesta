@@ -33,7 +33,7 @@ async def command_start_handler(
         f"Name: {message.from_user.full_name}\n"
         f"ID: {user_id}\n"
         f"Username: @{message.from_user.username}",
-        reply_markup=permissions_markup(user_id=user_id),
+        reply_markup=permissions_markup(user_id=user_id, user=message.from_user),
     )
 
 
