@@ -6,24 +6,21 @@ from aiogram.utils.markdown import hbold
 from loader import dp
 
 from tgbot.config import Settings
+from tgbot.filters.approved_user import IsApprovedUserFilter
 from tgbot.infrastructure.llm_service import llm_service
 from tgbot.keyboards.inline import sessions_keyboard
 from tgbot.keyboards.inline.callbacks.sessions import SessionCallbackFactory
 from tgbot.services.stt import GoogleSTTService
-from tgbot.services.user_cache import UserCache
 from tgbot.states.states import ChatMessage
 
 router = Router()
+router.message.filter(IsApprovedUserFilter())
 dp.include_router(router)
 
 
 @router.message(Command("chats"))
-async def get_chats_command(message: Message, user_cache: UserCache, config: Settings):
-    user_id = user_cache.get_user_id_in_db(message.from_user.id)
-    if not user_id:
-        return await message.answer("You are not allowed to use this bot")
-
-    sessions = await llm_service.get_sessions_by_user_id(user_id)
+async def get_chats_command(message: Message, user_db_id: int, config: Settings):
+    sessions = await llm_service.get_sessions_by_user_id(user_db_id)
     if not sessions:
         return await message.answer("You have no sessions")
     markup = sessions_keyboard.create_markup(sessions)
@@ -66,9 +63,7 @@ async def new_message_command(message: Message, state: FSMContext):
 
 
 @router.message(F.voice)
-async def voice_message_handler(
-    message: Message, state: FSMContext, user_cache: UserCache
-):
+async def voice_message_handler(message: Message, state: FSMContext):
     audio_file = message.voice
     if not audio_file:
         return await message.answer("Please send a voice message.")
@@ -83,9 +78,7 @@ async def voice_message_handler(
 
 
 @router.message(ChatMessage.message)
-async def user_message_handler(
-    message: Message, state: FSMContext, user_cache: UserCache
-):
+async def user_message_handler(message: Message, state: FSMContext, user_db_id: int):
     text = message.text
     if not text:
         return await message.answer("Please send a text message.")
@@ -99,7 +92,7 @@ async def user_message_handler(
 
     response = await llm_service.process_prompt(
         prompt=text,
-        user_id=user_cache.get_user_id_in_db(message.from_user.id),
+        user_id=user_db_id,
         session_id=session_id,
     )
     if not response:

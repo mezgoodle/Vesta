@@ -8,5 +8,11 @@ class IsApprovedUserFilter(BaseFilter):
     def __init__(self):
         super().__init__()
 
-    async def __call__(self, message: Message, user_cache: UserCache) -> bool:
-        return user_cache.is_allowed(message.from_user.id)
+    async def __call__(
+        self, message: Message, user_cache: UserCache
+    ) -> bool | dict[str, int]:
+        if user_cache.is_allowed(message.from_user.id) and (
+            user_db_id := user_cache.get_user_id_in_db(message.from_user.id)
+        ):
+            return {"user_db_id": user_db_id}
+        return False
