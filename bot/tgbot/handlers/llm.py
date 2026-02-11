@@ -1,4 +1,4 @@
-from aiogram import Router
+from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -9,6 +9,7 @@ from tgbot.config import Settings
 from tgbot.infrastructure.llm_service import llm_service
 from tgbot.keyboards.inline import sessions_keyboard
 from tgbot.keyboards.inline.callbacks.sessions import SessionCallbackFactory
+from tgbot.services.stt import GoogleSTTService
 from tgbot.services.user_cache import UserCache
 from tgbot.states.states import ChatMessage
 
@@ -62,6 +63,23 @@ async def new_message_command(message: Message, state: FSMContext):
             "You will start a new session. If you want to continue the conversation, type /chats."
         )
     await state.set_state(ChatMessage.message)
+
+
+@router.message(F.voice)
+async def voice_message_handler(
+    message: Message, state: FSMContext, user_cache: UserCache
+):
+    audio_file = message.voice
+    if not audio_file:
+        return await message.answer("Please send a voice message.")
+    audio_bytes = await message.bot.download(audio_file)
+    stt_service = GoogleSTTService()
+    text = await stt_service.recognize(audio_bytes.getvalue())
+    if not text:
+        return await message.answer(
+            "Could not recognize speech from the voice message."
+        )
+    return await message.answer(text)
 
 
 @router.message(ChatMessage.message)
