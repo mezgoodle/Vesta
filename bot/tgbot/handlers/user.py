@@ -4,6 +4,7 @@ from aiogram.types import Message
 from aiogram.utils.markdown import hlink
 from loader import dp
 
+from tgbot.filters.approved_user import IsApprovedUserFilter
 from tgbot.infrastructure.user_service import user_service
 from tgbot.services.user_cache import UserCache
 
@@ -21,3 +22,9 @@ async def google_auth(message: Message, user_cache: UserCache) -> Message:
             f"Please visit the {hlink('URL', url)} to authorize access to your Google Calendar"
         )
     return
+
+
+@router.message(Command("enable_daily_summary"), IsApprovedUserFilter())
+async def enable_daily_summary(message: Message, user_db_id: int) -> Message:
+    _, response_text = await user_service.enable_daily_summary(user_db_id)
+    return message.reply(response_text)

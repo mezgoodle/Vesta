@@ -56,7 +56,7 @@ async def read_user(
     return user
 
 
-@router.put("/{user_id}", response_model=User)
+@router.patch("/{user_id}", response_model=User)
 async def update_user(
     *,
     db: deps.SessionDep,

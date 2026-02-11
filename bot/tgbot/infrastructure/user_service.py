@@ -27,6 +27,21 @@ class UserService(BaseAPIService):
         else:
             return []
 
+    async def enable_daily_summary(self, user_id: int) -> tuple[dict | None, str]:
+        """
+        Enable daily summary for user.
+        """
+        endpoint = f"/api/v1/users/{user_id}"
+
+        status, data = await self._patch(endpoint, {"is_daily_summary_enabled": True})
+
+        if status == 200:
+            return data, "✅ Daily summary enabled."
+        else:
+            return None, self._handle_error_response(
+                status, data, f"enabling daily summary for user '{user_id}'"
+            )
+
     async def update_user_approval(
         self,
         user_id: int,
