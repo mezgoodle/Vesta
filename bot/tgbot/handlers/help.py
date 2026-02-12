@@ -27,6 +27,7 @@ async def help_command(message: Message) -> Message:
     - To get news, type /news {hitalic("category")}
 
     {hbold("Calendar:")}
-    - To get calendar, type /calendar
+    - To get today's events, type /today
+    - To get upcoming events, type /upcoming or /upcoming {hitalic("days")}
     """
     await message.reply(text)
