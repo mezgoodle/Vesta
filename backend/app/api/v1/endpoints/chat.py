@@ -7,6 +7,7 @@ from app.api.deps import CurrentUser, LLMServiceDep, SessionDep
 from app.crud.crud_chat import chat as crud_chat
 from app.crud.crud_session import chat_session as crud_session
 from app.crud.crud_user import user as crud_user
+from app.models.chat import ChatRole
 from app.schemas.chat import (
     ChatHistory,
     ChatHistoryCreate,
@@ -76,7 +77,7 @@ async def process_chat_message(
             obj_in=ChatHistoryCreate(
                 user_id=user.id,
                 session_id=current_session_id,
-                role="user",
+                role=ChatRole.USER,
                 content=chat_request.message,
             ),
         )
@@ -95,7 +96,7 @@ async def process_chat_message(
             obj_in=ChatHistoryCreate(
                 user_id=user.id,
                 session_id=current_session_id,
-                role="assistant",
+                role=ChatRole.MODEL,
                 content=assistant_response_text,
             ),
         )

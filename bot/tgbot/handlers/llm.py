@@ -43,6 +43,7 @@ async def session_select_handler(
         session_id=callback_data.session_id,
         session_title=callback_data.session_title,
     )
+    await state.set_state(ChatMessage.message)
     await callback.message.answer("Your session is selected.")
     await callback.answer()
 
@@ -63,7 +64,7 @@ async def new_message_command(message: Message, state: FSMContext):
 
 
 @router.message(F.voice)
-async def voice_message_handler(message: Message, state: FSMContext):
+async def voice_message_handler(message: Message, state: FSMContext, user_db_id: int):
     audio_file = message.voice
     if not audio_file:
         return await message.answer("Please send a voice message.")
@@ -74,7 +75,7 @@ async def voice_message_handler(message: Message, state: FSMContext):
         return await message.answer(
             "Could not recognize speech from the voice message."
         )
-    return await message.answer(text)
+    return await _process_llm_request(message, state, user_db_id, text)
 
 
 @router.message(ChatMessage.message)
@@ -82,13 +83,18 @@ async def user_message_handler(message: Message, state: FSMContext, user_db_id: 
     text = message.text
     if not text:
         return await message.answer("Please send a text message.")
+    return await _process_llm_request(message, state, user_db_id, text)
 
+
+async def _process_llm_request(
+    message: Message, state: FSMContext, user_db_id: int, text: str
+):
     await state.update_data(message=text)
     data = await state.get_data()
     session_id = data.get("session_id")
     session_title = data.get("session_title")
 
-    _ = await message.bot.send_chat_action(chat_id=message.chat.id, action="typing")
+    await message.bot.send_chat_action(chat_id=message.chat.id, action="typing")
 
     response = await llm_service.process_prompt(
         prompt=text,

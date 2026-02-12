@@ -1,6 +1,7 @@
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import Enum, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -9,11 +10,18 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
+class ChatRole(StrEnum):
+    USER = "user"
+    MODEL = "model"
+
+
 class ChatHistory(Base):
     __tablename__ = "chat_history"
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    role: Mapped[str] = mapped_column(String)
+    role: Mapped[ChatRole] = mapped_column(
+        Enum(ChatRole, values_callable=lambda obj: [e.value for e in obj])
+    )
     content: Mapped[str] = mapped_column(Text)
     session_id: Mapped[int] = mapped_column(ForeignKey("chat_session.id"))
 

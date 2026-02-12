@@ -1,8 +1,9 @@
+from app.models.chat import ChatRole
 from app.schemas.base import BaseSchema, BaseSchemaInDB
 
 
 class ChatHistoryBase(BaseSchema):
-    role: str
+    role: ChatRole
     content: str
     user_id: int
     session_id: int
