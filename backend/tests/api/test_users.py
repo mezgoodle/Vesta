@@ -16,7 +16,7 @@ async def test_create_user_api(client: AsyncClient, db_session: AsyncSession) ->
         "timezone": "UTC",
     }
     response = await client.post(f"{settings.API_V1_STR}/users/", json=user_data)
-    assert response.status_code == 200
+    assert response.status_code == 201
     content = response.json()
     assert content["telegram_id"] == user_data["telegram_id"]
     assert content["username"] == user_data["username"]
@@ -134,7 +134,7 @@ async def test_create_user_defaults_to_not_allowed(
         "timezone": "UTC",
     }
     response = await client.post(f"{settings.API_V1_STR}/users/", json=user_data)
-    assert response.status_code == 200
+    assert response.status_code == 201
     content = response.json()
     assert content["is_allowed"] is False
 
