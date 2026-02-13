@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 class NewsSubscription(Base):
     __tablename__ = "news_subscriptions"
 
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     topic: Mapped[str] = mapped_column(String)
     schedule_time: Mapped[time] = mapped_column(Time)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
