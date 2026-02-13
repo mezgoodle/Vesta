@@ -69,16 +69,14 @@ class UserService(BaseAPIService):
                 "username": username,
                 "is_allowed": True,
             }
-            data, _ = await self.create_user(user_data)
-            if data:
+            created_data, create_msg = await self.create_user(user_data)
+            if created_data:
                 return (
-                    data,
+                    created_data,
                     f"✅ User '{user_id}' created. If you want to change permissions, text @sylvenis.",
                 )
             else:
-                return None, self._handle_error_response(
-                    status, data, f"creating user '{user_id}'"
-                )
+                return None, create_msg
         else:
             return None, self._handle_error_response(
                 status, data, f"updating user approval for {user_id}"

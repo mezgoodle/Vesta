@@ -38,7 +38,7 @@ class GoogleSTTService:
         self.config = RecognitionConfig(
             auto_decoding_config=AutoDetectDecodingConfig(),
             language_codes=["en-US", "uk-UA"],
-            model="long",
+            model="chirp_3",
         )
         self.logger.info("GoogleSTTService initialized successfully")
 
@@ -87,15 +87,18 @@ class GoogleSTTService:
             transcript = result.alternatives[0].transcript
             confidence = result.alternatives[0].confidence
 
-            self.logger.info(
+            self.logger.debug(
                 f"Speech recognized successfully (confidence: {confidence:.2f}): {transcript[:50]}..."
             )
 
             return transcript.strip()
 
         except GoogleAPIError as e:
-            self.logger.error(f"Google API error during speech recognition: {e}")
+            self.logger.error("Google API error during speech recognition", exc_info=e)
             return None
         except Exception as e:
-            self.logger.error(f"Unexpected error during speech recognition: {e}")
+            self.logger.error("Unexpected error during speech recognition", exc_info=e)
             return None
+
+
+stt_service = GoogleSTTService()

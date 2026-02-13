@@ -27,4 +27,4 @@ async def google_auth(message: Message, user_cache: UserCache) -> Message:
 @router.message(Command("enable_daily_summary"), IsApprovedUserFilter())
 async def enable_daily_summary(message: Message, user_db_id: int) -> Message:
     _, response_text = await user_service.enable_daily_summary(user_db_id)
-    return message.reply(response_text)
+    return await message.reply(response_text)

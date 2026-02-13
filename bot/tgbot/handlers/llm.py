@@ -10,7 +10,7 @@ from tgbot.filters.approved_user import IsApprovedUserFilter
 from tgbot.infrastructure.llm_service import llm_service
 from tgbot.keyboards.inline import sessions_keyboard
 from tgbot.keyboards.inline.callbacks.sessions import SessionCallbackFactory
-from tgbot.services.stt import GoogleSTTService
+from tgbot.services.stt import stt_service
 from tgbot.states.states import ChatMessage
 
 router = Router()
@@ -66,10 +66,7 @@ async def new_message_command(message: Message, state: FSMContext):
 @router.message(F.voice)
 async def voice_message_handler(message: Message, state: FSMContext, user_db_id: int):
     audio_file = message.voice
-    if not audio_file:
-        return await message.answer("Please send a voice message.")
     audio_bytes = await message.bot.download(audio_file)
-    stt_service = GoogleSTTService()
     text = await stt_service.recognize(audio_bytes.getvalue())
     if not text:
         return await message.answer(

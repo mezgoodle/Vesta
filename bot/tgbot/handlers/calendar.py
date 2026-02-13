@@ -11,11 +11,6 @@ router.message.filter(IsApprovedUserFilter())
 dp.include_router(router)
 
 
-@router.message(Command("calendar"))
-async def command_calendar_handler(message: Message) -> None:
-    return await message.answer("Calendar command!")
-
-
 @router.message(Command("today"))
 async def today_command(message: Message, user_db_id: int):
     events = await calendar_service.get_today_events(user_db_id)
@@ -36,5 +31,7 @@ async def upcoming_command(message: Message, user_db_id: int, command: CommandOb
             days = int(args[0])
         except ValueError:
             return await message.answer("Please provide a valid number of days.")
+        if days <= 0:
+            return await message.answer("Please provide a positive number of days.")
     events = await calendar_service.get_upcoming_events(user_db_id, days)
     return await message.answer(events)

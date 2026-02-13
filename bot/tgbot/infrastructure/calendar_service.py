@@ -7,11 +7,11 @@ from tgbot.infrastructure.base_service import BaseAPIService
 
 
 class CalendarService(BaseAPIService):
-    """Service for weather forecast operations."""
+    """Service for calendar operations."""
 
     def __init__(self, base_url: str | None = None, timeout: int = 10):
         """
-        Initialize the forecast service.
+        Initialize the calendar service.
 
         Args:
             base_url: Base URL of the backend API. If not provided, uses config.
@@ -19,33 +19,7 @@ class CalendarService(BaseAPIService):
         """
         super().__init__(base_url, timeout)
 
-    async def get_forecast(self, city_name: str, days: int = 7) -> str:
-        """
-        Fetch weather forecast for a city.
-
-        Args:
-            city_name: Name of the city to get forecast for.
-            days: Number of days to forecast (default: 7).
-
-        Returns:
-            Formatted forecast information as a string.
-        """
-        endpoint = "/api/v1/weather/forecast"
-        params = {"city": city_name, "days": days}
-
-        status, data = await self._get(endpoint, params)
-
-        # Handle different response scenarios
-        if status == 200:
-            return self._format_forecast_data(data, city_name, days)
-        elif status == 404:
-            return f"❌ City '{city_name}' not found. Please check the spelling."
-        else:
-            return self._handle_error_response(
-                status, data, f"fetching forecast for {city_name}"
-            )
-
-    async def get_today_events(self, user_id: str) -> str:
+    async def get_today_events(self, user_id: int) -> str:
         """
         Fetch today's calendar events.
 
@@ -68,7 +42,7 @@ class CalendarService(BaseAPIService):
         else:
             return self._handle_error_response(status, data, "fetching today's events")
 
-    async def get_upcoming_events(self, user_id: str, days: int = 7) -> str:
+    async def get_upcoming_events(self, user_id: int, days: int = 7) -> str:
         """
         Fetch upcoming calendar events.
 
@@ -88,7 +62,7 @@ class CalendarService(BaseAPIService):
         if status == 200:
             return self._format_calendar_data(data, "Upcoming Events")
         elif status == 404:
-            return "❌ No events found for today."
+            return "❌ No upcoming events found."
         else:
             return self._handle_error_response(status, data, "fetching upcoming events")
 
@@ -181,5 +155,4 @@ class CalendarService(BaseAPIService):
             return "❌ Error formatting calendar events."
 
 
-# Create a singleton instance
 calendar_service = CalendarService()

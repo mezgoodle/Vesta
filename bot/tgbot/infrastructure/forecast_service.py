@@ -83,5 +83,4 @@ class ForecastService(BaseAPIService):
             return "❌ Error formatting forecast data. Please try again."
 
 
-# Create a singleton instance
 forecast_service = ForecastService()
