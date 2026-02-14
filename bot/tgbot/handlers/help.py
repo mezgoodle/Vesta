@@ -1,11 +1,33 @@
+from aiogram import Router
+from aiogram.filters import Command
 from aiogram.types import Message
-from aiogram.dispatcher.filters import CommandHelp
-
+from aiogram.utils.markdown import hbold, hitalic
 from loader import dp
-from tgbot.keyboards.inline.help_keyboard import create_markup
+
+router = Router()
+dp.include_router(router)
 
 
-@dp.message_handler(CommandHelp(), state="*")
+@router.message(Command("help"))
 async def help_command(message: Message) -> Message:
-    markup = create_markup()
-    await message.reply(f"Hello, {message.from_user.username}!", reply_markup=markup)
+    text = f"""
+    Hello, {hbold(message.from_user.username)}!
+    If you are new here, you can start by typing /start or /help.
+    Also you need to be approved by admin({hbold("@sylvenis")}) to use this bot.
+
+    {hbold("Conversation with AI:")}
+    - To start conversation, type /new
+    - To get list of conversations, type /chats
+    - To reset the current conversation, type /reset
+
+    {hbold("Weather:")}
+    - To get weather in a city, type /weather {hitalic("city")}
+
+    {hbold("News:")}
+    - To get news, type /news {hitalic("category")}
+
+    {hbold("Calendar:")}
+    - To get today's events, type /today
+    - To get upcoming events, type /upcoming or /upcoming {hitalic("days")}
+    """
+    await message.reply(text)

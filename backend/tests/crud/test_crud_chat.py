@@ -5,6 +5,7 @@ from app.crud.crud_chat import chat as crud_chat
 from app.crud.crud_session import chat_session as crud_session
 from app.crud.crud_user import user as crud_user
 from app.schemas.chat import ChatHistoryCreate, ChatSessionCreate
+from app.schemas.enums import ChatRole
 from app.schemas.user import UserCreate
 
 
@@ -32,7 +33,7 @@ async def test_get_chat_history_by_user_id(db_session: AsyncSession) -> None:
     user = await crud_user.create(db_session, obj_in=user_in)
 
     chat_in = ChatHistoryCreate(
-        user_id=user.id, role="assistant", content="Response message", session_id=1
+        user_id=user.id, role=ChatRole.MODEL, content="Response message", session_id=1
     )
     await crud_chat.create(db_session, obj_in=chat_in)
 
@@ -52,12 +53,12 @@ async def test_get_recent_by_user_id(db_session: AsyncSession) -> None:
 
     # Create multiple messages
     messages = [
-        ("user", "First message"),
-        ("assistant", "First response"),
-        ("user", "Second message"),
-        ("assistant", "Second response"),
-        ("user", "Third message"),
-        ("assistant", "Third response"),
+        (ChatRole.USER, "First message"),
+        (ChatRole.MODEL, "First response"),
+        (ChatRole.USER, "Second message"),
+        (ChatRole.MODEL, "Second response"),
+        (ChatRole.USER, "Third message"),
+        (ChatRole.MODEL, "Third response"),
     ]
 
     for role, content in messages:
@@ -138,12 +139,12 @@ async def test_get_recent_by_session_id(db_session: AsyncSession) -> None:
 
     # Create multiple messages
     messages = [
-        ("user", "First message"),
-        ("assistant", "First response"),
-        ("user", "Second message"),
-        ("assistant", "Second response"),
-        ("user", "Third message"),
-        ("assistant", "Third response"),
+        (ChatRole.USER, "First message"),
+        (ChatRole.MODEL, "First response"),
+        (ChatRole.USER, "Second message"),
+        (ChatRole.MODEL, "Second response"),
+        (ChatRole.USER, "Third message"),
+        (ChatRole.MODEL, "Third response"),
     ]
 
     for role, content in messages:

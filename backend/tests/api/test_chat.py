@@ -9,6 +9,7 @@ from app.crud.crud_chat import chat as crud_chat
 from app.crud.crud_session import chat_session as crud_session
 from app.crud.crud_user import user as crud_user
 from app.schemas.chat import ChatHistoryCreate, ChatSessionCreate
+from app.schemas.enums import ChatRole
 from app.schemas.user import UserCreate
 
 
@@ -140,7 +141,7 @@ async def test_process_chat_message_success(
     assert user_msg.session_id == content["session_id"]
 
     # Verify assistant message
-    assistant_msg = next(msg for msg in user_messages if msg.role == "assistant")
+    assistant_msg = next(msg for msg in user_messages if msg.role == "model")
     assert assistant_msg.content == "This is a mocked AI response"
     assert assistant_msg.user_id == user.id
     assert assistant_msg.session_id == content["session_id"]
@@ -226,10 +227,10 @@ async def test_process_chat_message_with_history(
 
     # Create existing conversation history
     history_messages = [
-        ("user", "First question"),
-        ("assistant", "First answer"),
-        ("user", "Second question"),
-        ("assistant", "Second answer"),
+        (ChatRole.USER, "First question"),
+        (ChatRole.MODEL, "First answer"),
+        (ChatRole.USER, "Second question"),
+        (ChatRole.MODEL, "Second answer"),
     ]
 
     for role, content in history_messages:
@@ -268,11 +269,11 @@ async def test_process_chat_message_with_history(
 
     # Verify history is in correct order (oldest to newest)
     assert history_records[0].content == "First question"
-    assert history_records[0].role == "user"
+    assert history_records[0].role == ChatRole.USER
     assert history_records[1].content == "First answer"
-    assert history_records[1].role == "assistant"
+    assert history_records[1].role == ChatRole.MODEL
     assert history_records[-1].content == "Second answer"
-    assert history_records[-1].role == "assistant"
+    assert history_records[-1].role == ChatRole.MODEL
 
     # Verify total messages in database (4 old + 1 user + 1 assistant = 6)
     all_messages = await crud_chat.get_by_user_id(db_session, user_id=user.id)

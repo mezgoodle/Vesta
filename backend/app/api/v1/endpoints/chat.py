@@ -15,6 +15,7 @@ from app.schemas.chat import (
     ChatSession,
     ChatSessionCreate,
 )
+from app.schemas.enums import ChatRole
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -76,7 +77,7 @@ async def process_chat_message(
             obj_in=ChatHistoryCreate(
                 user_id=user.id,
                 session_id=current_session_id,
-                role="user",
+                role=ChatRole.USER,
                 content=chat_request.message,
             ),
         )
@@ -95,7 +96,7 @@ async def process_chat_message(
             obj_in=ChatHistoryCreate(
                 user_id=user.id,
                 session_id=current_session_id,
-                role="assistant",
+                role=ChatRole.MODEL,
                 content=assistant_response_text,
             ),
         )

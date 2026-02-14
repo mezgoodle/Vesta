@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status
 
 from app.api import deps
 from app.crud.crud_user import user as crud_user
@@ -22,7 +22,7 @@ async def read_users(
     return users
 
 
-@router.post("/", response_model=User)
+@router.post("/", response_model=User, status_code=status.HTTP_201_CREATED)
 async def create_user(
     *,
     db: deps.SessionDep,
@@ -56,7 +56,7 @@ async def read_user(
     return user
 
 
-@router.put("/{user_id}", response_model=User)
+@router.patch("/{user_id}", response_model=User)
 async def update_user(
     *,
     db: deps.SessionDep,

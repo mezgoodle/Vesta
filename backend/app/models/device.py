@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 class SmartDevice(Base):
     __tablename__ = "smart_devices"
 
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     name: Mapped[str] = mapped_column(String)
     entity_id: Mapped[str] = mapped_column(String)
     device_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)

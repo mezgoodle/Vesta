@@ -8,8 +8,10 @@ class Settings(BaseSettings):
     backend_base_url: str = "http://localhost:8000"
     backend_api_key: SecretStr
 
-    # Logging
-    DEBUG: bool = False
+    DEBUG: bool = True
+
+    # Google Cloud
+    GCP_PROJECT_ID: str = ""
     GCP_LOG_NAME: str = "vesta-bot"
     GOOGLE_APPLICATION_CREDENTIALS: str = ""
 

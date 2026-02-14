@@ -1,1 +1,1 @@
-from . import admin, food, weather, llm, echo  # noqa
+from . import admin, food, weather, llm, user, help, calendar, echo  # noqa

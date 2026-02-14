@@ -1,15 +1,30 @@
-from aiogram.dispatcher.filters import CommandStart
+from aiogram import Router
+from aiogram.filters import Command
 from aiogram.types import Message
-
+from aiogram.utils.markdown import hlink
 from loader import dp
-from tgbot.keyboards.reply.state_keyboard import create_markup
-from tgbot.states.states import Example
-from tgbot.middlewares.throttling import rate_limit
+
+from tgbot.filters.approved_user import IsApprovedUserFilter
+from tgbot.infrastructure.user_service import user_service
+from tgbot.services.user_cache import UserCache
+
+router = Router()
+dp.include_router(router)
 
 
-@dp.message_handler(CommandStart(), state="*")
-@rate_limit(5, "start")
-async def user_command(message: Message) -> Message:
-    await Example.first()
-    markup = create_markup()
-    await message.reply("Hello, user!", reply_markup=markup)
+@router.message(Command("google_auth"))
+async def google_auth(message: Message, user_cache: UserCache) -> Message:
+    data, _ = await user_service.start_google_auth(
+        user_cache.get_user_id_in_db(message.from_user.id)
+    )
+    if data and (url := data.get("authorization_url")):
+        await message.reply(
+            f"Please visit the {hlink('URL', url)} to authorize access to your Google Calendar"
+        )
+    return
+
+
+@router.message(Command("enable_daily_summary"), IsApprovedUserFilter())
+async def enable_daily_summary(message: Message, user_db_id: int) -> Message:
+    _, response_text = await user_service.enable_daily_summary(user_db_id)
+    return await message.reply(response_text)

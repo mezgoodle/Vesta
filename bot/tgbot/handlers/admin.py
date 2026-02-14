@@ -25,7 +25,10 @@ async def approve_handler(
     user_cache: UserCache,
 ) -> None:
     success, result = await user_service.update_user_approval(
-        callback_data.user_id, {"is_allowed": True}
+        user_id=callback_data.user_id,
+        permissions={"is_allowed": True},
+        full_name=callback_data.full_name,
+        username=callback_data.username,
     )
     if success:
         user_cache.add(success["id"], callback_data.user_id)
