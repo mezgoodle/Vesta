@@ -63,7 +63,7 @@ async def new_message_command(message: Message, state: FSMContext):
     await state.set_state(ChatMessage.message)
 
 
-@router.message(F.voice)
+@router.message(ChatMessage.message, F.voice)
 async def voice_message_handler(message: Message, state: FSMContext, user_db_id: int):
     audio_file = message.voice
     audio_bytes = await message.bot.download(audio_file)

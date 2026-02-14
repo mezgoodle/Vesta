@@ -150,8 +150,8 @@ class CalendarService(BaseAPIService):
             # Combine all parts
             return header + "\n".join(event_messages)
 
-        except Exception as e:
-            self.logger.error(f"Error formatting calendar data: {e}")
+        except Exception:
+            self.logger.error("Error formatting calendar data", exc_info=True)
             return "❌ Error formatting calendar events."
 
 
