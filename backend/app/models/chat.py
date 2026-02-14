@@ -1,18 +1,13 @@
-from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Enum, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.schemas.enums import ChatRole
 
 if TYPE_CHECKING:
     from app.models.user import User
-
-
-class ChatRole(StrEnum):
-    USER = "user"
-    MODEL = "model"
 
 
 class ChatHistory(Base):

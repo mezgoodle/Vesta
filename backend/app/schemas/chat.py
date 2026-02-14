@@ -1,5 +1,5 @@
-from app.models.chat import ChatRole
 from app.schemas.base import BaseSchema, BaseSchemaInDB
+from app.schemas.enums import ChatRole
 
 
 class ChatHistoryBase(BaseSchema):
