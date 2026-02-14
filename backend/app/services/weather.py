@@ -7,37 +7,28 @@ from app.schemas.weather import WeatherData
 
 class WeatherService:
     """
-
     Service for fetching weather data from OpenWeatherMap API.
 
     Docs: https://openweathermap.org/api
     """
 
     def __init__(self):
+        """Initialize the Weather Service client."""
         self.api_key = settings.OPENWEATHER_API_KEY
-
         self.base_url = "https://api.openweathermap.org/data/2.5/weather"
-
         self.client = httpx.AsyncClient(timeout=30.0)
 
     async def get_current_weather_by_city_name(self, city: str) -> WeatherData:
         """
-
         Fetch current weather data for a given city.
 
-
         Args:
-
             city: Name of the city to fetch weather for
 
-
         Returns:
-
             WeatherData: Standardized weather information
 
-
         Raises:
-
             HTTPException: If city not found, API error, or unexpected error occurs
         """
         if not city or not city.strip():
@@ -104,6 +95,7 @@ class WeatherService:
             )
 
     async def close(self):
+        """Close the HTTP client session."""
         await self.client.aclose()
 
 
