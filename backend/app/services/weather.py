@@ -27,17 +27,14 @@ class WeatherService:
 
 
         Args:
-
             city: Name of the city to fetch weather for
 
 
         Returns:
-
             WeatherData: Standardized weather information
 
 
         Raises:
-
             HTTPException: If city not found, API error, or unexpected error occurs
         """
         if not city or not city.strip():
@@ -107,9 +104,8 @@ class WeatherService:
         await self.client.aclose()
 
 
-async def weather_service():
-    service = WeatherService()
-    try:
-        yield service
-    finally:
-        await service.close()
+weather_service_instance = WeatherService()
+
+
+def weather_service() -> WeatherService:
+    return weather_service_instance

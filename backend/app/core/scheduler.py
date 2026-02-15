@@ -7,8 +7,10 @@ from sqlalchemy import select
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 from app.models.user import User
+from app.schemas.weather import WeatherData
 from app.services.google_calendar import google_calendar_service_instance
 from app.services.llm import LLMService
+from app.services.weather import weather_service_instance
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +22,6 @@ async def send_daily_digests():
     service = LLMService()
 
     async with AsyncSessionLocal() as db:
-        # 1. Знаходимо юзерів, які хочуть дайджест і мають токен
         stmt = select(User).where(
             User.is_daily_summary_enabled,
             User.google_refresh_token.isnot(None),
@@ -31,36 +32,34 @@ async def send_daily_digests():
 
         for user in users:
             try:
-                # 2. Отримуємо події
                 events = await google_calendar_service_instance.get_today_events(
                     user.id, db
                 )
+                weather: WeatherData = (
+                    await weather_service_instance.get_current_weather_by_city_name(
+                        user.city_name or "Kyiv"
+                    )
+                )
 
                 if not events:
-                    # Якщо подій немає - можна пропустити або побажати гарного дня
                     continue
 
-                # 3. Формуємо текст для LLM
-                # Перетворюємо об'єкти CalendarEvent у зрозумілий текст
                 events_text = "\n".join(
                     [
                         f"- {e.start_time.strftime('%H:%M') if e.start_time else 'All day'}: {e.summary}"
                         for e in events
                     ]
                 )
+                weather_text = f"Погода в місті {user.city_name}: {weather.temperature}°C, {weather.description}"
 
                 prompt = (
                     f"Ось мій розклад на сьогодні:\n{events_text}\n\n"
+                    f"{weather_text}\n\n"
                     "Напиши мені коротке, позитивне ранкове привітання та підсумок мого дня. "
                     "Використовуй емодзі. Звертайся до мене на ім'я (якщо знаєш) або просто друже."
                 )
 
-                # 4. Генеруємо текст через Gemini
-                # (Тут важливо: ми не передаємо історію чату, це окремий запит)
-
                 digest_text = await service.chat(prompt, [])
-
-                # 5. Відправляємо в Телеграм (прямий запит)
                 async with httpx.AsyncClient(timeout=30.0) as client:
                     response = await client.post(
                         f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage",
