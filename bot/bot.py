@@ -32,7 +32,7 @@ def register_global_middlewares(dp: Dispatcher, config: Settings):
         LoggingMiddleware(),
         ConfigMiddleware(config),
         ThrottlingMiddleware(),
-        ACLMiddleware(),
+        # ACLMiddleware(),
     ]
 
     for middleware in middlewares:

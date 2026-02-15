@@ -7,9 +7,20 @@ from loader import dp
 from tgbot.filters.approved_user import IsApprovedUserFilter
 from tgbot.infrastructure.user_service import user_service
 from tgbot.services.user_cache import UserCache
+from tgbot.services.utils import format_user_data
 
 router = Router()
 dp.include_router(router)
+
+
+@router.message(Command("info"))
+async def user_info(message: Message) -> Message:
+    user = await user_service.get_user_by_telegram_id(message.from_user.id)
+    if user:
+        await message.reply(format_user_data(user))
+    else:
+        await message.reply("You are not registered yet.")
+    return
 
 
 @router.message(Command("google_auth"))
