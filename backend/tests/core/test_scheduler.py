@@ -1,9 +1,11 @@
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from app.models.user import User
 import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from app.core.scheduler import send_daily_digests
+from app.models.user import User
+
 
 @pytest.fixture
 def mock_db_session():
@@ -15,6 +17,7 @@ def mock_db_session():
         mock_session_cls.return_value.__aexit__.return_value = None
         yield mock_session
 
+
 @pytest.fixture
 def mock_llm_service():
     with patch("app.core.scheduler.LLMService") as mock_llm_cls:
@@ -22,10 +25,12 @@ def mock_llm_service():
         mock_llm_cls.return_value = mock_service
         yield mock_service
 
+
 @pytest.fixture
 def mock_calendar_service():
     with patch("app.core.scheduler.google_calendar_service_instance") as mock_service:
         yield mock_service
+
 
 @pytest.fixture
 def mock_httpx_client():
@@ -35,6 +40,7 @@ def mock_httpx_client():
         mock_client.__aenter__.return_value = mock_client
         mock_client.__aexit__.return_value = None
         yield mock_client
+
 
 @pytest.mark.asyncio
 async def test_send_daily_digests_success(
@@ -54,7 +60,6 @@ async def test_send_daily_digests_success(
     event = MagicMock()
     event.start_time = datetime.time(9, 0)
     event.summary = "Standup"
-    mock_calendar_service.get_today_events.return_value = [event]
     # Make get_today_events awaitable
     mock_calendar_service.get_today_events = AsyncMock(return_value=[event])
 
@@ -72,7 +77,9 @@ async def test_send_daily_digests_success(
     mock_db_session.execute.assert_called_once()
 
     # Verify calendar call
-    mock_calendar_service.get_today_events.assert_called_once_with(user.id, mock_db_session)
+    mock_calendar_service.get_today_events.assert_called_once_with(
+        user.id, mock_db_session
+    )
 
     # Verify LLM call
     mock_llm_service.chat.assert_called_once()
@@ -84,6 +91,7 @@ async def test_send_daily_digests_success(
     kwargs = mock_httpx_client.post.call_args.kwargs
     assert kwargs["data"]["chat_id"] == 12345
     assert kwargs["data"]["text"] == "Good morning! You have a Standup at 09:00."
+
 
 @pytest.mark.asyncio
 async def test_send_daily_digests_no_users(
@@ -98,6 +106,7 @@ async def test_send_daily_digests_no_users(
 
     mock_calendar_service.get_today_events.assert_not_called()
     mock_llm_service.chat.assert_not_called()
+
 
 @pytest.mark.asyncio
 async def test_send_daily_digests_no_events(
@@ -117,6 +126,7 @@ async def test_send_daily_digests_no_events(
 
     mock_llm_service.chat.assert_not_called()
 
+
 @pytest.mark.asyncio
 async def test_send_daily_digests_exception_handling(
     mock_db_session, mock_llm_service, mock_calendar_service, mock_httpx_client
@@ -129,7 +139,9 @@ async def test_send_daily_digests_exception_handling(
     mock_db_session.execute.return_value = mock_result
 
     # Simulate exception in calendar service
-    mock_calendar_service.get_today_events = AsyncMock(side_effect=Exception("Calendar Error"))
+    mock_calendar_service.get_today_events = AsyncMock(
+        side_effect=Exception("Calendar Error")
+    )
 
     # Should not raise exception but log it
     await send_daily_digests()

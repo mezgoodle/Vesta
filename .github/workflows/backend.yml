@@ -36,23 +36,25 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install ruff
+          pip install pytest-cov
 
       - name: Run ruff linting
         run: ruff check .
 
       - name: Run tests with coverage
         run: |
-          pytest --cov=app --cov-report=term --cov-report=xml --cov-report=html
+          pytest --cov=app --cov-report=xml --cov-report=term
         env:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_REDIRECT_URI: ${{ secrets.GOOGLE_REDIRECT_URI }}
 
-      # - name: Upload coverage reports
-      #   uses: codecov/codecov-action@v4
-      #   if: always()
-      #   with:
-      #     file: ./backend/coverage.xml
-      #     flags: backend
-      #     name: backend-coverage
-      #   continue-on-error: true
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v5
+        if: always()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./backend/coverage.xml
+          flags: backend
+          name: backend-coverage
+          fail_on_error: true
