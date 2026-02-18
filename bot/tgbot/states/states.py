@@ -10,3 +10,9 @@ class ChatMessage(StatesGroup):
     session_id = State()
     session_title = State()
     message = State()
+
+
+class UserUpdateInfo(StatesGroup):
+    password = State()
+    email = State()
+    city_name = State()
