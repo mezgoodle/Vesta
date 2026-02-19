@@ -7,7 +7,6 @@ from loader import bot, dp
 from tgbot.config import Settings, config
 from tgbot.infrastructure.logger import setup_logging
 from tgbot.infrastructure.user_service import user_service
-from tgbot.middlewares.acl import ACLMiddleware
 from tgbot.middlewares.logging import LoggingMiddleware
 from tgbot.middlewares.settings import ConfigMiddleware
 from tgbot.middlewares.throttling import ThrottlingMiddleware
