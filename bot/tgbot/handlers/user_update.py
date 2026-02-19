@@ -20,7 +20,19 @@ async def edit_handler(
     state: FSMContext,
 ) -> Message:
     await state.set_state(UserUpdateInfo.email)
-    return await callback.message.answer("Please enter user's email")
+    return await callback.message.edit_text(
+        "Please enter user's email", reply_markup=None
+    )
+
+
+@router.callback_query(UserEditCallbackFactory.filter(~F.edit))
+async def cancel_edit_handler(
+    callback: CallbackQuery,
+    callback_data: UserEditCallbackFactory,
+    state: FSMContext,
+) -> Message:
+    await state.clear()
+    return await callback.message.edit_text("Edit cancelled", reply_markup=None)
 
 
 @router.message(UserUpdateInfo.email)
