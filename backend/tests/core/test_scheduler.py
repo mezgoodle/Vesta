@@ -5,6 +5,7 @@ import pytest
 
 from app.core.scheduler import send_daily_digests
 from app.models.user import User
+from app.schemas.weather import WeatherData
 
 
 @pytest.fixture
@@ -33,6 +34,12 @@ def mock_calendar_service():
 
 
 @pytest.fixture
+def mock_weather_service():
+    with patch("app.core.scheduler.weather_service_instance") as mock_service:
+        yield mock_service
+
+
+@pytest.fixture
 def mock_httpx_client():
     with patch("app.core.scheduler.httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
@@ -44,12 +51,17 @@ def mock_httpx_client():
 
 @pytest.mark.asyncio
 async def test_send_daily_digests_success(
-    mock_db_session, mock_llm_service, mock_calendar_service, mock_httpx_client
+    mock_db_session,
+    mock_llm_service,
+    mock_calendar_service,
+    mock_weather_service,
+    mock_httpx_client,
 ):
     # Mock user
     user = MagicMock(spec=User)
     user.id = 1
     user.telegram_id = 12345
+    user.city_name = "Kyiv"
 
     # Mock DB query result
     mock_result = MagicMock()
@@ -62,6 +74,15 @@ async def test_send_daily_digests_success(
     event.summary = "Standup"
     # Make get_today_events awaitable
     mock_calendar_service.get_today_events = AsyncMock(return_value=[event])
+
+    # Mock weather
+    mock_weather = MagicMock(spec=WeatherData)
+    mock_weather.city = "Kyiv"
+    mock_weather.temp = 20
+    mock_weather.description = "Sunny"
+    mock_weather_service.get_current_weather_by_city_name = AsyncMock(
+        return_value=mock_weather
+    )
 
     # Mock LLM response
     mock_llm_service.chat.return_value = "Good morning! You have a Standup at 09:00."
