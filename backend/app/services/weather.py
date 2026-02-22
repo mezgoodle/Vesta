@@ -99,9 +99,8 @@ class WeatherService:
         await self.client.aclose()
 
 
-async def weather_service():
-    service = WeatherService()
-    try:
-        yield service
-    finally:
-        await service.close()
+weather_service_instance = WeatherService()
+
+
+def weather_service() -> WeatherService:
+    return weather_service_instance

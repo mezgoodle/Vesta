@@ -288,7 +288,12 @@ class LLMService:
         dynamic_system_instruction = (
             f"{settings.SYSTEM_INSTRUCTION}\n"
             f"Current Date and Time: {current_time_str}.\n"
-            f"User's Location: Ukraine (default for weather)."
+            f"User's Location: Ukraine (default for weather).\n"
+            f"--- TOOL GUIDELINES ---\n"
+            f"1. Proactivity: If the user asks about 'today' or 'my day', proactively call BOTH `get_calendar_events(days=1)` and `get_current_weather` to provide a complete summary.\n"
+            f"2. Weather Constraints: You can only fetch CURRENT weather. If the user asks for a forecast for a future date, inform them that you currently only have access to real-time weather data.\n"
+            f"3. Scheduling: When using `schedule_event_tool`, always use the 'Current Date' above as a reference to calculate relative dates like 'tomorrow' or 'next Friday'.\n"
+            f"4. Clarity: If the user's request is ambiguous (e.g., 'What's the weather?'), assume their current location (Ukraine) unless specified otherwise."
         )
 
         return types.GenerateContentConfig(

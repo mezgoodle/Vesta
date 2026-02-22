@@ -15,6 +15,9 @@ async def help_command(message: Message) -> Message:
     If you are new here, you can start by typing /start or /help.
     Also you need to be approved by admin({hbold("@sylvenis")}) to use this bot.
 
+    {hbold("User info:")}
+    - To get your info, type /info
+
     {hbold("Conversation with AI:")}
     - To start conversation, type /new
     - To get list of conversations, type /chats

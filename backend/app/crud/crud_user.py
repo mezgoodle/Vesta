@@ -1,3 +1,5 @@
+from typing import Any
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,6 +40,21 @@ class CRUDUser(CRUDBase[User, UserCreate, UserUpdate]):
         if not verify_password(password, user.hashed_password):
             return None
         return user
+
+    async def update(
+        self, db: AsyncSession, *, db_obj: User, obj_in: UserUpdate | dict[str, Any]
+    ) -> User:
+        if isinstance(obj_in, dict):
+            update_data = obj_in
+        else:
+            update_data = obj_in.model_dump(exclude_unset=True)
+
+        if "password" in update_data and update_data["password"]:
+            hashed_password = get_password_hash(update_data["password"])
+            del update_data["password"]
+            update_data["hashed_password"] = hashed_password
+
+        return await super().update(db, db_obj=db_obj, obj_in=update_data)
 
     async def create(self, db: AsyncSession, *, obj_in: UserCreate) -> User:
         """Create a new user with hashed password."""

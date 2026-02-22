@@ -131,5 +131,42 @@ class UserService(BaseAPIService):
                 status, data, f"starting google authentication for user '{user_id}'"
             )
 
+    async def update_user(
+        self,
+        user_id: int,
+        email: str | None = None,
+        password: str | None = None,
+        city_name: str | None = None,
+    ) -> tuple[dict | None, str]:
+        """
+        Update user information.
+
+        Args:
+            user_id: ID of the user to update.
+            email: Email of the user.
+            password: Password of the user.
+            city_name: City name of the user.
+        """
+        endpoint = f"/api/v1/users/{user_id}"
+
+        payload = {
+            k: v
+            for k, v in {
+                "email": email,
+                "password": password,
+                "city_name": city_name,
+            }.items()
+            if v is not None
+        }
+
+        status, data = await self._patch(endpoint, payload)
+
+        if status == 200:
+            return data, f"✅ User '{user_id}' updated."
+        else:
+            return None, self._handle_error_response(
+                status, data, f"updating user '{user_id}'"
+            )
+
 
 user_service = UserService()

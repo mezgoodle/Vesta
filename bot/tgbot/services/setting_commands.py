@@ -17,5 +17,6 @@ async def set_default_commands(bot: Bot) -> None:
         BotCommand(command="reset", description="Reset current session"),
         BotCommand(command="today", description="Show today's events"),
         BotCommand(command="upcoming", description="Show upcoming events"),
+        BotCommand(command="info", description="Show user info"),
     ]
     await bot.set_my_commands(commands=commands, scope=BotCommandScopeDefault())

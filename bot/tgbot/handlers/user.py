@@ -7,9 +7,20 @@ from loader import dp
 from tgbot.filters.approved_user import IsApprovedUserFilter
 from tgbot.infrastructure.user_service import user_service
 from tgbot.services.user_cache import UserCache
+from tgbot.services.utils import format_user_data
 
 router = Router()
 dp.include_router(router)
+
+
+@router.message(Command("info"))
+async def user_info(message: Message) -> Message:
+    user = await user_service.get_user_by_telegram_id(message.from_user.id)
+    return (
+        await message.reply(format_user_data(user))
+        if user
+        else await message.reply("You are not registered yet.")
+    )
 
 
 @router.message(Command("google_auth"))
@@ -21,7 +32,7 @@ async def google_auth(message: Message, user_cache: UserCache) -> Message:
         await message.reply(
             f"Please visit the {hlink('URL', url)} to authorize access to your Google Calendar"
         )
-    return
+    return await message.reply("Something went wrong")
 
 
 @router.message(Command("enable_daily_summary"), IsApprovedUserFilter())
