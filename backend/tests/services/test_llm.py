@@ -1,9 +1,12 @@
-import pytest
+import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
-from app.services.llm import LLMService
+
+import pytest
+
 from app.models.chat import ChatHistory
 from app.schemas.calendar import CalendarEventCreate
-import datetime
+from app.services.llm import LLMService
+
 
 @pytest.fixture
 def mock_genai_client():
@@ -16,6 +19,7 @@ def mock_genai_client():
         mock_client.aio.models.generate_content = AsyncMock()
         yield mock_client
 
+
 @pytest.fixture
 def mock_settings():
     with patch("app.services.llm.settings") as mock_settings:
@@ -24,9 +28,17 @@ def mock_settings():
         mock_settings.SYSTEM_INSTRUCTION = "Test Instruction"
         yield mock_settings
 
+
 @pytest.fixture
 def llm_service(mock_settings, mock_genai_client):
     return LLMService()
+
+
+def _extract_tool(mock_genai_client, tool_name):
+    kwargs = mock_genai_client.aio.models.generate_content.call_args.kwargs
+    tools = kwargs["config"].tools
+    return next(t for t in tools if t.__name__ == tool_name)
+
 
 @pytest.mark.asyncio
 async def test_chat_basic_flow(llm_service, mock_genai_client):
@@ -37,7 +49,10 @@ async def test_chat_basic_flow(llm_service, mock_genai_client):
     mock_genai_client.aio.models.generate_content.return_value = mock_response
 
     db_session = AsyncMock()
-    history = [ChatHistory(role="user", content="Hi"), ChatHistory(role="assistant", content="Hello")]
+    history = [
+        ChatHistory(role="user", content="Hi"),
+        ChatHistory(role="assistant", content="Hello"),
+    ]
 
     response = await llm_service.chat("How are you?", history, 123, db_session)
 
@@ -47,8 +62,9 @@ async def test_chat_basic_flow(llm_service, mock_genai_client):
     mock_genai_client.aio.models.generate_content.assert_called_once()
     kwargs = mock_genai_client.aio.models.generate_content.call_args.kwargs
     assert kwargs["model"] == "gemini-test"
-    assert len(kwargs["contents"]) == 3 # 2 history + 1 new message
+    assert len(kwargs["contents"]) == 3  # 2 history + 1 new message
     assert kwargs["contents"][-1].parts[0].text == "How are you?"
+
 
 @pytest.mark.asyncio
 async def test_chat_extract_and_run_weather_tool(llm_service, mock_genai_client):
@@ -59,12 +75,7 @@ async def test_chat_extract_and_run_weather_tool(llm_service, mock_genai_client)
     db_session = AsyncMock()
     await llm_service.chat("Weather in London", [], 123, db_session)
 
-    # Extract tools from config
-    kwargs = mock_genai_client.aio.models.generate_content.call_args.kwargs
-    tools = kwargs["config"].tools
-
-    # Find get_current_weather tool
-    weather_tool = next(t for t in tools if t.__name__ == "get_current_weather")
+    weather_tool = _extract_tool(mock_genai_client, "get_current_weather")
 
     # Mock WeatherService
     with patch("app.services.llm.WeatherService") as MockWeatherService:
@@ -77,7 +88,9 @@ async def test_chat_extract_and_run_weather_tool(llm_service, mock_genai_client)
         mock_weather_data.description = "Sunny"
         mock_weather_data.humidity = 50
         mock_weather_data.wind_speed = 10
-        mock_weather_service.get_current_weather_by_city_name.return_value = mock_weather_data
+        mock_weather_service.get_current_weather_by_city_name.return_value = (
+            mock_weather_data
+        )
 
         # Run the tool
         result = await weather_tool("London")
@@ -86,11 +99,16 @@ async def test_chat_extract_and_run_weather_tool(llm_service, mock_genai_client)
         assert "20°C" in result
         assert "Sunny" in result
 
-        mock_weather_service.get_current_weather_by_city_name.assert_called_with(city="London")
+        mock_weather_service.get_current_weather_by_city_name.assert_called_with(
+            city="London"
+        )
         mock_weather_service.close.assert_called_once()
 
+
 @pytest.mark.asyncio
-async def test_chat_extract_and_run_calendar_events_tool(llm_service, mock_genai_client):
+async def test_chat_extract_and_run_calendar_events_tool(
+    llm_service, mock_genai_client
+):
     mock_response = MagicMock()
     mock_response.text = "Calendar response"
     mock_genai_client.aio.models.generate_content.return_value = mock_response
@@ -98,9 +116,7 @@ async def test_chat_extract_and_run_calendar_events_tool(llm_service, mock_genai
     db_session = AsyncMock()
     await llm_service.chat("My events", [], 123, db_session)
 
-    kwargs = mock_genai_client.aio.models.generate_content.call_args.kwargs
-    tools = kwargs["config"].tools
-    calendar_tool = next(t for t in tools if t.__name__ == "get_calendar_events")
+    calendar_tool = _extract_tool(mock_genai_client, "get_calendar_events")
 
     with patch("app.services.llm.GoogleCalendarService") as MockCalendarService:
         mock_calendar_service = MockCalendarService.return_value
@@ -124,6 +140,7 @@ async def test_chat_extract_and_run_calendar_events_tool(llm_service, mock_genai
             user_id=123, db=db_session, days=7
         )
 
+
 @pytest.mark.asyncio
 async def test_chat_extract_and_run_schedule_event_tool(llm_service, mock_genai_client):
     mock_response = MagicMock()
@@ -133,9 +150,7 @@ async def test_chat_extract_and_run_schedule_event_tool(llm_service, mock_genai_
     db_session = AsyncMock()
     await llm_service.chat("Schedule event", [], 123, db_session)
 
-    kwargs = mock_genai_client.aio.models.generate_content.call_args.kwargs
-    tools = kwargs["config"].tools
-    schedule_tool = next(t for t in tools if t.__name__ == "schedule_event_tool")
+    schedule_tool = _extract_tool(mock_genai_client, "schedule_event_tool")
 
     with patch("app.services.llm.GoogleCalendarService") as MockCalendarService:
         mock_calendar_service = MockCalendarService.return_value
@@ -144,14 +159,14 @@ async def test_chat_extract_and_run_schedule_event_tool(llm_service, mock_genai_
         mock_calendar_service.create_event.return_value = {
             "html_link": "http://event.link",
             "start_time": datetime.datetime(2025, 1, 1, 10, 0),
-            "end_time": datetime.datetime(2025, 1, 1, 11, 0)
+            "end_time": datetime.datetime(2025, 1, 1, 11, 0),
         }
 
         result = await schedule_tool(
             summary="New Event",
             start_time_iso="2025-01-01T10:00:00",
             duration_minutes=60,
-            description="Notes"
+            description="Notes",
         )
 
         assert "successfully created" in result
@@ -164,6 +179,7 @@ async def test_chat_extract_and_run_schedule_event_tool(llm_service, mock_genai_
         assert isinstance(call_kwargs["event_data"], CalendarEventCreate)
         assert call_kwargs["event_data"].summary == "New Event"
 
+
 @pytest.mark.asyncio
 async def test_schedule_event_tool_invalid_date(llm_service, mock_genai_client):
     mock_response = MagicMock()
@@ -173,9 +189,7 @@ async def test_schedule_event_tool_invalid_date(llm_service, mock_genai_client):
     db_session = AsyncMock()
     await llm_service.chat("Schedule", [], 123, db_session)
 
-    kwargs = mock_genai_client.aio.models.generate_content.call_args.kwargs
-    tools = kwargs["config"].tools
-    schedule_tool = next(t for t in tools if t.__name__ == "schedule_event_tool")
+    schedule_tool = _extract_tool(mock_genai_client, "schedule_event_tool")
 
     result = await schedule_tool(summary="Test", start_time_iso="invalid-date")
     assert "Invalid datetime format" in result
