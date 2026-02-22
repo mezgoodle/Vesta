@@ -18,6 +18,7 @@ class GoogleCalendarService:
     """Service for interacting with Google Calendar API."""
 
     def __init__(self) -> None:
+        """Initialize the Google Calendar Service."""
         self.token_uri = "https://oauth2.googleapis.com/token"
         self.timezone = "Europe/Kiev"
 
@@ -28,6 +29,24 @@ class GoogleCalendarService:
         time_max: datetime,
         db: AsyncSession,
     ) -> list[dict[str, Any]]:
+        """
+        Fetch raw events from Google Calendar API within a time range.
+
+        Args:
+            user_id: The ID of the user
+            time_min: Start time of the range
+            time_max: End time of the range
+            db: Database session
+
+        Returns:
+            List of raw event dictionaries from Google Calendar API
+
+        Raises:
+            ValueError: If user not found or not authenticated
+            RefreshError: If token refresh fails
+            HttpError: If Google API call fails
+            Exception: For other errors
+        """
         user = await crud_user.get(db, id=user_id)
         if not user:
             raise ValueError(f"User with ID {user_id} not found")
@@ -78,6 +97,16 @@ class GoogleCalendarService:
     async def get_today_events(
         self, user_id: int, db: AsyncSession
     ) -> list["CalendarEvent"]:
+        """
+        Get calendar events for the current day.
+
+        Args:
+            user_id: The ID of the user
+            db: Database session
+
+        Returns:
+            List of formatted CalendarEvent objects
+        """
         now = datetime.utcnow()
         time_min = datetime.combine(now.date(), time.min)
         time_max = datetime.combine(now.date(), time.max)
@@ -87,6 +116,17 @@ class GoogleCalendarService:
     async def get_upcoming_events(
         self, user_id: int, db: AsyncSession, days: int = 7
     ) -> list["CalendarEvent"]:
+        """
+        Get upcoming calendar events for a specified number of days.
+
+        Args:
+            user_id: The ID of the user
+            db: Database session
+            days: Number of days to look ahead (default: 7)
+
+        Returns:
+            List of formatted CalendarEvent objects
+        """
         now = datetime.utcnow()
         time_min = now
         time_max = now + timedelta(days=days)
@@ -100,6 +140,21 @@ class GoogleCalendarService:
         end_date: datetime,
         db: AsyncSession,
     ) -> list["CalendarEvent"]:
+        """
+        Get calendar events within a specific date range.
+
+        Args:
+            user_id: The ID of the user
+            start_date: Start date of the range
+            end_date: End date of the range
+            db: Database session
+
+        Returns:
+            List of formatted CalendarEvent objects
+
+        Raises:
+            ValueError: If end_date is before start_date
+        """
         if end_date <= start_date:
             raise ValueError("end_date must be after start_date")
 
@@ -107,6 +162,19 @@ class GoogleCalendarService:
         return self._format_events(events)
 
     async def _get_calendar_service(self, user_id: int, db: AsyncSession):
+        """
+        Build and return an authenticated Google Calendar service.
+
+        Args:
+            user_id: The ID of the user
+            db: Database session
+
+        Returns:
+            Authenticated Google Calendar service resource
+
+        Raises:
+            ValueError: If user not found, not authenticated, or service creation fails
+        """
         user = await crud_user.get(db, id=user_id)
         if not user:
             raise ValueError(f"User with ID {user_id} not found")
@@ -136,6 +204,15 @@ class GoogleCalendarService:
             raise ValueError(f"Failed to build calendar service: {str(e)}") from e
 
     def _format_events(self, events: list[dict[str, Any]]) -> list["CalendarEvent"]:
+        """
+        Format raw Google Calendar events into CalendarEvent objects.
+
+        Args:
+            events: List of raw event dictionaries
+
+        Returns:
+            List of formatted CalendarEvent objects
+        """
         formatted_events = []
         for event in events:
             start = event.get("start", {})
@@ -173,6 +250,15 @@ class GoogleCalendarService:
         return formatted_events
 
     def _parse_datetime(self, dt_string: str | None) -> datetime | None:
+        """
+        Parse ISO 8601 datetime string.
+
+        Args:
+            dt_string: ISO 8601 datetime string or None
+
+        Returns:
+            Parsed datetime object or None if parsing fails
+        """
         if not dt_string:
             return None
 

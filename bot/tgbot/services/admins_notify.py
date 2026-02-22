@@ -7,6 +7,12 @@ from tgbot.config import config
 
 
 async def on_startup_notify(bot: Bot):
+    """
+    Notify admins about bot startup.
+
+    Args:
+        bot: The aiogram Bot instance
+    """
     logging.info("Start admins notification")
 
     admins = config.admins

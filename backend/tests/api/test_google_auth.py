@@ -27,10 +27,16 @@ async def test_google_login_success(
     user = await crud_user.create(db_session, obj_in=user_in)
 
     # Request authorization URL
-    response = await client.get(
-        f"{settings.API_V1_STR}/google-auth/login",
-        params={"user_id": user.id},
-    )
+    with patch("app.services.google_auth.settings") as mock_settings:
+        mock_settings.GOOGLE_CLIENT_ID = "mock_client_id"
+        mock_settings.GOOGLE_CLIENT_SECRET = "mock_client_secret"
+        mock_settings.GOOGLE_REDIRECT_URI = "http://localhost:8000/callback"
+        mock_settings.API_V1_STR = settings.API_V1_STR
+
+        response = await client.get(
+            f"{settings.API_V1_STR}/google-auth/login",
+            params={"user_id": user.id},
+        )
 
     assert response.status_code == 200
     content = response.json()

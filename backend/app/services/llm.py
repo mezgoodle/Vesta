@@ -19,7 +19,15 @@ logger = logging.getLogger(__name__)
 
 
 class LLMService:
+    """Service for interacting with Google Gemini LLM."""
+
     def __init__(self):
+        """
+        Initialize the LLM Service.
+
+        Raises:
+            ValueError: If GOOGLE_API_KEY or GOOGLE_MODEL_NAME is not set.
+        """
         if not settings.GOOGLE_API_KEY:
             raise ValueError("GOOGLE_API_KEY is not set")
         if not settings.GOOGLE_MODEL_NAME:

@@ -3,6 +3,12 @@ from aiogram.types import BotCommand, BotCommandScopeDefault
 
 
 async def set_default_commands(bot: Bot) -> None:
+    """
+    Set default bot commands for all users.
+
+    Args:
+        bot: The aiogram Bot instance
+    """
     commands = [
         BotCommand(command="start", description="Start the bot"),
         BotCommand(command="help", description="Show help"),
