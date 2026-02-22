@@ -32,17 +32,18 @@ async def send_daily_digests():
 
         for user in users:
             try:
-                events = await google_calendar_service_instance.get_today_events(
-                    user.id, db
-                )
+                if not (
+                    events := await google_calendar_service_instance.get_today_events(
+                        user.id, db
+                    )
+                ):
+                    continue
+
                 weather: WeatherData = (
                     await weather_service_instance.get_current_weather_by_city_name(
                         user.city_name or "Kyiv"
                     )
                 )
-
-                if not events:
-                    continue
 
                 events_text = "\n".join(
                     [
@@ -50,7 +51,7 @@ async def send_daily_digests():
                         for e in events
                     ]
                 )
-                weather_text = f"Погода в місті {user.city_name}: {weather.temperature}°C, {weather.description}"
+                weather_text = f"Погода в місті {weather.city}: {weather.temp}°C, {weather.description}"
 
                 prompt = (
                     f"Ось мій розклад на сьогодні:\n{events_text}\n\n"
@@ -59,7 +60,7 @@ async def send_daily_digests():
                     "Використовуй емодзі. Звертайся до мене на ім'я (якщо знаєш) або просто друже."
                 )
 
-                digest_text = await service.chat(prompt, [])
+                digest_text = await service.chat(prompt, [], user.id, db)
                 async with httpx.AsyncClient(timeout=30.0) as client:
                     response = await client.post(
                         f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage",

@@ -35,7 +35,7 @@ async def approve_handler(
     )
     if success:
         user_cache.add(success["id"], callback_data.user_id)
-        keyboard = edit_user_markup(callback_data.user_id)
+        keyboard = edit_user_markup()
         await state.update_data(user_id=success["id"])
         await callback.message.edit_text(result, reply_markup=keyboard)
         try:

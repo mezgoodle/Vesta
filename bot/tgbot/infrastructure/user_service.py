@@ -132,7 +132,11 @@ class UserService(BaseAPIService):
             )
 
     async def update_user(
-        self, user_id: int, email: str, password: str, city_name: str
+        self,
+        user_id: int,
+        email: str | None = None,
+        password: str | None = None,
+        city_name: str | None = None,
     ) -> tuple[dict | None, str]:
         """
         Update user information.
@@ -145,9 +149,17 @@ class UserService(BaseAPIService):
         """
         endpoint = f"/api/v1/users/{user_id}"
 
-        status, data = await self._patch(
-            endpoint, {"email": email, "password": password, "city_name": city_name}
-        )
+        payload = {
+            k: v
+            for k, v in {
+                "email": email,
+                "password": password,
+                "city_name": city_name,
+            }.items()
+            if v is not None
+        }
+
+        status, data = await self._patch(endpoint, payload)
 
         if status == 200:
             return data, f"✅ User '{user_id}' updated."

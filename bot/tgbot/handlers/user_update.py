@@ -10,6 +10,7 @@ from tgbot.states.states import UserUpdateInfo
 
 router = Router()
 router.message.filter(IsAdminFilter())
+router.callback_query.filter(IsAdminFilter())
 dp.include_router(router)
 
 
@@ -64,7 +65,4 @@ async def city_name_handler(message: Message, state: FSMContext) -> Message:
         password=password,
         city_name=city_name,
     )
-    if success:
-        return await message.answer(result)
-    else:
-        return await message.answer(result)
+    return await message.answer(result)

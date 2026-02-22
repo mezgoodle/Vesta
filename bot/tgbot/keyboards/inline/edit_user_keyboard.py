@@ -3,7 +3,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from tgbot.keyboards.inline.callbacks.user_edit import UserEditCallbackFactory
 
 
-def edit_user_markup(user_id: int) -> InlineKeyboardMarkup:
+def edit_user_markup() -> InlineKeyboardMarkup:
     markup = InlineKeyboardMarkup(
         inline_keyboard=[
             [
