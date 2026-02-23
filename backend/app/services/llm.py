@@ -42,6 +42,7 @@ class LLMService:
         history_records: list["ChatHistory"],
         user_id: int,
         db: AsyncSession,
+        session_summary: str | None = None,
     ) -> str:
         """
         Send a chat message to Gemini with automatic function calling support.
@@ -244,7 +245,8 @@ class LLMService:
                     get_current_weather,
                     get_calendar_events,
                     schedule_event_tool,
-                ]
+                ],
+                session_summary=session_summary,
             )
 
             contents = [
@@ -271,12 +273,17 @@ class LLMService:
             )
             raise
 
-    def _build_config_with_tools(self, tools: list) -> types.GenerateContentConfig:
+    def _build_config_with_tools(
+        self,
+        tools: list,
+        session_summary: str | None = None,
+    ) -> types.GenerateContentConfig:
         """
         Build GenerateContentConfig with dynamic tools and system instruction.
 
         Args:
             tools: List of Python async functions to use as tools
+            session_summary: Optional rolling summary of the conversation so far
 
         Returns:
             GenerateContentConfig with automatic function calling enabled
@@ -295,6 +302,13 @@ class LLMService:
             f"3. Scheduling: When using `schedule_event_tool`, always use the 'Current Date' above as a reference to calculate relative dates like 'tomorrow' or 'next Friday'.\n"
             f"4. Clarity: If the user's request is ambiguous (e.g., 'What's the weather?'), assume their current location (Ukraine) unless specified otherwise."
         )
+
+        if session_summary:
+            dynamic_system_instruction += (
+                f"\n--- CONVERSATION SUMMARY ---\n"
+                f"The following is a summary of the earlier conversation that is no longer "
+                f"in the message history. Use it as background context:\n{session_summary}"
+            )
 
         return types.GenerateContentConfig(
             system_instruction=dynamic_system_instruction,
@@ -347,6 +361,45 @@ class LLMService:
                     }
                 },
             )
+
+    async def generate_session_summary(
+        self,
+        current_summary: str | None,
+        recent_messages: list["ChatHistory"],
+    ) -> str:
+        """
+        Generate an updated rolling summary of the conversation.
+
+        Args:
+            current_summary: The existing summary (may be None for first summary)
+            recent_messages: The most recent ChatHistory records to fold in
+
+        Returns:
+            An updated concise summary string
+        """
+        formatted_messages = "\n".join(
+            f"{msg.role}: {msg.content}" for msg in recent_messages
+        )
+        current_summary_text = current_summary or "No previous summary."
+
+        prompt = (
+            f"Here is the current summary of the conversation: {current_summary_text}.\n"
+            f"Here are the newest messages:\n{formatted_messages}\n"
+            f"Write an updated, concise summary including all important facts and context."
+        )
+
+        try:
+            response = await self.client.aio.models.generate_content(
+                model=self.model,
+                contents=prompt,
+            )
+            return response.text or current_summary_text
+        except Exception:
+            logger.error(
+                "Failed to generate session summary",
+                extra={"json_fields": {"event": "summary_error"}},
+            )
+            return current_summary_text
 
     def close(self):
         """Close the Gemini client connection."""

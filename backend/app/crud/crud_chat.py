@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud.base import CRUDBase
@@ -54,6 +54,24 @@ class CRUDChatHistory(CRUDBase[ChatHistory, ChatHistoryCreate, ChatHistoryUpdate
         items = result.scalars().all()
 
         return list(reversed(items))
+
+    async def get_count_by_session_id(
+        self, db: AsyncSession, *, session_id: int
+    ) -> int:
+        """
+        Return the total number of messages in a session.
+
+        Args:
+            db: Database session
+            session_id: Session ID to count messages for
+
+        Returns:
+            Total message count
+        """
+        result = await db.execute(
+            select(func.count()).where(self.model.session_id == session_id)
+        )
+        return result.scalar_one()
 
 
 chat = CRUDChatHistory(ChatHistory)

@@ -193,3 +193,93 @@ async def test_schedule_event_tool_invalid_date(llm_service, mock_genai_client):
 
     result = await schedule_tool(summary="Test", start_time_iso="invalid-date")
     assert "Invalid datetime format" in result
+
+
+@pytest.mark.asyncio
+async def test_generate_session_summary(llm_service, mock_genai_client):
+    """Test that generate_session_summary returns the LLM response text."""
+    mock_response = MagicMock()
+    mock_response.text = "User discussed Python async patterns and SQLAlchemy."
+    mock_genai_client.aio.models.generate_content.return_value = mock_response
+
+    messages = [
+        ChatHistory(role="user", content="How does asyncio work?"),
+        ChatHistory(role="model", content="Asyncio is Python's async framework."),
+    ]
+
+    result = await llm_service.generate_session_summary(
+        current_summary=None,
+        recent_messages=messages,
+    )
+
+    assert result == "User discussed Python async patterns and SQLAlchemy."
+    mock_genai_client.aio.models.generate_content.assert_called_once()
+    call_kwargs = mock_genai_client.aio.models.generate_content.call_args.kwargs
+    # Should NOT pass tools (plain generate call)
+    assert "config" not in call_kwargs
+    # Prompt should reference both the current summary placeholder and messages
+    contents = call_kwargs["contents"]
+    assert "No previous summary" in contents
+    assert "How does asyncio work?" in contents
+
+
+@pytest.mark.asyncio
+async def test_generate_session_summary_with_existing_summary(
+    llm_service, mock_genai_client
+):
+    """Test that the existing summary is folded into the prompt."""
+    mock_response = MagicMock()
+    mock_response.text = "Updated summary."
+    mock_genai_client.aio.models.generate_content.return_value = mock_response
+
+    result = await llm_service.generate_session_summary(
+        current_summary="User likes Python.",
+        recent_messages=[ChatHistory(role="user", content="Tell me about FastAPI.")],
+    )
+
+    assert result == "Updated summary."
+    contents = mock_genai_client.aio.models.generate_content.call_args.kwargs[
+        "contents"
+    ]
+    assert "User likes Python." in contents
+    assert "Tell me about FastAPI." in contents
+
+
+@pytest.mark.asyncio
+async def test_generate_session_summary_api_error_returns_fallback(
+    llm_service, mock_genai_client
+):
+    """On API failure, generate_session_summary should return the current summary."""
+    mock_genai_client.aio.models.generate_content.side_effect = Exception("API error")
+
+    result = await llm_service.generate_session_summary(
+        current_summary="Existing summary text.",
+        recent_messages=[ChatHistory(role="user", content="Hello")],
+    )
+
+    assert result == "Existing summary text."
+
+
+@pytest.mark.asyncio
+async def test_chat_injects_session_summary_into_system_instruction(
+    llm_service, mock_genai_client
+):
+    """Test that a non-None session_summary appears in the system instruction."""
+    mock_response = MagicMock()
+    mock_response.text = "response text"
+    mock_response.usage_metadata = None
+    mock_genai_client.aio.models.generate_content.return_value = mock_response
+
+    db_session = MagicMock()
+    await llm_service.chat(
+        "Hello",
+        [],
+        123,
+        db_session,
+        session_summary="User previously asked about the weather.",
+    )
+
+    kwargs = mock_genai_client.aio.models.generate_content.call_args.kwargs
+    system_instruction = kwargs["config"].system_instruction
+    assert "CONVERSATION SUMMARY" in system_instruction
+    assert "User previously asked about the weather." in system_instruction
