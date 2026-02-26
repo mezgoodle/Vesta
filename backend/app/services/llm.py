@@ -381,6 +381,7 @@ class LLMService:
             f"{msg.role}: {msg.content}" for msg in recent_messages
         )
         current_summary_text = current_summary or "No previous summary."
+        fallback_summary = current_summary or ""
 
         prompt = (
             f"Here is the current summary of the conversation: {current_summary_text}.\n"
@@ -393,13 +394,13 @@ class LLMService:
                 model=self.model,
                 contents=prompt,
             )
-            return response.text or current_summary_text
+            return response.text or fallback_summary
         except Exception:
             logger.error(
                 "Failed to generate session summary",
                 extra={"json_fields": {"event": "summary_error"}},
             )
-            return current_summary_text
+            return fallback_summary
 
     def close(self):
         """Close the Gemini client connection."""
