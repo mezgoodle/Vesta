@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: SecretStr = SecretStr("")
     GOOGLE_REDIRECT_URI: str = ""
 
+    # RAG / Knowledge Base
+    LLAMA_PARSE_API_KEY: str = ""
+    GOOGLE_DRIVE_FOLDER_ID: str = ""
+    CHROMA_DB_PATH: str = "./chroma_db"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.schemas.calendar import CalendarEventCreate
 from app.services.google_calendar import GoogleCalendarService
+from app.services.knowledge import KnowledgeService
 from app.services.weather import WeatherService
 
 if TYPE_CHECKING:
@@ -151,6 +152,32 @@ class LLMService:
                 logger.error(f"Calendar API error for user {user_id}")
                 return "Unable to fetch calendar events."
 
+        async def consult_knowledge_base(query: str) -> str:
+            """
+            Search the personal knowledge base for information from stored documents.
+
+            Use this function when the user asks about personal notes, uploaded
+            documents, saved files, or any topic that might be covered by their
+            personal document library (e.g. recipes, manuals, reports, meeting
+            notes, research papers).
+
+            Args:
+                query: A natural-language question to search the knowledge base with.
+
+            Returns:
+                A relevant answer synthesized from the stored documents, or a
+                message indicating the knowledge base has not been synced yet.
+            """
+            try:
+                knowledge_service = KnowledgeService()
+                return knowledge_service.query(query)
+            except Exception:
+                logger.error("Knowledge base query error")
+                return (
+                    "I couldn't search the knowledge base right now. "
+                    "It may not have been synced yet."
+                )
+
         async def schedule_event_tool(
             summary: str,
             start_time_iso: str,
@@ -245,6 +272,7 @@ class LLMService:
                     get_current_weather,
                     get_calendar_events,
                     schedule_event_tool,
+                    consult_knowledge_base,
                 ],
                 session_summary=session_summary,
             )
