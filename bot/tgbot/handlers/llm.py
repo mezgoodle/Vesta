@@ -11,6 +11,7 @@ from tgbot.infrastructure.llm_service import llm_service
 from tgbot.keyboards.inline import sessions_keyboard
 from tgbot.keyboards.inline.callbacks.sessions import SessionCallbackFactory
 from tgbot.services.stt import stt_service
+from tgbot.services.utils import format_sessions_message
 from tgbot.states.states import ChatMessage
 
 router = Router()
@@ -24,7 +25,8 @@ async def get_chats_command(message: Message, user_db_id: int, config: Settings)
     if not sessions:
         return await message.answer("You have no sessions")
     markup = sessions_keyboard.create_markup(sessions)
-    return await message.answer("Select a session", reply_markup=markup)
+    formatted_sessions_message = format_sessions_message(sessions)
+    return await message.answer(formatted_sessions_message, reply_markup=markup)
 
 
 @router.message(Command("reset"))
@@ -111,6 +113,5 @@ async def _process_llm_request(
     await state.update_data(session_title=session_title)
     await state.set_state(ChatMessage.message)
     return await message.answer(
-        f"Session: {hbold(session_title)}\n"
-        f"Continue typing to chat, or /chats to switch sessions, /reset to end."
+        "Continue typing to chat, or /chats to switch sessions, /reset to end."
     )

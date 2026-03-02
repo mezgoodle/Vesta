@@ -48,6 +48,7 @@ class ChatSessionCreate(ChatSessionBase):
 
 class ChatSession(ChatSessionBase, BaseSchemaInDB):
     user_id: int
+    messages: list[ChatHistory] = []
 
 
 class ChatSessionUpdate(BaseSchema):
