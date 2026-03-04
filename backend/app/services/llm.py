@@ -290,6 +290,9 @@ class LLMService:
 
             self._log_token_usage(response)
 
+            if function_call := response.candidates[0].content.parts[0].function_call:
+                self._log_function_call(function_call)
+
             if response.text:
                 return response.text
             else:
@@ -389,6 +392,18 @@ class LLMService:
                     }
                 },
             )
+
+    def _log_function_call(self, function_call):
+        logger.info(
+            "LLM function call",
+            extra={
+                "json_fields": {
+                    "event": "llm_function_call",
+                    "function_name": function_call.name,
+                    "function_args": function_call.args,
+                }
+            },
+        )
 
     async def generate_session_summary(
         self,
