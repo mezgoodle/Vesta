@@ -21,7 +21,7 @@ _SA_CREDENTIALS_FILE = os.path.join(
     "logger_sa.json",
 )
 _CHROMA_COLLECTION_NAME = "vesta_knowledge"
-_EMBEDDING_MODEL = "models/text-embedding-004"
+_EMBEDDING_MODEL = "gemini-embedding-001"
 
 
 # ------------------------------------------------------------------ #
@@ -98,7 +98,10 @@ class KnowledgeService:
     """Service for managing the local RAG knowledge base."""
 
     def _get_embed_model(self) -> GoogleGenaiEmbedding:
-        return GoogleGenaiEmbedding(api_key=settings.GOOGLE_API_KEY)
+        return GoogleGenaiEmbedding(
+            model="gemini-embedding-001",
+            api_key=settings.GOOGLE_API_KEY,
+        )
 
     def _get_chroma_store(self) -> ChromaVectorStore:
         """Return a ChromaVectorStore backed by a PersistentClient."""
@@ -146,9 +149,8 @@ class KnowledgeService:
         )
         file_extractor = {".pdf": parser}
 
-        # --- 2. Load from Google Drive using Service Account ---
         reader = GoogleDriveReader(
-            service_account_key=_SA_CREDENTIALS_FILE,
+            service_account_key_path=settings.GOOGLE_APPLICATION_CREDENTIALS,
             file_extractor=file_extractor,
         )
         documents = reader.load_data(folder_id=settings.GOOGLE_DRIVE_FOLDER_ID)
@@ -236,3 +238,10 @@ class KnowledgeService:
                 extra={"json_fields": {"event": "knowledge_query_error"}},
             )
             raise
+
+
+knowledge_service_instance = KnowledgeService()
+
+
+def knowledge_service() -> KnowledgeService:
+    return knowledge_service_instance
