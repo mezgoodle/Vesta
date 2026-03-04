@@ -199,6 +199,11 @@ class KnowledgeService:
     # ------------------------------------------------------------------ #
 
     def _get_llm(self) -> Gemini:
+        if not settings.GOOGLE_API_KEY:
+            raise ValueError("GOOGLE_API_KEY is not set.")
+        if not settings.GOOGLE_MODEL_NAME:
+            raise ValueError("GOOGLE_MODEL_NAME is not set.")
+
         return Gemini(
             api_key=settings.GOOGLE_API_KEY,
             model_name=settings.GOOGLE_MODEL_NAME,

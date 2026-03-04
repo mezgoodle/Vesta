@@ -15,6 +15,7 @@ def mock_settings():
         m.LLAMA_PARSE_API_KEY = "test-llama-key"
         m.GOOGLE_DRIVE_FOLDER_ID = "test-folder-id"
         m.GOOGLE_API_KEY = "test-google-key"
+        m.GOOGLE_MODEL_NAME = "test-google-model"
         m.CHROMA_DB_PATH = "/tmp/test_chroma"
         yield m
 

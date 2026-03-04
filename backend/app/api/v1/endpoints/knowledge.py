@@ -11,6 +11,7 @@ router = APIRouter()
 async def sync_knowledge(
     knowledge_service: deps.KnowledgeServiceDep,
     background_tasks: BackgroundTasks,
+    _: deps.CurrentUser,
 ) -> Any:
     """
     Sync knowledge base with Google Drive in the background.
