@@ -291,8 +291,12 @@ class LLMService:
 
             self._log_token_usage(response)
 
-            if function_call := response.candidates[0].content.parts[0].function_call:
-                self._log_function_call(function_call)
+            try:
+                function_call = response.candidates[0].content.parts[0].function_call
+                if function_call:
+                    self._log_function_call(function_call)
+            except (AttributeError, IndexError, TypeError):
+                pass
 
             if response.text:
                 return response.text
@@ -397,13 +401,17 @@ class LLMService:
             )
 
     def _log_function_call(self, function_call):
+        args = getattr(function_call, "args", {}) or {}
         logger.info(
             "LLM function call",
             extra={
                 "json_fields": {
                     "event": "llm_function_call",
                     "function_name": function_call.name,
-                    "function_args": function_call.args,
+                    "function_arg_keys": list(args.keys())
+                    if isinstance(args, dict)
+                    else [],
+                    "function_args_size": len(str(args)),
                 }
             },
         )
