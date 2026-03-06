@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from app.api.deps import CurrentUser, LLMServiceDep, SessionDep
 from app.crud.crud_chat import chat as crud_chat
@@ -16,6 +16,10 @@ from app.schemas.chat import (
     ChatSessionCreate,
 )
 from app.schemas.enums import ChatRole
+from app.services.chat_manager import (
+    SUMMARY_MESSAGE_WINDOW,
+    update_session_summary_task,
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -28,6 +32,7 @@ async def process_chat_message(
     chat_request: ChatRequest,
     llm_service: LLMServiceDep,
     current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
 ) -> Any:
     """
     Process a chat message with Gemini AI.
@@ -88,6 +93,7 @@ async def process_chat_message(
             history_records=history_records,
             user_id=user.id,
             db=db,
+            session_summary=current_session.summary,
         )
 
         # Save assistant response to database
@@ -100,6 +106,15 @@ async def process_chat_message(
                 content=assistant_response_text,
             ),
         )
+
+        # Trigger rolling summary every N messages in the background.
+        # We count after saving both messages so the first trigger fires
+        # when there are exactly SUMMARY_MESSAGE_WINDOW messages total.
+        total_messages = await crud_chat.get_count_by_session_id(
+            db, session_id=current_session_id
+        )
+        if total_messages % SUMMARY_MESSAGE_WINDOW == 0:
+            background_tasks.add_task(update_session_summary_task, current_session_id)
 
         return ChatResponse(
             response=assistant_response_text,

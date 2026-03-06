@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Enum, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -31,6 +31,7 @@ class ChatSession(Base):
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     title: Mapped[str] = mapped_column(String, default="New Chat")
+    summary: Mapped[Optional[str]] = mapped_column(String, nullable=True, default=None)
 
     user: Mapped["User"] = relationship(back_populates="sessions")
     messages: Mapped[list["ChatHistory"]] = relationship(

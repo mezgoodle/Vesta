@@ -40,6 +40,7 @@ class ChatResponse(BaseSchema):
 
 class ChatSessionBase(BaseSchema):
     title: str = "New Chat"
+    summary: str | None = None
 
 
 class ChatSessionCreate(ChatSessionBase):
@@ -52,3 +53,4 @@ class ChatSession(ChatSessionBase, BaseSchemaInDB):
 
 class ChatSessionUpdate(BaseSchema):
     title: str | None = None
+    summary: str | None = None
