@@ -47,6 +47,8 @@ class Settings(BaseSettings):
     LLAMA_PARSE_API_KEY: str = ""
     GOOGLE_DRIVE_FOLDER_ID: str = ""
     CHROMA_DB_PATH: str = "./chroma_db"
+    RAG_SIMILARITY_TOP_K: int = 5
+    RAG_SIMILARITY_CUTOFF: float = 0.45
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -7,6 +7,7 @@ from google import genai
 from llama_cloud_services import LlamaParse
 from llama_index.core import StorageContext, VectorStoreIndex
 from llama_index.core.base.embeddings.base import BaseEmbedding
+from llama_index.core.postprocessor import SimilarityPostprocessor
 from llama_index.llms.gemini import Gemini
 from llama_index.readers.google import GoogleDriveReader
 from llama_index.vector_stores.chroma import ChromaVectorStore
@@ -220,8 +221,7 @@ class KnowledgeService:
             text: Natural-language query string.
 
         Returns:
-            The query engine's response as a string, or a human-readable
-            fallback message if the knowledge base has not been synced yet.
+            The query engine's response as a string.
 
         Raises:
             Exception: Re-raises unexpected errors after logging them.
@@ -234,13 +234,49 @@ class KnowledgeService:
                 vector_store,
                 embed_model=embed_model,
             )
-            query_engine = index.as_query_engine(llm=llm)
+
+            retriever = index.as_retriever(
+                similarity_top_k=settings.RAG_SIMILARITY_TOP_K,
+            )
+            postprocessor = SimilarityPostprocessor(
+                similarity_cutoff=settings.RAG_SIMILARITY_CUTOFF,
+            )
+
+            query_engine = index.as_query_engine(
+                similarity_top_k=settings.RAG_SIMILARITY_TOP_K,
+                node_postprocessors=[postprocessor],
+                llm=llm,
+            )
+
+            raw_nodes = retriever.retrieve(text)
+            logger.debug(
+                "RAG retrieval",
+                extra={
+                    "json_fields": {
+                        "event": "rag_retrieval",
+                        "query": text,
+                        "top_k": settings.RAG_SIMILARITY_TOP_K,
+                        "cutoff": settings.RAG_SIMILARITY_CUTOFF,
+                        "retrieved_count": len(raw_nodes),
+                        "passed_cutoff": sum(
+                            1
+                            for n in raw_nodes
+                            if n.score is not None
+                            and n.score >= settings.RAG_SIMILARITY_CUTOFF
+                        ),
+                    }
+                },
+            )
+
             response = query_engine.query(text)
+
             return str(response)
-        except Exception:
+        except Exception as e:
             logger.error(
                 "Knowledge base query failed",
-                extra={"json_fields": {"event": "knowledge_query_error"}},
+                extra={
+                    "json_fields": {"event": "knowledge_query_error", "error": str(e)}
+                },
             )
             raise
 
