@@ -17,6 +17,8 @@ def mock_settings():
         m.GOOGLE_API_KEY = "test-google-key"
         m.GOOGLE_MODEL_NAME = "test-google-model"
         m.CHROMA_DB_PATH = "/tmp/test_chroma"
+        m.RAG_SIMILARITY_TOP_K = 5
+        m.RAG_SIMILARITY_CUTOFF = 0.55
         yield m
 
 
@@ -117,11 +119,15 @@ def test_query_success(mock_settings, mock_chroma_client):
     """query() loads the index from ChromaDB and returns a string response."""
     with (
         patch("app.services.knowledge.GoogleGenaiEmbedding"),
+        patch("app.services.knowledge.Gemini"),
         patch("app.services.knowledge.ChromaVectorStore"),
         patch("app.services.knowledge.VectorStoreIndex") as MockIndex,
     ):
         mock_engine = MagicMock()
-        mock_engine.query.return_value = MagicMock(__str__=lambda self: "The answer.")
+        mock_response = MagicMock()
+        mock_response.__str__ = lambda self: "The answer."
+        mock_response.source_nodes = []
+        mock_engine.query.return_value = mock_response
         MockIndex.from_vector_store.return_value.as_query_engine.return_value = (
             mock_engine
         )
@@ -136,6 +142,7 @@ def test_query_propagates_exception(mock_settings, mock_chroma_client):
     """query() re-raises unexpected exceptions so callers can handle them."""
     with (
         patch("app.services.knowledge.GoogleGenaiEmbedding"),
+        patch("app.services.knowledge.Gemini"),
         patch("app.services.knowledge.ChromaVectorStore"),
         patch("app.services.knowledge.VectorStoreIndex") as MockIndex,
     ):
