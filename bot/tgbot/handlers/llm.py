@@ -8,7 +8,7 @@ from loader import dp
 from tgbot.config import Settings
 from tgbot.filters.approved_user import IsApprovedUserFilter
 from tgbot.infrastructure.llm_service import llm_service
-from tgbot.keyboards.inline import sessions_keyboard
+from tgbot.keyboards.inline import session_keyboard, sessions_keyboard
 from tgbot.keyboards.inline.callbacks.sessions import SessionCallbackFactory
 from tgbot.services.stt import stt_service
 from tgbot.services.utils import format_sessions_message
@@ -41,13 +41,40 @@ async def session_select_handler(
     callback_data: SessionCallbackFactory,
     state: FSMContext,
 ) -> None:
+    session_title = callback_data.session_title
+    session_id = callback_data.session_id
     await state.update_data(
-        session_id=callback_data.session_id,
-        session_title=callback_data.session_title,
+        session_id=session_id,
+        session_title=session_title,
     )
     await state.set_state(ChatMessage.message)
-    await callback.message.answer("Your session is selected.")
+    keyboard = session_keyboard.create_markup(session_id, session_title)
+    await callback.message.edit_text(
+        f"Your session is selected - {hbold(session_title)}. Send your message.\nTo edit session - use buttons below.",
+        reply_markup=keyboard,
+    )
     await callback.answer()
+    return
+
+
+@router.callback_query(SessionCallbackFactory.filter(F.action == "change"))
+async def session_change_title_handler(
+    callback: CallbackQuery,
+    callback_data: SessionCallbackFactory,
+    state: FSMContext,
+) -> None:
+    await callback.message.answer("Enter new session title")
+    return
+
+
+@router.callback_query(SessionCallbackFactory.filter(F.action == "delete"))
+async def session_delete_handler(
+    callback: CallbackQuery,
+    callback_data: SessionCallbackFactory,
+    state: FSMContext,
+) -> None:
+    await callback.message.answer("Session deleted")
+    return
 
 
 @router.message(Command("new"))

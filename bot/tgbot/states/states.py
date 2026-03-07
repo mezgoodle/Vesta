@@ -16,3 +16,8 @@ class UserUpdateInfo(StatesGroup):
     password = State()
     email = State()
     city_name = State()
+
+
+class SessionUpdateInfo(StatesGroup):
+    session_id = State()
+    session_title = State()
