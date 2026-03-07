@@ -38,7 +38,7 @@ class LLMService(BaseAPIService):
         Get list of sessions for user.
         """
 
-        endpoint = "/api/v1/chat/sessions"
+        endpoint = "/api/v1/sessions"
 
         status, data = await self._get(endpoint, params={"user_id": user_id})
 
