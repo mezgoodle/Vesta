@@ -34,7 +34,6 @@ class LLMService(BaseAPIService):
 
     async def get_sessions_by_user_id(self, user_id: int) -> list[dict]:
         """
-
         Get list of sessions for user.
         """
 
@@ -46,6 +45,20 @@ class LLMService(BaseAPIService):
             return data
         else:
             return []
+
+    async def update_session(self, session_id: int, data: dict) -> bool:
+        """
+        Update session.
+        """
+
+        endpoint = f"/api/v1/sessions/{session_id}"
+
+        status, data = await self._patch(endpoint, data)
+
+        if status == 200:
+            return True
+        else:
+            return False
 
 
 llm_service = LLMService()

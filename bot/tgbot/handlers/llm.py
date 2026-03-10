@@ -12,7 +12,7 @@ from tgbot.keyboards.inline import session_keyboard, sessions_keyboard
 from tgbot.keyboards.inline.callbacks.sessions import SessionCallbackFactory
 from tgbot.services.stt import stt_service
 from tgbot.services.utils import format_sessions_message
-from tgbot.states.states import ChatMessage
+from tgbot.states.states import ChatMessage, SessionUpdateInfo
 
 router = Router()
 router.message.filter(IsApprovedUserFilter())
@@ -33,6 +33,18 @@ async def get_chats_command(message: Message, user_db_id: int, config: Settings)
 async def reset_state_handler(message: Message, state: FSMContext):
     await state.clear()
     return await message.answer("State reset!")
+
+
+@router.callback_query(SessionCallbackFactory.filter(F.action == "change"))
+async def session_change_handler(
+    callback: CallbackQuery,
+    callback_data: SessionCallbackFactory,
+    state: FSMContext,
+) -> None:
+    await state.set_state(SessionUpdateInfo.session_title)
+    await callback.message.answer("Enter new session title")
+    await callback.answer()
+    return
 
 
 @router.callback_query(SessionCallbackFactory.filter())
@@ -57,14 +69,20 @@ async def session_select_handler(
     return
 
 
-@router.callback_query(SessionCallbackFactory.filter(F.action == "change"))
-async def session_change_title_handler(
-    callback: CallbackQuery,
-    callback_data: SessionCallbackFactory,
-    state: FSMContext,
-) -> None:
-    await callback.message.answer("Enter new session title")
-    return
+@router.message(SessionUpdateInfo.session_title)
+async def session_change_title_handler(message: Message, state: FSMContext):
+    session_title = message.text
+    data = await state.get_data()
+    if not session_title:
+        return await message.answer("Please enter a session title.")
+    result = await llm_service.update_session(
+        session_id=data.get("session_id"),
+        data={"title": session_title},
+    )
+    if not result:
+        return await message.answer("Something went wrong")
+    await state.set_state(ChatMessage.message)
+    return await message.answer("Session title changed. Send your message.")
 
 
 @router.callback_query(SessionCallbackFactory.filter(F.action == "delete"))
