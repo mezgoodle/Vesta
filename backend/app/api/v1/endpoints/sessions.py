@@ -41,7 +41,7 @@ async def create_session(
     Create a new chat session.
     """
     session = await crud_session.create(db, obj_in=session_in)
-    return session
+    return await crud_session.get(db, id=session.id)
 
 
 @router.get("/{session_id}", response_model=ChatSession)
@@ -73,8 +73,8 @@ async def update_session(
     session = await crud_session.get(db, id=session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-    session = await crud_session.update(db, db_obj=session, obj_in=session_in)
-    return session
+    await crud_session.update(db, db_obj=session, obj_in=session_in)
+    return await crud_session.get(db, id=session_id)
 
 
 @router.delete("/{session_id}", response_model=ChatSession)
