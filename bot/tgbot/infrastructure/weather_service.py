@@ -17,7 +17,7 @@ class WeatherService(BaseAPIService):
         Returns:
             Formatted weather information as a string.
         """
-        endpoint = "/api/v1/weather/current"
+        endpoint = "/weather/current"
         params = {"city": city_name}
 
         status, data = await self._get(endpoint, params)

@@ -29,7 +29,7 @@ class CalendarService(BaseAPIService):
         Returns:
             Formatted calendar events information as a string.
         """
-        endpoint = "/api/v1/calendar/events/today"
+        endpoint = "/calendar/events/today"
         params = {"user_id": user_id}
 
         status, data = await self._get(endpoint, params)
@@ -53,7 +53,7 @@ class CalendarService(BaseAPIService):
         Returns:
             Formatted calendar events information as a string.
         """
-        endpoint = "/api/v1/calendar/events/upcoming"
+        endpoint = "/calendar/events/upcoming"
         params = {"user_id": user_id, "days": days}
 
         status, data = await self._get(endpoint, params)
