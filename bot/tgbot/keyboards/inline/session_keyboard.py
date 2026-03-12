@@ -3,8 +3,6 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from tgbot.keyboards.inline.callbacks.sessions import SessionCallbackFactory
 
-MAX_TITLE_LENGTH = 24
-
 
 def create_markup(session_id: int, session_title: str) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()

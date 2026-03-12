@@ -53,7 +53,7 @@ class LLMService(BaseAPIService):
 
         endpoint = f"/api/v1/sessions/{session_id}"
 
-        status, data = await self._patch(endpoint, data)
+        status, _ = await self._patch(endpoint, data)
 
         if status == 200:
             return True

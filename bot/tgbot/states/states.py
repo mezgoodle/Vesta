@@ -19,5 +19,4 @@ class UserUpdateInfo(StatesGroup):
 
 
 class SessionUpdateInfo(StatesGroup):
-    session_id = State()
     session_title = State()
