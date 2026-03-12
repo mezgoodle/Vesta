@@ -60,5 +60,19 @@ class LLMService(BaseAPIService):
         else:
             return False
 
+    async def delete_session(self, session_id: int) -> bool:
+        """
+        Delete session.
+        """
+
+        endpoint = f"/api/v1/sessions/{session_id}"
+
+        status, _ = await self._delete(endpoint)
+
+        if status == 200:
+            return True
+        else:
+            return False
+
 
 llm_service = LLMService()

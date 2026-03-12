@@ -39,6 +39,22 @@ async def session_change_handler(
     return
 
 
+@router.callback_query(SessionCallbackFactory.filter(F.action == "delete"))
+async def session_delete_handler(
+    callback: CallbackQuery,
+    callback_data: SessionCallbackFactory,
+    state: FSMContext,
+) -> None:
+    data = await state.get_data()
+    result = await llm_service.delete_session(session_id=data.get("session_id"))
+    if not result:
+        return await callback.message.answer("Something went wrong")
+    await state.clear()
+    await callback.message.answer("Session deleted.")
+    await callback.answer()
+    return
+
+
 @router.callback_query(SessionCallbackFactory.filter())
 async def session_select_handler(
     callback: CallbackQuery,
@@ -75,13 +91,3 @@ async def session_change_title_handler(message: Message, state: FSMContext):
         return await message.answer("Something went wrong")
     await state.set_state(ChatMessage.message)
     return await message.answer("Session title changed. Send your message.")
-
-
-@router.callback_query(SessionCallbackFactory.filter(F.action == "delete"))
-async def session_delete_handler(
-    callback: CallbackQuery,
-    callback_data: SessionCallbackFactory,
-    state: FSMContext,
-) -> None:
-    await callback.message.answer("Session deleted")
-    return
