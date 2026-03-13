@@ -105,23 +105,31 @@ async def test_get_sessions_recent_by_user_id(db_session: AsyncSession) -> None:
         ChatSessionCreate(user_id=user.id, title="Session 3"),
     ]
 
-    for session in sessions:
-        await crud_session.create(db_session, obj_in=session)
+    import datetime
+    from datetime import timedelta
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    for i, session in enumerate(sessions):
+        obj = await crud_session.create(db_session, obj_in=session)
+        obj.created_at = now + timedelta(seconds=i)
+        db_session.add(obj)
+        await db_session.commit()
 
     recent = await crud_session.get_by_user_id(db_session, user_id=user.id)
     assert len(recent) == 3
-    assert recent[0].title == "Session 1"
+    # Sessions should be returned in descending order
+    assert recent[0].title == "Session 3"
     assert recent[1].title == "Session 2"
-    assert recent[2].title == "Session 3"
+    assert recent[2].title == "Session 1"
     # Test getting all sessions
     all_recent = await crud_session.get_by_user_id(
         db_session, user_id=user.id, limit=20
     )
     assert len(all_recent) == 3
-    # First session should be the oldest
-    assert all_recent[0].title == "Session 1"
-    # Last session should be the newest
-    assert all_recent[-1].title == "Session 3"
+    # First session should be the newest
+    assert all_recent[0].title == "Session 3"
+    # Last session should be the oldest
+    assert all_recent[-1].title == "Session 1"
 
 
 @pytest.mark.asyncio
