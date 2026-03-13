@@ -45,11 +45,13 @@ async def session_delete_handler(
     callback_data: SessionCallbackFactory,
     state: FSMContext,
 ) -> None:
-    data = await state.get_data()
-    result = await llm_service.delete_session(session_id=data.get("session_id"))
+    deleted_session_id = callback_data.session_id
+    result = await llm_service.delete_session(session_id=deleted_session_id)
     if not result:
         return await callback.message.answer("Something went wrong")
-    await state.clear()
+    data = await state.get_data()
+    if data.get("session_id") == deleted_session_id:
+        await state.clear()
     await callback.message.answer("Session deleted.")
     await callback.answer()
     return
