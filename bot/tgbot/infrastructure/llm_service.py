@@ -21,7 +21,7 @@ class LLMService(BaseAPIService):
 
         """
 
-        endpoint = "/api/v1/chat/process"
+        endpoint = "/chat/process"
 
         status, data = await self._post(
             endpoint, {"user_id": user_id, "session_id": session_id, "message": prompt}
@@ -34,11 +34,10 @@ class LLMService(BaseAPIService):
 
     async def get_sessions_by_user_id(self, user_id: int) -> list[dict]:
         """
-
         Get list of sessions for user.
         """
 
-        endpoint = "/api/v1/chat/sessions"
+        endpoint = "/sessions"
 
         status, data = await self._get(endpoint, params={"user_id": user_id})
 
@@ -46,6 +45,34 @@ class LLMService(BaseAPIService):
             return data
         else:
             return []
+
+    async def update_session(self, session_id: int, data: dict) -> bool:
+        """
+        Update session.
+        """
+
+        endpoint = f"/sessions/{session_id}"
+
+        status, _ = await self._patch(endpoint, data)
+
+        if status == 200:
+            return True
+        else:
+            return False
+
+    async def delete_session(self, session_id: int) -> bool:
+        """
+        Delete session.
+        """
+
+        endpoint = f"/sessions/{session_id}"
+
+        status, _ = await self._delete(endpoint)
+
+        if status == 200:
+            return True
+        else:
+            return False
 
 
 llm_service = LLMService()

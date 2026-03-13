@@ -33,7 +33,7 @@ class ForecastService(BaseAPIService):
         Returns:
             Formatted forecast information as a string.
         """
-        endpoint = "/api/v1/weather/forecast"
+        endpoint = "/weather/forecast"
         params = {"city": city_name, "days": days}
 
         status, data = await self._get(endpoint, params)

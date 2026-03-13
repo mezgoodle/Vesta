@@ -1,15 +1,12 @@
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import Message
 from aiogram.utils.markdown import hbold
 from loader import dp
 
-from tgbot.config import Settings
 from tgbot.filters.approved_user import IsApprovedUserFilter
 from tgbot.infrastructure.llm_service import llm_service
-from tgbot.keyboards.inline import sessions_keyboard
-from tgbot.keyboards.inline.callbacks.sessions import SessionCallbackFactory
 from tgbot.services.stt import stt_service
 from tgbot.states.states import ChatMessage
 
@@ -18,34 +15,10 @@ router.message.filter(IsApprovedUserFilter())
 dp.include_router(router)
 
 
-@router.message(Command("chats"))
-async def get_chats_command(message: Message, user_db_id: int, config: Settings):
-    sessions = await llm_service.get_sessions_by_user_id(user_db_id)
-    if not sessions:
-        return await message.answer("You have no sessions")
-    markup = sessions_keyboard.create_markup(sessions)
-    return await message.answer("Select a session", reply_markup=markup)
-
-
 @router.message(Command("reset"))
 async def reset_state_handler(message: Message, state: FSMContext):
     await state.clear()
     return await message.answer("State reset!")
-
-
-@router.callback_query(SessionCallbackFactory.filter())
-async def session_select_handler(
-    callback: CallbackQuery,
-    callback_data: SessionCallbackFactory,
-    state: FSMContext,
-) -> None:
-    await state.update_data(
-        session_id=callback_data.session_id,
-        session_title=callback_data.session_title,
-    )
-    await state.set_state(ChatMessage.message)
-    await callback.message.answer("Your session is selected.")
-    await callback.answer()
 
 
 @router.message(Command("new"))
@@ -111,6 +84,5 @@ async def _process_llm_request(
     await state.update_data(session_title=session_title)
     await state.set_state(ChatMessage.message)
     return await message.answer(
-        f"Session: {hbold(session_title)}\n"
-        f"Continue typing to chat, or /chats to switch sessions, /reset to end."
+        "Continue typing to chat, or /chats to switch sessions, /reset to end."
     )

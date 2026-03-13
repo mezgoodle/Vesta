@@ -1,5 +1,6 @@
 from typing import Any, Dict
 
+from aiogram.utils.formatting import Bold, Text, as_marked_section
 from aiogram.utils.markdown import hbold, hcode
 
 
@@ -35,3 +36,35 @@ def format_user_data(user_data: Dict[str, Any]) -> str:
     ]
 
     return "\n".join(lines)
+
+
+def get_last_message_date(messages: list[dict]) -> str:
+    if not messages:
+        return "No messages"
+
+    last_message = messages[-1]
+    created_at = last_message.get("created_at")
+    if not created_at:
+        return "Unknown date"
+
+    try:
+        return created_at[:16].replace("T", " ")
+    except Exception:
+        return str(created_at)
+
+
+def format_sessions_message(sessions: list[dict]) -> str:
+    formatted_items = []
+    for session in sessions:
+        title = session.get("title", "Untitled")
+        messages = session.get("messages", [])
+        msg_count = len(messages)
+        last_date = get_last_message_date(messages)
+        formatted_items.append(
+            Text(Bold(title), f", messages: {msg_count} (last: {last_date})")
+        )
+    final_text = as_marked_section(
+        Text("👤 ", Bold("Your Sessions:")), *formatted_items, marker="• "
+    )
+
+    return final_text.as_html()

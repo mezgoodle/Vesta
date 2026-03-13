@@ -15,6 +15,8 @@ class BaseAPIService(ABC):
     Services should inherit from this class and implement their business logic.
     """
 
+    API_PREFIX = "/api/v1"
+
     def __init__(self, base_url: str | None = None, timeout: int = 10):
         """
         Initialize the API service.
@@ -53,7 +55,7 @@ class BaseAPIService(ABC):
         Make a GET request to the backend API.
 
         Args:
-            endpoint: API endpoint path (e.g., "/api/v1/weather/current").
+            endpoint: API endpoint path (e.g., "/weather/current").
             params: Query parameters.
             headers: Optional custom headers to include in the request.
 
@@ -61,7 +63,7 @@ class BaseAPIService(ABC):
             Tuple of (status_code, response_data).
             Returns (0, None) if connection fails.
         """
-        url = f"{self.base_url}{endpoint}"
+        url = f"{self.base_url}{self.API_PREFIX}{endpoint}"
         request_headers = self._get_headers(headers)
 
         try:
@@ -104,7 +106,7 @@ class BaseAPIService(ABC):
             Tuple of (status_code, response_data).
             Returns (0, None) if connection fails.
         """
-        url = f"{self.base_url}{endpoint}"
+        url = f"{self.base_url}{self.API_PREFIX}{endpoint}"
         request_headers = self._get_headers(headers)
 
         try:
@@ -147,7 +149,7 @@ class BaseAPIService(ABC):
             Tuple of (status_code, response_data).
             Returns (0, None) if connection fails.
         """
-        url = f"{self.base_url}{endpoint}"
+        url = f"{self.base_url}{self.API_PREFIX}{endpoint}"
         request_headers = self._get_headers(headers)
 
         try:
@@ -190,7 +192,7 @@ class BaseAPIService(ABC):
             Tuple of (status_code, response_data).
             Returns (0, None) if connection fails.
         """
-        url = f"{self.base_url}{endpoint}"
+        url = f"{self.base_url}{self.API_PREFIX}{endpoint}"
         request_headers = self._get_headers(headers)
 
         try:
@@ -229,7 +231,7 @@ class BaseAPIService(ABC):
             Tuple of (status_code, response_data).
             Returns (0, None) if connection fails.
         """
-        url = f"{self.base_url}{endpoint}"
+        url = f"{self.base_url}{self.API_PREFIX}{endpoint}"
         request_headers = self._get_headers(headers)
 
         try:

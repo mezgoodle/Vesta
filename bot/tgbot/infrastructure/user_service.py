@@ -18,7 +18,7 @@ class UserService(BaseAPIService):
         """
         Get list of approved users.
         """
-        endpoint = "/api/v1/users/allowed/telegram-ids"
+        endpoint = "/users/allowed/telegram-ids"
 
         status, data = await self._get(endpoint)
 
@@ -31,7 +31,7 @@ class UserService(BaseAPIService):
         """
         Enable daily summary for user.
         """
-        endpoint = f"/api/v1/users/{user_id}"
+        endpoint = f"/users/{user_id}"
 
         status, data = await self._patch(endpoint, {"is_daily_summary_enabled": True})
 
@@ -56,7 +56,7 @@ class UserService(BaseAPIService):
             user_id: ID of the user to update permissions for.
             permissions: Dictionary of permissions to update.
         """
-        endpoint = f"/api/v1/users/telegram/{user_id}/approval"
+        endpoint = f"/users/telegram/{user_id}/approval"
 
         status, data = await self._patch(endpoint, permissions)
 
@@ -86,7 +86,7 @@ class UserService(BaseAPIService):
         """
         Get user by telegram id.
         """
-        endpoint = f"/api/v1/users/telegram/{telegram_id}"
+        endpoint = f"/users/telegram/{telegram_id}"
 
         status, data = await self._get(endpoint)
 
@@ -102,7 +102,7 @@ class UserService(BaseAPIService):
         Args:
             user_data: Dictionary of user data to create.
         """
-        endpoint = "/api/v1/users"
+        endpoint = "/users"
 
         status, data = await self._post(endpoint, user_data)
 
@@ -120,7 +120,7 @@ class UserService(BaseAPIService):
         Args:
             user_id: ID of the user to start authentication for.
         """
-        endpoint = "/api/v1/google-auth/login"
+        endpoint = "/google-auth/login"
 
         status, data = await self._get(endpoint, params={"user_id": user_id})
 
@@ -147,7 +147,7 @@ class UserService(BaseAPIService):
             password: Password of the user.
             city_name: City name of the user.
         """
-        endpoint = f"/api/v1/users/{user_id}"
+        endpoint = f"/users/{user_id}"
 
         payload = {
             k: v

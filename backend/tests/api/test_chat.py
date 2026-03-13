@@ -60,9 +60,7 @@ async def test_read_chat_sessions(
     chat_session_in = ChatSessionCreate(user_id=user.id, title="Chat Session")
     chat_session = await crud_session.create(db_session, obj_in=chat_session_in)
 
-    response = await client.get(
-        f"{settings.API_V1_STR}/chat/sessions?user_id={user.id}"
-    )
+    response = await client.get(f"{settings.API_V1_STR}/sessions/?user_id={user.id}")
 
     assert response.status_code == 200
     content = response.json()

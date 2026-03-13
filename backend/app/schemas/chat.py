@@ -1,3 +1,5 @@
+from pydantic import Field
+
 from app.schemas.base import BaseSchema, BaseSchemaInDB
 from app.schemas.enums import ChatRole
 
@@ -49,6 +51,7 @@ class ChatSessionCreate(ChatSessionBase):
 
 class ChatSession(ChatSessionBase, BaseSchemaInDB):
     user_id: int
+    messages: list[ChatHistory] = Field(default_factory=list)
 
 
 class ChatSessionUpdate(BaseSchema):
