@@ -191,3 +191,26 @@ def test_clean_text_whitespace_normalization(service: GoogleTTSService):
 def test_clean_text_strikethrough(service: GoogleTTSService):
     """Test that strikethrough markers are removed."""
     assert service._clean_text("This is ~~deleted~~ text") == "This is deleted text"
+
+
+# --- _detect_language() tests ---
+
+
+def test_detect_language_cyrillic(service: GoogleTTSService):
+    """Test that Cyrillic text is detected as Ukrainian."""
+    assert service._detect_language("Привіт, як справи?") == "uk-UA"
+
+
+def test_detect_language_latin(service: GoogleTTSService):
+    """Test that Latin text is detected as English."""
+    assert service._detect_language("Hello, how are you?") == "en-US"
+
+
+def test_detect_language_mixed_mostly_cyrillic(service: GoogleTTSService):
+    """Test that mixed text with mostly Cyrillic is detected as Ukrainian."""
+    assert service._detect_language("Привіт hello друже") == "uk-UA"
+
+
+def test_detect_language_no_alpha(service: GoogleTTSService):
+    """Test that text with no alphabetic characters defaults to Ukrainian."""
+    assert service._detect_language("123 456!") == "uk-UA"
