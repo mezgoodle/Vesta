@@ -14,9 +14,9 @@ from app.core.config import settings
 # Maximum text length allowed by Google TTS API
 MAX_TEXT_LENGTH = 5000
 
-# Default language and voice style for Chirp 3 HD
+# Default language and voice style for Wavenet-B
 DEFAULT_LANGUAGE_CODE = "uk-UA"
-VOICE_STYLE = "Chirp3-HD-Despina"
+VOICE_STYLE = "Wavenet-B"
 
 
 class GoogleTTSService:
@@ -24,10 +24,9 @@ class GoogleTTSService:
     Service for converting text to speech using Google Cloud Text-to-Speech API.
 
     Produces OGG/OPUS audio optimized for Telegram voice messages.
-    Uses Chirp 3 HD voices with dynamic language support.
+    Uses Wavenet-B voices with dynamic language support.
     The same voice style (Despina) works across all supported languages.
 
-    See: https://cloud.google.com/text-to-speech/docs/chirp3-hd
 
     This service can be used:
     - Via FastAPI Depends() injection in endpoints (use ``google_tts_service`` factory).
@@ -145,7 +144,7 @@ class GoogleTTSService:
         """
         Build VoiceSelectionParams for the given language.
 
-        The voice style (Charon) is consistent across languages;
+        The voice style (Wavenet-B) is consistent across languages;
         only the locale prefix changes (e.g., uk-UA, en-US).
 
         Args:
