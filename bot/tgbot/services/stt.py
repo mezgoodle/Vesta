@@ -4,6 +4,7 @@ from typing import Optional
 
 from google.api_core.exceptions import GoogleAPIError
 from google.cloud.speech_v2 import SpeechClient
+from google.api_core.client_options import ClientOptions
 from google.cloud.speech_v2.types.cloud_speech import (
     AutoDetectDecodingConfig,
     RecognitionConfig,
@@ -32,7 +33,8 @@ class GoogleSTTService:
         self.client = SpeechClient(
             credentials=service_account.Credentials.from_service_account_file(
                 config.GOOGLE_APPLICATION_CREDENTIALS
-            )
+            ),
+            client_options=ClientOptions(api_endpoint="us-speech.googleapis.com"),
         )
         self.logger = logging.getLogger(self.__class__.__name__)
         self.config = RecognitionConfig(
@@ -61,7 +63,7 @@ class GoogleSTTService:
 
         try:
             request = RecognizeRequest(
-                recognizer=f"projects/{config.GCP_PROJECT_ID}/locations/global/recognizers/_",
+                recognizer=f"projects/{config.GCP_PROJECT_ID}/locations/us/recognizers/_",
                 config=self.config,
                 content=audio_bytes,
             )

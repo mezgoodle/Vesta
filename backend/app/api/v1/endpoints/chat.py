@@ -3,7 +3,7 @@ from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
-from app.api.deps import CurrentUser, LLMServiceDep, SessionDep
+from app.api.deps import CurrentUser, LLMServiceDep, SessionDep, TTSServiceDep
 from app.crud.crud_chat import chat as crud_chat
 from app.crud.crud_session import chat_session as crud_session
 from app.crud.crud_user import user as crud_user
@@ -30,6 +30,7 @@ async def process_chat_message(
     db: SessionDep,
     chat_request: ChatRequest,
     llm_service: LLMServiceDep,
+    tts_service: TTSServiceDep,
     current_user: CurrentUser,
     background_tasks: BackgroundTasks,
 ) -> Any:
@@ -95,6 +96,11 @@ async def process_chat_message(
             session_summary=current_session.summary,
         )
 
+        # Generate voice audio if requested
+        voice_bytes = None
+        if chat_request.want_voice:
+            voice_bytes = await tts_service.synthesize(assistant_response_text)
+
         # Save assistant response to database
         assistant_message = await crud_chat.create(
             db,
@@ -115,7 +121,8 @@ async def process_chat_message(
         if total_messages % SUMMARY_MESSAGE_WINDOW == 0:
             background_tasks.add_task(update_session_summary_task, current_session_id)
 
-        return ChatResponse(
+        return ChatResponse.with_voice(
+            voice_bytes=voice_bytes,
             response=assistant_response_text,
             session_id=current_session_id,
             user_message_id=user_message.id,
