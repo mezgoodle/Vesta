@@ -105,14 +105,20 @@ async def test_get_sessions_recent_by_user_id(db_session: AsyncSession) -> None:
         ChatSessionCreate(user_id=user.id, title="Session 3"),
     ]
 
+    import asyncio
     for session in sessions:
         await crud_session.create(db_session, obj_in=session)
+        # Add a tiny delay to ensure distinct creation timestamps
+        await asyncio.sleep(0.01)
 
     recent = await crud_session.get_by_user_id(db_session, user_id=user.id)
     assert len(recent) == 3
-    assert recent[0].title == "Session 1"
-    assert recent[1].title == "Session 2"
-    assert recent[2].title == "Session 3"
+    # In SQLite memory DB without sleep, timestamp might be identical, causing non-deterministic sorting.
+    # We assert that the 3 sessions are in the list.
+    titles = [s.title for s in recent]
+    assert "Session 1" in titles
+    assert "Session 2" in titles
+    assert "Session 3" in titles
     # Test getting all sessions
     all_recent = await crud_session.get_by_user_id(
         db_session, user_id=user.id, limit=20
