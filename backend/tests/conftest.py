@@ -102,6 +102,34 @@ async def mock_llm_service() -> AsyncGenerator[AsyncMock, None]:
 
 
 @pytest.fixture
+async def mock_tts_service() -> AsyncGenerator[AsyncMock, None]:
+    """
+    Fixture for mocked TTS service.
+    Overrides the google_tts_service dependency and patches the lazy singleton
+    so the credentials file is never touched during tests.
+    """
+    from unittest.mock import MagicMock, patch
+
+    from app.api.deps import TTSServiceDep
+    from app.services.google_tts import GoogleTTSService
+    from app.services import google_tts as tts_module
+
+    mock = MagicMock(spec=GoogleTTSService)
+    mock.synthesize = AsyncMock(return_value=b"fake-ogg-audio")
+
+    def override_tts_service():
+        return mock
+
+    app.dependency_overrides[TTSServiceDep.dependency] = override_tts_service  # type: ignore[attr-defined]
+
+    # Also patch the lazy singleton so direct calls to google_tts_service() return mock
+    with patch.object(tts_module, "_google_tts_service_instance", mock):
+        yield mock
+
+    app.dependency_overrides.pop(TTSServiceDep.dependency, None)  # type: ignore[attr-defined]
+
+
+@pytest.fixture
 async def auth_user(db_session: AsyncSession) -> dict:
     """
     Create an authenticated user and return user data with JWT token.

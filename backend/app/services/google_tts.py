@@ -266,10 +266,25 @@ class GoogleTTSService:
             ) from e
 
 
-# Singleton instance — importable by other backend services
-google_tts_service_instance = GoogleTTSService()
+# Singleton instance — created lazily on first use to avoid import-time
+# credential errors (e.g., in CI where GOOGLE_APPLICATION_CREDENTIALS is empty).
+_google_tts_service_instance: GoogleTTSService | None = None
 
 
 def google_tts_service() -> GoogleTTSService:
-    """Factory for FastAPI Depends() injection."""
-    return google_tts_service_instance
+    """
+    Factory for FastAPI Depends() injection and direct service imports.
+
+    The singleton is created on first call so that importing this module
+    (e.g., during test collection) does not immediately attempt to open
+    the GCP credentials file.
+    """
+    global _google_tts_service_instance
+    if _google_tts_service_instance is None:
+        _google_tts_service_instance = GoogleTTSService()
+    return _google_tts_service_instance
+
+
+# Convenience alias for direct imports from other backend services
+def get_google_tts_service_instance() -> GoogleTTSService:
+    return google_tts_service()
