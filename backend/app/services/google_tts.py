@@ -51,7 +51,6 @@ class GoogleTTSService:
         self.audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.OGG_OPUS,
             speaking_rate=0.75,
-            
         )
 
         self.logger.info("GoogleTTSService initialized successfully")
@@ -91,18 +90,18 @@ class GoogleTTSService:
         # Remove emojis (broad Unicode emoji ranges)
         emoji_pattern = re.compile(
             "["
-            "\U0001F600-\U0001F64F"  # Emoticons
-            "\U0001F300-\U0001F5FF"  # Symbols & Pictographs
-            "\U0001F680-\U0001F6FF"  # Transport & Map
-            "\U0001F1E0-\U0001F1FF"  # Flags
-            "\U00002702-\U000027B0"  # Dingbats
-            "\U000024C2-\U0001F251"  # Enclosed characters
-            "\U0001F900-\U0001F9FF"  # Supplemental Symbols
-            "\U0001FA00-\U0001FA6F"  # Chess Symbols
-            "\U0001FA70-\U0001FAFF"  # Symbols Extended-A
-            "\U00002600-\U000026FF"  # Misc symbols
-            "\U0000200D"  # Zero Width Joiner
-            "\U0000FE0F"  # Variation Selector
+            "\U0001f600-\U0001f64f"  # Emoticons
+            "\U0001f300-\U0001f5ff"  # Symbols & Pictographs
+            "\U0001f680-\U0001f6ff"  # Transport & Map
+            "\U0001f1e0-\U0001f1ff"  # Flags
+            "\U00002702-\U000027b0"  # Dingbats
+            "\U000024c2-\U0001f251"  # Enclosed characters
+            "\U0001f900-\U0001f9ff"  # Supplemental Symbols
+            "\U0001fa00-\U0001fa6f"  # Chess Symbols
+            "\U0001fa70-\U0001faff"  # Symbols Extended-A
+            "\U00002600-\U000026ff"  # Misc symbols
+            "\U0000200d"  # Zero Width Joiner
+            "\U0000fe0f"  # Variation Selector
             "]+",
             flags=re.UNICODE,
         )
@@ -131,15 +130,14 @@ class GoogleTTSService:
         if not alpha_chars:
             return DEFAULT_LANGUAGE_CODE
 
-        cyrillic_count = sum(
-            1 for c in alpha_chars if "\u0400" <= c <= "\u04FF"
-        )
+        cyrillic_count = sum(1 for c in alpha_chars if "\u0400" <= c <= "\u04ff")
         if cyrillic_count > len(alpha_chars) * 0.3:
             return "uk-UA"
         return "en-US"
 
     def _build_voice(
-        self, language_code: str,
+        self,
+        language_code: str,
     ) -> texttospeech.VoiceSelectionParams:
         """
         Build VoiceSelectionParams for the given language.
@@ -160,7 +158,8 @@ class GoogleTTSService:
         )
 
     async def synthesize(
-        self, text: str,
+        self,
+        text: str,
     ) -> bytes:
         """
         Convert text to speech audio in OGG/OPUS format.
@@ -182,10 +181,15 @@ class GoogleTTSService:
             HTTPException(502): If the Google TTS API call fails.
         """
         if not text or not text.strip():
-            raise HTTPException(status_code=400, detail="Text is required for synthesis")
+            raise HTTPException(
+                status_code=400, detail="Text is required for synthesis"
+            )
 
         # Debug: log raw received text to diagnose encoding issues
-        self.logger.debug("Received text for synthesis: %r", text)
+        self.logger.debug(
+            "Received text for synthesis",
+            extra={"json_fields": {"text_length": len(text)}},
+        )
 
         if len(text) > MAX_TEXT_LENGTH:
             raise HTTPException(
@@ -241,24 +245,24 @@ class GoogleTTSService:
             return audio_bytes
 
         except GoogleAPIError as e:
-            self.logger.error(
+            self.logger.exception(
                 "Google TTS API error during synthesis",
                 extra={"json_fields": {"error": str(e)}},
             )
             raise HTTPException(
                 status_code=502,
-                detail=f"Google TTS API error: {str(e)}",
+                detail="Google TTS API error",
             ) from e
         except HTTPException:
             raise
         except Exception as e:
-            self.logger.error(
+            self.logger.exception(
                 "Unexpected error during speech synthesis",
                 extra={"json_fields": {"error": str(e)}},
             )
             raise HTTPException(
                 status_code=500,
-                detail=f"Unexpected error during speech synthesis: {str(e)}",
+                detail="Unexpected error during speech synthesis",
             ) from e
 
 

@@ -1,7 +1,6 @@
 from fastapi import APIRouter
 from fastapi.responses import Response
 
-
 from app.api.deps import CurrentUser, TTSServiceDep
 from app.schemas.tts import TTSSynthesizeRequest
 
@@ -12,7 +11,7 @@ router = APIRouter()
 async def synthesize_speech(
     body: TTSSynthesizeRequest,
     service: TTSServiceDep,
-    # current_user: CurrentUser,
+    current_user: CurrentUser,
 ) -> Response:
     """
     Convert text to speech audio in OGG/OPUS format.
@@ -27,13 +26,8 @@ async def synthesize_speech(
     """
     audio_bytes = await service.synthesize(body.text)
 
-    # Temporary: save locally for testing
-    with open("test_output.ogg", "wb") as f:
-        f.write(audio_bytes)
-
-
     return Response(
         content=audio_bytes,
         media_type="audio/ogg",
-        headers={"Content-Disposition": "inline; filename=\"speech.ogg\""},
+        headers={"Content-Disposition": 'inline; filename="speech.ogg"'},
     )

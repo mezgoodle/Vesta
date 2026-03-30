@@ -96,12 +96,6 @@ async def process_chat_message(
             session_summary=current_session.summary,
         )
 
-        # Generate voice audio if requested
-        voice_bytes = None
-        if chat_request.want_voice:
-            voice_bytes = await tts_service.synthesize(assistant_response_text)
-
-        # Save assistant response to database
         assistant_message = await crud_chat.create(
             db,
             obj_in=ChatHistoryCreate(
@@ -111,6 +105,16 @@ async def process_chat_message(
                 content=assistant_response_text,
             ),
         )
+
+        voice_bytes = None
+        if chat_request.want_voice:
+            try:
+                voice_bytes = await tts_service.synthesize(assistant_response_text)
+            except Exception as tts_error:
+                logger.warning(
+                    "TTS synthesis failed; returning text-only response",
+                    extra={"json_fields": {"error": str(tts_error)}},
+                )
 
         # Trigger rolling summary every N messages in the background.
         # We count after saving both messages so the first trigger fires
