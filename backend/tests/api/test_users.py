@@ -178,3 +178,49 @@ async def test_get_allowed_telegram_ids(
     assert 707070707 in all_telegram_ids
     assert 808080808 in all_telegram_ids
     assert 909090909 not in all_telegram_ids
+
+@pytest.mark.asyncio
+async def test_read_user_not_found(client: AsyncClient) -> None:
+    response = await client.get(f"{settings.API_V1_STR}/users/999")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "User not found"
+
+@pytest.mark.asyncio
+async def test_update_user_api(client: AsyncClient, db_session: AsyncSession) -> None:
+    user_in = UserCreate(telegram_id=313131313, full_name="Update User", username="updateuser")
+    user = await crud_user.create(db_session, obj_in=user_in)
+
+    update_data = {"full_name": "Updated User Name"}
+    response = await client.patch(f"{settings.API_V1_STR}/users/{user.id}", json=update_data)
+    assert response.status_code == 200
+    content = response.json()
+    assert content["full_name"] == "Updated User Name"
+
+@pytest.mark.asyncio
+async def test_update_user_not_found(client: AsyncClient) -> None:
+    update_data = {"full_name": "Updated User Name"}
+    response = await client.patch(f"{settings.API_V1_STR}/users/999", json=update_data)
+    assert response.status_code == 404
+    assert response.json()["detail"] == "User not found"
+
+@pytest.mark.asyncio
+async def test_delete_user_api(client: AsyncClient, db_session: AsyncSession) -> None:
+    user_in = UserCreate(telegram_id=323232323, full_name="Delete User", username="deleteuser")
+    user = await crud_user.create(db_session, obj_in=user_in)
+
+    response = await client.delete(f"{settings.API_V1_STR}/users/{user.id}")
+    assert response.status_code == 200
+    content = response.json()
+    assert content["id"] == user.id
+
+@pytest.mark.asyncio
+async def test_delete_user_not_found(client: AsyncClient) -> None:
+    response = await client.delete(f"{settings.API_V1_STR}/users/999")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "User not found"
+
+@pytest.mark.asyncio
+async def test_get_user_by_telegram_id_not_found(client: AsyncClient) -> None:
+    response = await client.get(f"{settings.API_V1_STR}/users/telegram/999999")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "User not found"
