@@ -1,7 +1,8 @@
+import base64
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
+from aiogram.types import BufferedInputFile, Message
 from aiogram.utils.markdown import hbold
 from loader import dp
 
@@ -45,7 +46,7 @@ async def voice_message_handler(message: Message, state: FSMContext, user_db_id:
         return await message.answer(
             "Could not recognize speech from the voice message."
         )
-    return await _process_llm_request(message, state, user_db_id, text)
+    return await _process_llm_request(message, state, user_db_id, text, want_voice=True)
 
 
 @router.message(ChatMessage.message)
@@ -57,7 +58,7 @@ async def user_message_handler(message: Message, state: FSMContext, user_db_id: 
 
 
 async def _process_llm_request(
-    message: Message, state: FSMContext, user_db_id: int, text: str
+    message: Message, state: FSMContext, user_db_id: int, text: str, want_voice: bool = False
 ):
     await state.update_data(message=text)
     data = await state.get_data()
@@ -70,6 +71,7 @@ async def _process_llm_request(
         prompt=text,
         user_id=user_db_id,
         session_id=session_id,
+        want_voice=want_voice,
     )
     if not response:
         return await message.answer("Something went wrong")
@@ -77,6 +79,11 @@ async def _process_llm_request(
     llm_response = response.get("response")
     if not llm_response:
         return await message.answer("Received an empty response from the assistant.")
+
+    if audio_b64 := response.get("voice_audio"):
+        voice_audio = base64.b64decode(audio_b64)
+        voice = BufferedInputFile(voice_audio, filename="speech.ogg")
+        await message.answer_voice(voice)
 
     await message.answer(llm_response)
 

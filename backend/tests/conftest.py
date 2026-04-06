@@ -1,5 +1,5 @@
 from typing import AsyncGenerator
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
+from app.services.google_tts import GoogleTTSService, google_tts_service
 from app.services.llm import LLMService
 from app.services.llm import llm_service as llm_service_dep
 
@@ -66,12 +67,16 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """
     Fixture for async HTTP client.
     Overrides the get_db dependency to use the test session.
+    Also always mocks the TTS service so tests never need GCP credentials.
     """
+    _tts_mock = MagicMock(spec=GoogleTTSService)
+    _tts_mock.synthesize = AsyncMock(return_value=b"fake-ogg-audio")
 
     async def override_get_db():
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[google_tts_service] = lambda: _tts_mock
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -99,6 +104,15 @@ async def mock_llm_service() -> AsyncGenerator[AsyncMock, None]:
     yield mock
 
     app.dependency_overrides.pop(llm_service_dep, None)
+
+
+@pytest.fixture
+async def mock_tts_service(client: AsyncClient) -> MagicMock:
+    """
+    Returns the TTS mock that is always installed by the ``client`` fixture.
+    Use this in tests that need to assert on TTS calls (e.g., synthesize()).
+    """
+    return app.dependency_overrides[google_tts_service]()
 
 
 @pytest.fixture

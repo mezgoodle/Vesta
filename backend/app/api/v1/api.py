@@ -9,6 +9,7 @@ from app.api.v1.endpoints import (
     login,
     news,
     sessions,
+    tts,
     users,
     weather,
 )
@@ -26,3 +27,4 @@ api_router.include_router(
     google_auth.router, prefix="/google-auth", tags=["google-auth"]
 )
 api_router.include_router(calendar.router, prefix="/calendar", tags=["calendar"])
+api_router.include_router(tts.router, prefix="/tts", tags=["tts"])

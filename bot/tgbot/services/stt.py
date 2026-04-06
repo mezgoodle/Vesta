@@ -2,6 +2,7 @@ import asyncio
 import logging
 from typing import Optional
 
+from google.api_core.client_options import ClientOptions
 from google.api_core.exceptions import GoogleAPIError
 from google.cloud.speech_v2 import SpeechClient
 from google.cloud.speech_v2.types.cloud_speech import (
@@ -29,10 +30,14 @@ class GoogleSTTService:
         Requires GOOGLE_APPLICATION_CREDENTIALS environment variable to be set
         with the path to the service account JSON key file.
         """
+        self.location_code = "us"
         self.client = SpeechClient(
             credentials=service_account.Credentials.from_service_account_file(
                 config.GOOGLE_APPLICATION_CREDENTIALS
-            )
+            ),
+            client_options=ClientOptions(
+                api_endpoint=f"{self.location_code}-speech.googleapis.com"
+            ),
         )
         self.logger = logging.getLogger(self.__class__.__name__)
         self.config = RecognitionConfig(
@@ -61,7 +66,7 @@ class GoogleSTTService:
 
         try:
             request = RecognizeRequest(
-                recognizer=f"projects/{config.GCP_PROJECT_ID}/locations/global/recognizers/_",
+                recognizer=f"projects/{config.GCP_PROJECT_ID}/locations/{self.location_code}/recognizers/_",
                 config=self.config,
                 content=audio_bytes,
             )
