@@ -12,7 +12,7 @@ from app.core.config import settings
 from app.schemas.calendar import CalendarEventCreate
 from app.services.google_calendar import GoogleCalendarService
 from app.services.knowledge import KnowledgeService
-from app.services.weather import WeatherService
+from app.services.open_meteo_service import OpenMeteoService
 
 if TYPE_CHECKING:
     from app.models.chat import ChatHistory
@@ -62,37 +62,31 @@ class LLMService:
             Exception: If the API call fails
         """
 
-        async def get_current_weather(city: str) -> str:
+        async def get_weather_info(city: str, days: int = 7) -> str:
             """
-            Get the current weather information for a specified city.
-
-            Use this function when the user asks about weather conditions, temperature,
-            humidity, wind speed, or general climate in a specific location.
+            Get the current weather and forecast for a specific city for up to 14 days. Use this for ANY weather-related questions.
 
             Args:
-                city: The name of the city to get weather for (e.g., 'London', 'New York', 'Tokyo', 'Kyiv')
+                city: The name of the city to get weather for (e.g., 'London', 'New York', 'Tokyo', 'Kyiv').
+                days: Number of days to look ahead for forecast. Default is 7 days, up to 14 days.
 
             Returns:
-                A formatted string with weather information including temperature in Celsius,
-                weather description, humidity percentage, and wind speed in m/s.
+                A formatted string with current weather and daily forecast.
             """
             try:
-                weather_service = WeatherService()
+                open_meteo_service = OpenMeteoService()
                 try:
-                    weather_data = (
-                        await weather_service.get_current_weather_by_city_name(
-                            city=city
-                        )
+                    weather_data = await open_meteo_service.get_weather(city=city, days=days)
+                    result = (
+                        f"Current weather in {weather_data.city_name}: "
+                        f"{weather_data.current_temp}°C (Condition Code: {weather_data.current_conditions})\n"
+                        f"Forecast:\n"
                     )
-                    return (
-                        f"Weather in {weather_data.city}: "
-                        f"{weather_data.description}, "
-                        f"Temperature: {weather_data.temp}°C, "
-                        f"Humidity: {weather_data.humidity}%, "
-                        f"Wind Speed: {weather_data.wind_speed} m/s"
-                    )
+                    for forecast in weather_data.daily_forecasts:
+                        result += f"- {forecast.date}: Max {forecast.max_temp}°C, Min {forecast.min_temp}°C, Precip Prob: {forecast.precipitation_prob_max}%\n"
+                    return result.strip()
                 finally:
-                    await weather_service.close()
+                    await open_meteo_service.close()
             except Exception:
                 logger.error(f"Weather API error for {city}")
                 return f"Unable to fetch weather data for {city}."
@@ -270,7 +264,7 @@ class LLMService:
 
             config = self._build_config_with_tools(
                 [
-                    get_current_weather,
+                    get_weather_info,
                     get_calendar_events,
                     schedule_event_tool,
                     consult_knowledge_base,
@@ -333,8 +327,8 @@ class LLMService:
             f"Current Date and Time: {current_time_str}.\n"
             f"User's Location: Ukraine (default for weather).\n"
             f"--- TOOL GUIDELINES ---\n"
-            f"1. Proactivity: If the user asks about 'today' or 'my day', proactively call BOTH `get_calendar_events(days=1)` and `get_current_weather` to provide a complete summary.\n"
-            f"2. Weather Constraints: You can only fetch CURRENT weather. If the user asks for a forecast for a future date, inform them that you currently only have access to real-time weather data.\n"
+            f"1. Proactivity: If the user asks about 'today' or 'my day', proactively call BOTH `get_calendar_events(days=1)` and `get_weather_info(days=1)` to provide a complete summary.\n"
+            f"2. Weather: You can fetch both current weather and forecast for up to 14 days using `get_weather_info`.\n"
             f"3. Scheduling: When using `schedule_event_tool`, always use the 'Current Date' above as a reference to calculate relative dates like 'tomorrow' or 'next Friday'.\n"
             f"4. Clarity: If the user's request is ambiguous (e.g., 'What's the weather?'), assume their current location (Ukraine) unless specified otherwise."
         )
