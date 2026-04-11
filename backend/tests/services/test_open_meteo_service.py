@@ -8,11 +8,13 @@ from app.schemas.open_meteo import OpenMeteoResponse, DailyForecast
 
 @pytest.fixture
 def meteo_service():
-    with patch("app.services.open_meteo_service.httpx.AsyncClient") as mock_client:
+    with patch("app.services.open_meteo_service.httpx.AsyncClient") as mock_client_cls:
+        mock_instance = MagicMock()
+        mock_instance.get = AsyncMock()
+        mock_instance.aclose = AsyncMock()
+        mock_client_cls.return_value = mock_instance
+        
         service = OpenMeteoService()
-        service.client = MagicMock()
-        service.client.get = AsyncMock()
-        service.client.aclose = AsyncMock()
         return service
 
 
