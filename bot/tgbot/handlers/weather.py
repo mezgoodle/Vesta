@@ -16,13 +16,22 @@ async def weather_command(message: Message, command: CommandObject):
         return
 
     args = command.args.split()
-
-    if len(args) > 1:
-        await message.reply("❓ Please provide a city name.\nExample: /weather London")
+    
+    days = 1
+    last_arg = args[-1]
+    
+    try:
+        days = int(last_arg)
+        city_parts = args[:-1]
+    except ValueError:
+        city_parts = args
+        
+    if not city_parts:
+        await message.reply("❓ Please provide a city name.\nExample: /weather London 3")
         return
+        
+    city_name = " ".join(city_parts)
 
-    city_name = args[0].strip()
-
-    weather_info = await weather_service.get_forecast(city_name, days=1)
+    weather_info = await weather_service.get_forecast(city_name, days=days)
 
     return await message.answer(weather_info)
