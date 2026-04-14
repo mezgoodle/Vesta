@@ -99,7 +99,7 @@ async def test_get_weather_success(meteo_service):
         assert isinstance(response, OpenMeteoResponse)
         assert response.city_name == "Kyiv"
         assert response.current_temp == 15.5
-        assert response.current_conditions == 1
+        assert response.current_conditions == "Mainly clear"
         assert len(response.daily_forecasts) == 1
         assert isinstance(response.daily_forecasts[0], DailyForecast)
         assert response.daily_forecasts[0].date == "2026-04-11"

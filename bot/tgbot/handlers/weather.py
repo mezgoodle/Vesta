@@ -23,6 +23,6 @@ async def weather_command(message: Message, command: CommandObject):
 
     city_name = args[0].strip()
 
-    weather_info = await weather_service.get_current_weather(city_name)
+    weather_info = await weather_service.get_forecast(city_name, days=1)
 
     return await message.answer(weather_info)

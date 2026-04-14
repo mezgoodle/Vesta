@@ -11,6 +11,7 @@ async def get_current_weather(
     city: str,
     service: OpenMeteoServiceDep,
     current_user: CurrentUser,
+    days: int = 7,
 ) -> OpenMeteoResponse:
     """
     Get current weather data and forecast for a city.
@@ -21,6 +22,6 @@ async def get_current_weather(
         current_user: Authenticated user (required)
 
     Returns:
-        OpenMeteoResponse: Current weather conditions and 7-day forecast
+        OpenMeteoResponse: Current weather conditions and N-day forecast
     """
-    return await service.get_weather(city)
+    return await service.get_weather(city, days)
