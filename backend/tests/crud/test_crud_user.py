@@ -194,3 +194,26 @@ async def test_get_allowed_telegram_ids(db_session: AsyncSession) -> None:
     assert len(telegram_ids) == 1
     assert telegram_ids[0]["id"] == created_user.id
     assert telegram_ids[0]["telegram_id"] == telegram_id
+
+from app.schemas.user import UserUpdate
+
+@pytest.mark.asyncio
+async def test_update_user_with_password(db_session: AsyncSession) -> None:
+    user_in = UserCreate(telegram_id=127)
+    user_obj = await crud_user.create(db_session, obj_in=user_in)
+
+    update_in = UserUpdate(password="new_password")
+    updated_user = await crud_user.update(db_session, db_obj=user_obj, obj_in=update_in)
+
+    assert updated_user.hashed_password is not None
+    assert updated_user.hashed_password != "new_password"
+
+@pytest.mark.asyncio
+async def test_update_user_without_password(db_session: AsyncSession) -> None:
+    user_in = UserCreate(telegram_id=128)
+    user_obj = await crud_user.create(db_session, obj_in=user_in)
+
+    update_dict = {"full_name": "Updated Name"}
+    updated_user = await crud_user.update(db_session, db_obj=user_obj, obj_in=update_dict)
+
+    assert updated_user.full_name == "Updated Name"

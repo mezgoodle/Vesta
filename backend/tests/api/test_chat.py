@@ -543,3 +543,225 @@ async def test_process_chat_message_with_session(
     assert content["user_message_id"] == 1
     assert content["assistant_message_id"] == 2
     assert content["session_id"] == session.id
+
+@pytest.mark.asyncio
+async def test_read_chat_history_with_user_id(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    auth_user: dict,
+) -> None:
+    headers = auth_user["headers"]
+    user = auth_user["user"]
+
+    response = await client.get(
+        f"{settings.API_V1_STR}/chat/?user_id={user.id}",
+        headers=headers,
+    )
+    assert response.status_code == 200
+
+@pytest.mark.asyncio
+async def test_read_chat_history_all(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    auth_user: dict,
+) -> None:
+    headers = auth_user["headers"]
+
+    response = await client.get(
+        f"{settings.API_V1_STR}/chat/",
+        headers=headers,
+    )
+    assert response.status_code == 200
+
+@pytest.mark.asyncio
+async def test_create_chat_message(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    auth_user: dict,
+) -> None:
+    headers = auth_user["headers"]
+    user = auth_user["user"]
+
+    data = {
+        "user_id": user.id,
+        "session_id": 1,
+        "role": "user",
+        "content": "Test message"
+    }
+    response = await client.post(
+        f"{settings.API_V1_STR}/chat/",
+        json=data,
+        headers=headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["content"] == "Test message"
+
+@pytest.mark.asyncio
+async def test_create_chat_message_user_not_found(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    auth_user: dict,
+) -> None:
+    headers = auth_user["headers"]
+
+    data = {
+        "user_id": 9999,
+        "session_id": 1,
+        "role": "user",
+        "content": "Test message"
+    }
+    response = await client.post(
+        f"{settings.API_V1_STR}/chat/",
+        json=data,
+        headers=headers,
+    )
+    assert response.status_code == 404
+
+@pytest.mark.asyncio
+async def test_read_chat_message(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    auth_user: dict,
+) -> None:
+    headers = auth_user["headers"]
+    user = auth_user["user"]
+
+    # create message
+    data = {
+        "user_id": user.id,
+        "session_id": 1,
+        "role": "user",
+        "content": "Test message"
+    }
+    response = await client.post(
+        f"{settings.API_V1_STR}/chat/",
+        json=data,
+        headers=headers,
+    )
+    chat_id = response.json()["id"]
+
+    response = await client.get(
+        f"{settings.API_V1_STR}/chat/{chat_id}",
+        headers=headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["id"] == chat_id
+
+@pytest.mark.asyncio
+async def test_read_chat_message_not_found(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    auth_user: dict,
+) -> None:
+    headers = auth_user["headers"]
+
+    response = await client.get(
+        f"{settings.API_V1_STR}/chat/9999",
+        headers=headers,
+    )
+    assert response.status_code == 404
+
+@pytest.mark.asyncio
+async def test_delete_chat_message(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    auth_user: dict,
+) -> None:
+    headers = auth_user["headers"]
+    user = auth_user["user"]
+
+    # create message
+    data = {
+        "user_id": user.id,
+        "session_id": 1,
+        "role": "user",
+        "content": "Test message"
+    }
+    response = await client.post(
+        f"{settings.API_V1_STR}/chat/",
+        json=data,
+        headers=headers,
+    )
+    chat_id = response.json()["id"]
+
+    response = await client.delete(
+        f"{settings.API_V1_STR}/chat/{chat_id}",
+        headers=headers,
+    )
+    assert response.status_code == 200
+
+@pytest.mark.asyncio
+async def test_delete_chat_message_not_found(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    auth_user: dict,
+) -> None:
+    headers = auth_user["headers"]
+
+    response = await client.delete(
+        f"{settings.API_V1_STR}/chat/9999",
+        headers=headers,
+    )
+    assert response.status_code == 404
+
+@pytest.mark.asyncio
+async def test_process_chat_message_tts_failure(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    mock_llm_service: AsyncMock,
+    auth_user: dict,
+) -> None:
+    """Test error handling when TTS service fails."""
+    mock_llm_service.chat.return_value = "AI response"
+
+    mock_tts = AsyncMock()
+    mock_tts.synthesize.side_effect = Exception("TTS API error")
+
+    from app.main import app
+    from app.services.google_tts import google_tts_service
+    app.dependency_overrides[google_tts_service] = lambda: mock_tts
+
+    try:
+        user = auth_user["user"]
+        headers = auth_user["headers"]
+
+        chat_request = {"user_id": user.id, "message": "Hello", "want_voice": True}
+        response = await client.post(
+            f"{settings.API_V1_STR}/chat/process",
+            json=chat_request,
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        content = response.json()
+        assert content["response"] == "AI response"
+        assert "voice_bytes" not in content or content["voice_bytes"] is None
+    finally:
+        app.dependency_overrides.pop(google_tts_service, None)
+
+@pytest.mark.asyncio
+async def test_process_chat_message_new_session(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    mock_llm_service: AsyncMock,
+    auth_user: dict,
+) -> None:
+    """Test that a new session is created if session_id is None."""
+    mock_llm_service.chat.return_value = "Response"
+
+    user = auth_user["user"]
+    headers = auth_user["headers"]
+
+    chat_request = {
+        "user_id": user.id,
+        "message": "Hello new session",
+    }
+    response = await client.post(
+        f"{settings.API_V1_STR}/chat/process",
+        json=chat_request,
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    content = response.json()
+    assert content["session_id"] is not None
