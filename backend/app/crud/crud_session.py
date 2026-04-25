@@ -34,7 +34,7 @@ class CRUDChatSession(CRUDBase[ChatSession, ChatSessionCreate, ChatSessionUpdate
             select(ChatSession)
             .options(selectinload(ChatSession.messages))
             .filter(ChatSession.user_id == user_id)
-            .order_by(ChatSession.created_at.desc())
+            .order_by(ChatSession.created_at.desc(), ChatSession.id.desc())
             .offset(skip)
             .limit(limit)
         )
