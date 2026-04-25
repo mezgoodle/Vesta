@@ -100,6 +100,9 @@ class OpenMeteoService:
             raise HTTPException(status_code=500, detail="Unexpected geocoding error")
 
     async def get_weather(self, city: str, days: int = 7) -> OpenMeteoResponse:
+        if days < 1 or days > 14:
+            raise HTTPException(status_code=400, detail="Days must be between 1 and 14")
+
         lat, lon, name = await self._geocode_city(city)
 
         logger.info(

@@ -76,7 +76,9 @@ class LLMService:
             try:
                 open_meteo_service = OpenMeteoService()
                 try:
-                    weather_data = await open_meteo_service.get_weather(city=city, days=days)
+                    weather_data = await open_meteo_service.get_weather(
+                        city=city, days=days
+                    )
                     result = (
                         f"Current weather in {weather_data.city_name}: "
                         f"{weather_data.current_temp}°C (Condition Code: {weather_data.current_conditions})\n"
@@ -327,7 +329,7 @@ class LLMService:
             f"Current Date and Time: {current_time_str}.\n"
             f"User's Location: Ukraine (default for weather).\n"
             f"--- TOOL GUIDELINES ---\n"
-            f"1. Proactivity: If the user asks about 'today' or 'my day', proactively call BOTH `get_calendar_events(days=1)` and `get_weather_info(days=1)` to provide a complete summary.\n"
+            f"1. Proactivity: If the user asks about 'today' or 'my day', proactively call BOTH `get_calendar_events(days=1)` and `get_weather_info(city='<resolved_city>', days=1)` to provide a complete summary.\n"
             f"2. Weather: You can fetch both current weather and forecast for up to 14 days using `get_weather_info`.\n"
             f"3. Scheduling: When using `schedule_event_tool`, always use the 'Current Date' above as a reference to calculate relative dates like 'tomorrow' or 'next Friday'.\n"
             f"4. Clarity: If the user's request is ambiguous (e.g., 'What's the weather?'), assume their current location (Ukraine) unless specified otherwise."
