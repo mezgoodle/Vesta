@@ -1,26 +1,27 @@
 from fastapi import APIRouter
 
-from app.api.deps import CurrentUser, WeatherServiceDep
-from app.schemas.weather import WeatherData
+from app.api.deps import CurrentUser, OpenMeteoServiceDep
+from app.schemas.open_meteo import OpenMeteoResponse
 
 router = APIRouter()
 
 
-@router.get("/current", response_model=WeatherData)
+@router.get("/current", response_model=OpenMeteoResponse)
 async def get_current_weather(
     city: str,
-    service: WeatherServiceDep,
+    service: OpenMeteoServiceDep,
     current_user: CurrentUser,
-) -> WeatherData:
+    days: int = 7,
+) -> OpenMeteoResponse:
     """
-    Get current weather data for a city.
+    Get current weather data and forecast for a city.
 
     Args:
         city: Name of the city to fetch weather for
-        service: Injected WeatherService instance
+        service: Injected OpenMeteoService instance
+        current_user: Authenticated user (required)
 
     Returns:
-        WeatherData: Current weather information including temperature (Celsius),
-                     description, humidity, and wind speed
+        OpenMeteoResponse: Current weather conditions and N-day forecast
     """
-    return await service.get_current_weather_by_city_name(city)
+    return await service.get_weather(city, days)

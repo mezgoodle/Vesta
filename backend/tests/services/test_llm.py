@@ -75,34 +75,38 @@ async def test_chat_extract_and_run_weather_tool(llm_service, mock_genai_client)
     db_session = AsyncMock()
     await llm_service.chat("Weather in London", [], 123, db_session)
 
-    weather_tool = _extract_tool(mock_genai_client, "get_current_weather")
+    weather_tool = _extract_tool(mock_genai_client, "get_weather_info")
 
-    # Mock WeatherService
-    with patch("app.services.llm.WeatherService") as MockWeatherService:
-        mock_weather_service = AsyncMock()
-        MockWeatherService.return_value = mock_weather_service
+    # Mock OpenMeteoService
+    with patch("app.services.llm.OpenMeteoService") as MockOpenMeteoService:
+        mock_meteo_service = AsyncMock()
+        MockOpenMeteoService.return_value = mock_meteo_service
 
         mock_weather_data = MagicMock()
-        mock_weather_data.city = "London"
-        mock_weather_data.temp = 20
-        mock_weather_data.description = "Sunny"
-        mock_weather_data.humidity = 50
-        mock_weather_data.wind_speed = 10
-        mock_weather_service.get_current_weather_by_city_name.return_value = (
-            mock_weather_data
-        )
+        mock_weather_data.city_name = "London"
+        mock_weather_data.current_temp = 20.0
+        mock_weather_data.current_conditions = "Sunny"
+        
+        forecast = MagicMock()
+        forecast.date = "2025-01-01"
+        forecast.max_temp = 25.0
+        forecast.min_temp = 15.0
+        forecast.precipitation_prob_max = 10
+        mock_weather_data.daily_forecasts = [forecast]
+        
+        mock_meteo_service.get_weather.return_value = mock_weather_data
 
         # Run the tool
-        result = await weather_tool("London")
+        result = await weather_tool(city="London", days=7)
 
-        assert "Weather in London" in result
-        assert "20°C" in result
-        assert "Sunny" in result
+        assert "London" in result
+        assert "20.0" in result
+        assert "25.0" in result
 
-        mock_weather_service.get_current_weather_by_city_name.assert_called_with(
-            city="London"
+        mock_meteo_service.get_weather.assert_called_with(
+            city="London", days=7
         )
-        mock_weather_service.close.assert_called_once()
+        mock_meteo_service.close.assert_called_once()
 
 
 @pytest.mark.asyncio

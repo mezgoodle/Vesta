@@ -124,10 +124,10 @@ async def test_get_sessions_recent_by_user_id(db_session: AsyncSession) -> None:
         db_session, user_id=user.id, limit=20
     )
     assert len(all_recent) == 3
-    # First session should be the oldest
-    assert all_recent[0].title == "Session 1"
-    # Last session should be the newest
-    assert all_recent[-1].title == "Session 3"
+    # First session should be the newest (descending order)
+    assert all_recent[0].title == "Session 3"
+    # Last session should be the oldest
+    assert all_recent[-1].title == "Session 1"
 
 
 @pytest.mark.asyncio
