@@ -3,7 +3,7 @@ from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
-from app.api.deps import CurrentUser, LLMServiceDep, SessionDep, TTSServiceDep
+from app.api.deps import ADKServiceDep, CurrentUser, SessionDep, TTSServiceDep
 from app.crud.crud_chat import chat as crud_chat
 from app.crud.crud_session import chat_session as crud_session
 from app.crud.crud_user import user as crud_user
@@ -29,7 +29,7 @@ async def process_chat_message(
     *,
     db: SessionDep,
     chat_request: ChatRequest,
-    llm_service: LLMServiceDep,
+    adk_service: ADKServiceDep,
     tts_service: TTSServiceDep,
     current_user: CurrentUser,
     background_tasks: BackgroundTasks,
@@ -88,7 +88,7 @@ async def process_chat_message(
         )
 
         # Call Gemini AI
-        assistant_response_text = await llm_service.chat(
+        assistant_response_text = await adk_service.process_chat(
             user_text=chat_request.message,
             history_records=history_records,
             user_id=user.id,

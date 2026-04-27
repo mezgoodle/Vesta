@@ -1,3 +1,56 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    # Web
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "pydantic-settings",
+    "python-multipart",
+    # Database
+    "sqlalchemy",
+    "aiosqlite",
+    "alembic",
+    # AI & Google
+    "google-adk",
+    "google-genai",
+    "google-cloud-logging",
+    "google-api-python-client",
+    "google-auth-oauthlib",
+    "chromadb",
+    "llama-index-core",
+    "llama-index-llms-gemini",
+    "llama-index-embeddings-gemini",
+    "llama-index-vector-stores-chroma",
+    "llama-index-readers-google",
+    "llama-cloud-services",
+    # Auth & Security
+    "authlib",
+    "pyjwt",
+    "cryptography",
+    # Utils
+    "python-dotenv",
+    "apscheduler",
+    "httpx",
+    "tzdata",
+    "tenacity",
+    "pwdlib[argon2]>=0.3.0",
+    "pytz>=2026.1.post1",
+    "google-cloud-texttospeech>=2.36.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "pytest-asyncio",
+    "ruff",
+]
+
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
 exclude = [

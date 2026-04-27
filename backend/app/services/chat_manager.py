@@ -11,7 +11,7 @@ import logging
 from app.crud.crud_chat import chat as crud_chat
 from app.crud.crud_session import chat_session as crud_session
 from app.db.session import AsyncSessionLocal
-from app.services.llm import LLMService
+from app.services.adk_service import ADKService
 
 logger = logging.getLogger(__name__)
 
@@ -68,14 +68,11 @@ async def update_session_summary_task(session_id: int) -> None:
                 )
                 return
 
-            llm = LLMService()
-            try:
-                new_summary = await llm.generate_session_summary(
-                    current_summary=session.summary,
-                    recent_messages=recent_messages,
-                )
-            finally:
-                llm.close()
+            adk = ADKService()
+            new_summary = await adk.generate_session_summary(
+                current_summary=session.summary,
+                recent_messages=recent_messages,
+            )
 
             await crud_session.update(
                 db,
