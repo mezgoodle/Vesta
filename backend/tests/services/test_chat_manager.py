@@ -45,22 +45,21 @@ async def test_update_session_summary_task_happy_path(mock_db):
             "app.services.chat_manager.crud_session.update",
             new_callable=AsyncMock,
         ) as mock_update,
-        patch("app.services.chat_manager.LLMService") as MockLLM,
+        patch("app.services.chat_manager.ADKService") as MockADK,
     ):
-        mock_llm_instance = MagicMock()
-        mock_llm_instance.generate_session_summary = AsyncMock(
+        mock_adk_instance = MagicMock()
+        mock_adk_instance.generate_session_summary = AsyncMock(
             return_value="New concise summary."
         )
-        MockLLM.return_value = mock_llm_instance
+        MockADK.return_value = mock_adk_instance
 
         await update_session_summary_task(session_id=42)
 
         # Verify LLM was called with the right args
-        mock_llm_instance.generate_session_summary.assert_awaited_once_with(
+        mock_adk_instance.generate_session_summary.assert_awaited_once_with(
             current_summary="Old summary.",
             recent_messages=mock_messages,
         )
-        mock_llm_instance.close.assert_called_once()
 
         # Verify summary was persisted
         mock_update.assert_awaited_once_with(
@@ -81,12 +80,12 @@ async def test_update_session_summary_task_session_not_found(mock_db):
             new_callable=AsyncMock,
             return_value=None,
         ),
-        patch("app.services.chat_manager.LLMService") as MockLLM,
+        patch("app.services.chat_manager.ADKService") as MockADK,
     ):
         await update_session_summary_task(session_id=999)
 
         # LLM should never be instantiated
-        MockLLM.assert_not_called()
+        MockADK.assert_not_called()
         mock_db.commit.assert_not_awaited()
 
 
@@ -108,11 +107,11 @@ async def test_update_session_summary_task_no_messages(mock_db):
             new_callable=AsyncMock,
             return_value=[],
         ),
-        patch("app.services.chat_manager.LLMService") as MockLLM,
+        patch("app.services.chat_manager.ADKService") as MockADK,
     ):
         await update_session_summary_task(session_id=42)
 
-        MockLLM.assert_not_called()
+        MockADK.assert_not_called()
         mock_db.commit.assert_not_awaited()
 
 
@@ -134,13 +133,13 @@ async def test_update_session_summary_task_llm_error_rolls_back(mock_db):
             new_callable=AsyncMock,
             return_value=[MagicMock(role="user", content="Hi")],
         ),
-        patch("app.services.chat_manager.LLMService") as MockLLM,
+        patch("app.services.chat_manager.ADKService") as MockADK,
     ):
-        mock_llm_instance = MagicMock()
-        mock_llm_instance.generate_session_summary = AsyncMock(
+        mock_adk_instance = MagicMock()
+        mock_adk_instance.generate_session_summary = AsyncMock(
             side_effect=Exception("LLM down")
         )
-        MockLLM.return_value = mock_llm_instance
+        MockADK.return_value = mock_adk_instance
 
         await update_session_summary_task(session_id=42)
 
