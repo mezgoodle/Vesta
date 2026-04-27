@@ -38,6 +38,9 @@ dependencies = [
     "httpx",
     "tzdata",
     "tenacity",
+    "pwdlib[argon2]>=0.3.0",
+    "pytz>=2026.1.post1",
+    "google-cloud-texttospeech>=2.36.0",
 ]
 
 [dependency-groups]

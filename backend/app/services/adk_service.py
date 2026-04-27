@@ -13,11 +13,12 @@ for rolling conversation summaries (invoked by background tasks).
 """
 
 import logging
+import os
 from typing import TYPE_CHECKING
 
 from google.adk.agents import LlmAgent
+from google.adk.events import Event
 from google.adk.runners import InMemoryRunner
-from google.adk.sessions import InMemorySessionService
 from google.genai import types
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -53,6 +54,10 @@ class ADKService:
             raise ValueError("GOOGLE_MODEL_NAME is not set")
 
         self.model = settings.GOOGLE_MODEL_NAME
+
+        # ADK reads the API key from the GOOGLE_API_KEY env var.
+        # Vesta loads it via pydantic Settings, so we bridge the two.
+        os.environ.setdefault("GOOGLE_API_KEY", settings.GOOGLE_API_KEY)
 
     # ------------------------------------------------------------------ #
     # Main chat flow                                                      #
@@ -116,26 +121,21 @@ class ADKService:
             history_content = self._map_history_to_content(history_records)
 
             # 4. Create ephemeral runner + session
-            session_service = InMemorySessionService()
             runner = InMemoryRunner(
                 agent=root_agent,
                 app_name=_ADK_APP_NAME,
-                session_service=session_service,
             )
 
             # Create a session and pre-populate with conversation history
             adk_user_id = f"user-{user_id}"
-            session = await session_service.create_session(
+            session = await runner.session_service.create_session(
                 app_name=_ADK_APP_NAME,
                 user_id=adk_user_id,
             )
 
             # Inject history into the session events so the agent has context
             if history_content:
-                session.events = []
                 for content in history_content:
-                    from google.adk.events import Event
-
                     event = Event(
                         author=content.role if content.role != "model" else root_agent.name,
                         content=content,
@@ -222,14 +222,12 @@ class ADKService:
 
         try:
             summary_agent = create_summary_agent(model=self.model)
-            session_service = InMemorySessionService()
             runner = InMemoryRunner(
                 agent=summary_agent,
                 app_name=_ADK_APP_NAME,
-                session_service=session_service,
             )
 
-            session = await session_service.create_session(
+            session = await runner.session_service.create_session(
                 app_name=_ADK_APP_NAME,
                 user_id="system-summary",
             )
