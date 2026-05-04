@@ -223,10 +223,8 @@ def create_tools(
                 f"🔗 View event: {created_event['html_link']}"
             )
 
-        except Exception as e:
-            logger.exception(
-                "Failed to create calendar event for user %s", user_id
-            )
+        except Exception:
+            logger.exception("Failed to create calendar event for user %s", user_id)
             return "Unable to create calendar event. Please try again later."
 
     # ------------------------------------------------------------------ #
