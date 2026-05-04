@@ -55,8 +55,10 @@ def create_tools(
         """
         Get the current weather and forecast for a specific city for up to 14 days. Use this for ANY weather-related questions.
 
+        CRITICAL: ALWAYS translate the city name to English before calling this tool (e.g., 'Київ' -> 'Kyiv', 'Львів' -> 'Lviv'). Open-Meteo geocoding fails with Cyrillic.
+
         Args:
-            city: The name of the city to get weather for (e.g., 'London', 'New York', 'Tokyo', 'Kyiv').
+            city: The name of the city IN ENGLISH to get weather for (e.g., 'London', 'New York', 'Tokyo', 'Kyiv').
             days: Number of days to look ahead for forecast. Default is 7 days, up to 14 days.
 
         Returns:

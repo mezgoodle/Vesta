@@ -33,6 +33,16 @@ class GoogleAuthService:
             }
         }
 
+    def _make_flow(self) -> Flow:
+        """Create a configured OAuth2 Flow instance with PKCE disabled."""
+        return Flow.from_client_config(
+            self.client_config,
+            scopes=self.SCOPES,
+            redirect_uri=settings.GOOGLE_REDIRECT_URI,
+            # Disable PKCE auto-generation to simplify server-side flow without session storage
+            autogenerate_code_verifier=False,
+        )
+
     def get_authorization_url(self, user_id: int) -> str:
         """
         Generate Google OAuth2 authorization URL.
@@ -52,22 +62,16 @@ class GoogleAuthService:
         if not settings.GOOGLE_REDIRECT_URI:
             raise ValueError("Google redirect URI not configured")
 
-        # Create the flow using the client config
-        flow = Flow.from_client_config(
-            self.client_config,
-            scopes=self.SCOPES,
-            redirect_uri=settings.GOOGLE_REDIRECT_URI,
-        )
+        flow = self._make_flow()
 
-        # Generate authorization URL with necessary parameters
-        # access_type='offline' ensures we get a refresh token
-        # prompt='consent' forces the consent screen even if previously approved
-        # include_granted_scopes='true' allows incremental authorization
-        authorization_url, state = flow.authorization_url(
+        # access_type='offline'  → get a refresh token
+        # prompt='consent'       → force consent screen (ensures refresh token)
+        # state=user_id          → identify the user in the callback
+        authorization_url, _ = flow.authorization_url(
             access_type="offline",
             prompt="consent",
             include_granted_scopes="true",
-            state=str(user_id),  # Pass user_id as state for callback identification
+            state=str(user_id),
         )
 
         return authorization_url
@@ -102,11 +106,7 @@ class GoogleAuthService:
             raise ValueError(f"User with ID {user_id} not found")
 
         # Create flow for token exchange
-        flow = Flow.from_client_config(
-            self.client_config,
-            scopes=self.SCOPES,
-            redirect_uri=settings.GOOGLE_REDIRECT_URI,
-        )
+        flow = self._make_flow()
 
         # Exchange authorization code for tokens
         try:

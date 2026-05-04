@@ -6,7 +6,7 @@ from tgbot.infrastructure.base_service import BaseAPIService
 class LLMService(BaseAPIService):
     """Service for LLM operations."""
 
-    def __init__(self, base_url: str | None = None, timeout: int = 10):
+    def __init__(self, base_url: str | None = None, timeout: int = 60):
         super().__init__(base_url, timeout)
 
     async def process_prompt(

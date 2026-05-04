@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from abc import ABC
 
@@ -81,6 +82,9 @@ class BaseAPIService(ABC):
                     self.logger.debug(f"GET {url} - Status: {status}")
                     return status, data
 
+        except asyncio.TimeoutError:
+            self.logger.error(f"Timeout error during GET request to {url}")
+            return 0, None
         except ClientError as e:
             self.logger.error(f"Connection error to {url}: {e}")
             return 0, None
@@ -124,6 +128,9 @@ class BaseAPIService(ABC):
                     self.logger.debug(f"POST {url} - Status: {status}")
                     return status, data
 
+        except asyncio.TimeoutError:
+            self.logger.error(f"Timeout error during POST request to {url}")
+            return 0, None
         except ClientError as e:
             self.logger.error(f"Connection error to {url}: {e}")
             return 0, None
