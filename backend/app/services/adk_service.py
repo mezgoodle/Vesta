@@ -16,7 +16,6 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
-from google.adk.agents import LlmAgent
 from google.adk.events import Event
 from google.adk.runners import InMemoryRunner
 from google.genai import types
@@ -135,12 +134,17 @@ class ADKService:
 
             # Inject history into the session events so the agent has context
             if history_content:
-                for content in history_content:
+                for i, content in enumerate(history_content):
                     event = Event(
-                        author=content.role if content.role != "model" else root_agent.name,
+                        invocation_id=f"history-{i}",
+                        author=content.role
+                        if content.role != "model"
+                        else root_agent.name,
                         content=content,
                     )
-                    session.events.append(event)
+                    await runner.session_service.append_event(
+                        session=session, event=event
+                    )
 
             # 5. Run the root agent with the new user message
             final_response = ""
@@ -149,13 +153,15 @@ class ADKService:
                 parts=[types.Part(text=user_text)],
             )
 
+            sub_agent_names = {a.name for a in root_agent.sub_agents}
+
             async for event in runner.run_async(
                 user_id=adk_user_id,
                 session_id=session.id,
                 new_message=new_content,
             ):
-                # Log agent delegations
-                if event.author and event.author != root_agent.name:
+                # Log agent delegations (only known sub-agents)
+                if event.author and event.author in sub_agent_names:
                     self._log_agent_delegation(event.author)
 
                 # Log tool calls if present
@@ -167,7 +173,8 @@ class ADKService:
                 # Capture the final text response
                 if event.is_final_response() and event.content and event.content.parts:
                     text_parts = [
-                        p.text for p in event.content.parts
+                        p.text
+                        for p in event.content.parts
                         if hasattr(p, "text") and p.text
                     ]
                     if text_parts:
@@ -245,7 +252,8 @@ class ADKService:
             ):
                 if event.is_final_response() and event.content and event.content.parts:
                     text_parts = [
-                        p.text for p in event.content.parts
+                        p.text
+                        for p in event.content.parts
                         if hasattr(p, "text") and p.text
                     ]
                     if text_parts:

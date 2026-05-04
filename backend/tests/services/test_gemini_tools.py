@@ -221,7 +221,7 @@ class TestConsultKnowledgeBase:
 
 class TestBuildSystemInstruction:
     def test_basic(self):
-        with patch("app.services.gemini_tools.settings") as mock_settings:
+        with patch("app.core.config.settings") as mock_settings:
             mock_settings.SYSTEM_INSTRUCTION = "You are Vesta."
 
             result = build_system_instruction()
@@ -231,7 +231,7 @@ class TestBuildSystemInstruction:
             assert "DELEGATION GUIDELINES" in result
 
     def test_with_session_summary(self):
-        with patch("app.services.gemini_tools.settings") as mock_settings:
+        with patch("app.core.config.settings") as mock_settings:
             mock_settings.SYSTEM_INSTRUCTION = "You are Vesta."
 
             result = build_system_instruction(

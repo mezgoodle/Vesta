@@ -20,7 +20,7 @@ def mock_db():
 
 @pytest.mark.asyncio
 async def test_update_session_summary_task_happy_path(mock_db):
-    """Summary task fetches session + messages, calls LLM, updates and commits."""
+    """Summary task fetches session + messages, calls ADKService, updates and commits."""
     mock_session = MagicMock()
     mock_session.summary = "Old summary."
 
@@ -55,7 +55,7 @@ async def test_update_session_summary_task_happy_path(mock_db):
 
         await update_session_summary_task(session_id=42)
 
-        # Verify LLM was called with the right args
+        # Verify ADKService was called with the right args
         mock_adk_instance.generate_session_summary.assert_awaited_once_with(
             current_summary="Old summary.",
             recent_messages=mock_messages,
@@ -84,7 +84,7 @@ async def test_update_session_summary_task_session_not_found(mock_db):
     ):
         await update_session_summary_task(session_id=999)
 
-        # LLM should never be instantiated
+        # ADKService should never be instantiated
         MockADK.assert_not_called()
         mock_db.commit.assert_not_awaited()
 
@@ -117,7 +117,7 @@ async def test_update_session_summary_task_no_messages(mock_db):
 
 @pytest.mark.asyncio
 async def test_update_session_summary_task_llm_error_rolls_back(mock_db):
-    """On LLM failure, the DB transaction should be rolled back."""
+    """On ADKService failure, the DB transaction should be rolled back."""
     mock_session = MagicMock()
     mock_session.summary = "Existing."
 
@@ -137,7 +137,7 @@ async def test_update_session_summary_task_llm_error_rolls_back(mock_db):
     ):
         mock_adk_instance = MagicMock()
         mock_adk_instance.generate_session_summary = AsyncMock(
-            side_effect=Exception("LLM down")
+            side_effect=Exception("ADK down")
         )
         MockADK.return_value = mock_adk_instance
 

@@ -22,6 +22,32 @@ def adk_svc(mock_settings):
     return ADKService()
 
 
+def _make_runner_mock(events_to_yield):
+    """
+    Helper: build a MagicMock InMemoryRunner that yields the given events
+    from run_async and exposes a mock session_service.
+    """
+    mock_runner = MagicMock()
+
+    # session_service.create_session returns a mock session
+    mock_session = MagicMock()
+    mock_session.id = "test-session-id"
+    mock_session.events = []
+    mock_runner.session_service = AsyncMock()
+    mock_runner.session_service.create_session = AsyncMock(
+        return_value=mock_session
+    )
+    mock_runner.session_service.append_event = AsyncMock()
+
+    async def mock_run_async(**kwargs):
+        for ev in events_to_yield:
+            yield ev
+
+    mock_runner.run_async = mock_run_async
+
+    return mock_runner, mock_session
+
+
 # ------------------------------------------------------------------ #
 # process_chat                                                        #
 # ------------------------------------------------------------------ #
@@ -47,39 +73,25 @@ class TestProcessChat:
         mock_event.content = MagicMock()
         mock_event.content.parts = [mock_part]
 
-        # Mock the entire runner + session flow
+        mock_runner, _ = _make_runner_mock([mock_event])
+
         with (
             patch("app.services.adk_service.create_tools") as mock_create_tools,
             patch("app.services.adk_service.create_secretary_agent"),
             patch("app.services.adk_service.create_knowledge_agent"),
-            patch("app.services.adk_service.create_root_agent"),
+            patch("app.services.adk_service.create_root_agent") as mock_create_root,
             patch("app.services.adk_service.build_system_instruction"),
-            patch(
-                "app.services.adk_service.InMemorySessionService"
-            ) as MockSessionSvc,
-            patch("app.services.adk_service.InMemoryRunner") as MockRunner,
+            patch("app.services.adk_service.InMemoryRunner", return_value=mock_runner),
         ):
             mock_create_tools.return_value = {
                 "secretary": [AsyncMock(), AsyncMock(), AsyncMock()],
                 "knowledge": [AsyncMock()],
             }
-
-            # Mock session service
-            mock_session = MagicMock()
-            mock_session.id = "test-session-id"
-            mock_session.events = []
-            mock_session_svc = AsyncMock()
-            mock_session_svc.create_session = AsyncMock(return_value=mock_session)
-            MockSessionSvc.return_value = mock_session_svc
-
-            # Mock runner to yield our final event
-            mock_runner_instance = MagicMock()
-
-            async def mock_run_async(**kwargs):
-                yield mock_event
-
-            mock_runner_instance.run_async = mock_run_async
-            MockRunner.return_value = mock_runner_instance
+            # Root agent needs sub_agents for the delegation check
+            mock_root = MagicMock()
+            mock_root.name = "VestaRootAgent"
+            mock_root.sub_agents = []
+            mock_create_root.return_value = mock_root
 
             result = await adk_svc.process_chat(
                 user_text="How are you?",
@@ -100,35 +112,24 @@ class TestProcessChat:
         mock_event.author = "VestaRootAgent"
         mock_event.content = None
 
+        mock_runner, _ = _make_runner_mock([mock_event])
+
         with (
             patch("app.services.adk_service.create_tools") as mock_ct,
             patch("app.services.adk_service.create_secretary_agent"),
             patch("app.services.adk_service.create_knowledge_agent"),
-            patch("app.services.adk_service.create_root_agent"),
+            patch("app.services.adk_service.create_root_agent") as mock_create_root,
             patch("app.services.adk_service.build_system_instruction"),
-            patch(
-                "app.services.adk_service.InMemorySessionService"
-            ) as MockSS,
-            patch("app.services.adk_service.InMemoryRunner") as MockR,
+            patch("app.services.adk_service.InMemoryRunner", return_value=mock_runner),
         ):
             mock_ct.return_value = {
                 "secretary": [],
                 "knowledge": [],
             }
-            mock_session = MagicMock()
-            mock_session.id = "s1"
-            mock_session.events = []
-            mock_ss = AsyncMock()
-            mock_ss.create_session = AsyncMock(return_value=mock_session)
-            MockSS.return_value = mock_ss
-
-            mock_runner = MagicMock()
-
-            async def mock_run_async(**kwargs):
-                yield mock_event
-
-            mock_runner.run_async = mock_run_async
-            MockR.return_value = mock_runner
+            mock_root = MagicMock()
+            mock_root.name = "VestaRootAgent"
+            mock_root.sub_agents = []
+            mock_create_root.return_value = mock_root
 
             result = await adk_svc.process_chat(
                 user_text="Hello", history_records=[], user_id=1, db=db
@@ -167,35 +168,29 @@ class TestProcessChat:
         mock_event_final.content = MagicMock()
         mock_event_final.content.parts = [mock_part_text]
 
+        mock_runner, _ = _make_runner_mock([mock_event_fc, mock_event_final])
+
         with (
             patch("app.services.adk_service.create_tools") as mock_ct,
             patch("app.services.adk_service.create_secretary_agent"),
             patch("app.services.adk_service.create_knowledge_agent"),
-            patch("app.services.adk_service.create_root_agent"),
+            patch("app.services.adk_service.create_root_agent") as mock_create_root,
             patch("app.services.adk_service.build_system_instruction"),
-            patch(
-                "app.services.adk_service.InMemorySessionService"
-            ) as MockSS,
-            patch("app.services.adk_service.InMemoryRunner") as MockR,
+            patch("app.services.adk_service.InMemoryRunner", return_value=mock_runner),
             patch.object(adk_svc, "_log_function_call") as mock_log_fc,
             patch.object(adk_svc, "_log_agent_delegation") as mock_log_del,
         ):
             mock_ct.return_value = {"secretary": [], "knowledge": []}
-            mock_session = MagicMock()
-            mock_session.id = "s1"
-            mock_session.events = []
-            mock_ss = AsyncMock()
-            mock_ss.create_session = AsyncMock(return_value=mock_session)
-            MockSS.return_value = mock_ss
 
-            mock_runner = MagicMock()
-
-            async def mock_run_async(**kwargs):
-                yield mock_event_fc
-                yield mock_event_final
-
-            mock_runner.run_async = mock_run_async
-            MockR.return_value = mock_runner
+            # Provide sub_agents so delegation check works
+            mock_secretary = MagicMock()
+            mock_secretary.name = "SecretaryAgent"
+            mock_knowledge = MagicMock()
+            mock_knowledge.name = "KnowledgeAgent"
+            mock_root = MagicMock()
+            mock_root.name = "VestaRootAgent"
+            mock_root.sub_agents = [mock_secretary, mock_knowledge]
+            mock_create_root.return_value = mock_root
 
             result = await adk_svc.process_chat(
                 user_text="Weather in Kyiv",
@@ -231,27 +226,12 @@ class TestGenerateSessionSummary:
         mock_event.content = MagicMock()
         mock_event.content.parts = [mock_part]
 
+        mock_runner, _ = _make_runner_mock([mock_event])
+
         with (
             patch("app.services.adk_service.create_summary_agent"),
-            patch(
-                "app.services.adk_service.InMemorySessionService"
-            ) as MockSS,
-            patch("app.services.adk_service.InMemoryRunner") as MockR,
+            patch("app.services.adk_service.InMemoryRunner", return_value=mock_runner),
         ):
-            mock_session = MagicMock()
-            mock_session.id = "s1"
-            mock_ss = AsyncMock()
-            mock_ss.create_session = AsyncMock(return_value=mock_session)
-            MockSS.return_value = mock_ss
-
-            mock_runner = MagicMock()
-
-            async def mock_run_async(**kwargs):
-                yield mock_event
-
-            mock_runner.run_async = mock_run_async
-            MockR.return_value = mock_runner
-
             result = await adk_svc.generate_session_summary(
                 current_summary=None,
                 recent_messages=messages,

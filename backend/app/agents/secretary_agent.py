@@ -40,8 +40,8 @@ def create_secretary_agent(tools: list[Callable], model: str) -> LlmAgent:
             "2. Retrieve upcoming calendar events using the get_calendar_events tool.\n"
             "3. Schedule new calendar events using the schedule_event_tool.\n"
             "4. When the user asks about 'today' or 'my day', proactively call BOTH "
-            "get_calendar_events(days=1) and get_weather_info(city='Kyiv', days=1) "
-            "to provide a complete daily briefing.\n"
+            "get_calendar_events(days=1) and get_weather_info(days=1) using the user's "
+            "default location (or 'Ukraine' if unknown) to provide a complete daily briefing.\n"
             "5. If the user's weather request is ambiguous, default to Ukraine.\n"
             "Always respond in a friendly, concise manner."
         ),

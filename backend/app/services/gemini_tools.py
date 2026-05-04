@@ -63,6 +63,7 @@ def create_tools(
             A formatted string with current weather and daily forecast.
         """
         try:
+            days = max(1, min(int(days), 14))
             open_meteo_service = OpenMeteoService()
             try:
                 weather_data = await open_meteo_service.get_weather(
@@ -79,7 +80,7 @@ def create_tools(
             finally:
                 await open_meteo_service.close()
         except Exception:
-            logger.error(f"Weather API error for {city}")
+            logger.exception("Weather API error for %s", city)
             return f"Unable to fetch weather data for {city}."
 
     # ------------------------------------------------------------------ #
@@ -139,7 +140,7 @@ def create_tools(
             return result.strip()
 
         except Exception:
-            logger.error(f"Calendar API error for user {user_id}")
+            logger.exception("Calendar API error for user %s", user_id)
             return "Unable to fetch calendar events."
 
     async def schedule_event_tool(
@@ -223,10 +224,10 @@ def create_tools(
             )
 
         except Exception as e:
-            logger.error(
-                f"Failed to create calendar event for user {user_id}: {str(e)}"
+            logger.exception(
+                "Failed to create calendar event for user %s", user_id
             )
-            return f"Unable to create calendar event. Error: {str(e)}"
+            return "Unable to create calendar event. Please try again later."
 
     # ------------------------------------------------------------------ #
     # Knowledge base tool                                                 #
@@ -252,20 +253,21 @@ def create_tools(
             knowledge_service = KnowledgeService()
             return await asyncio.to_thread(knowledge_service.query, query)
         except Exception:
-            logger.error("Knowledge base query error")
+            logger.exception("Knowledge base query error")
             return (
                 "I couldn't search the knowledge base right now. "
                 "It may not have been synced yet."
             )
 
-    # ------------------------------------------------------------------ #
-    # Build system instruction helper                                     #
-    # ------------------------------------------------------------------ #
-
     return {
         "secretary": [get_weather_info, get_calendar_events, schedule_event_tool],
         "knowledge": [consult_knowledge_base],
     }
+
+
+# ------------------------------------------------------------------ #
+# Build system instruction helper                                     #
+# ------------------------------------------------------------------ #
 
 
 def build_system_instruction(session_summary: str | None = None) -> str:
@@ -282,7 +284,7 @@ def build_system_instruction(session_summary: str | None = None) -> str:
     """
     from app.core.config import settings
 
-    tz = pytz.timezone("Europe/Kiev")
+    tz = pytz.timezone("Europe/Kyiv")
     now = datetime.datetime.now(tz)
     current_time_str = now.strftime("%Y-%m-%d %H:%M (%A)")
 

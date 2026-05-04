@@ -92,7 +92,7 @@ async def update_session_summary_task(session_id: int) -> None:
             )
 
         except Exception:
-            logger.error(
+            logger.exception(
                 "Failed to update session summary",
                 extra={
                     "json_fields": {
