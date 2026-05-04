@@ -77,14 +77,15 @@ class TestProcessChat:
 
         with (
             patch("app.services.adk_service.create_tools") as mock_create_tools,
-            patch("app.services.adk_service.create_secretary_agent"),
+            patch("app.services.adk_service.create_weather_agent"),
             patch("app.services.adk_service.create_knowledge_agent"),
             patch("app.services.adk_service.create_root_agent") as mock_create_root,
             patch("app.services.adk_service.build_system_instruction"),
             patch("app.services.adk_service.InMemoryRunner", return_value=mock_runner),
         ):
             mock_create_tools.return_value = {
-                "secretary": [AsyncMock(), AsyncMock(), AsyncMock()],
+                "weather": [AsyncMock()],
+                "calendar": [AsyncMock(), AsyncMock()],
                 "knowledge": [AsyncMock()],
             }
             # Root agent needs sub_agents for the delegation check
@@ -116,14 +117,15 @@ class TestProcessChat:
 
         with (
             patch("app.services.adk_service.create_tools") as mock_ct,
-            patch("app.services.adk_service.create_secretary_agent"),
+            patch("app.services.adk_service.create_weather_agent"),
             patch("app.services.adk_service.create_knowledge_agent"),
             patch("app.services.adk_service.create_root_agent") as mock_create_root,
             patch("app.services.adk_service.build_system_instruction"),
             patch("app.services.adk_service.InMemoryRunner", return_value=mock_runner),
         ):
             mock_ct.return_value = {
-                "secretary": [],
+                "weather": [],
+                "calendar": [],
                 "knowledge": [],
             }
             mock_root = MagicMock()
@@ -153,7 +155,7 @@ class TestProcessChat:
 
         mock_event_fc = MagicMock()
         mock_event_fc.is_final_response.return_value = False
-        mock_event_fc.author = "SecretaryAgent"
+        mock_event_fc.author = "WeatherAgent"
         mock_event_fc.content = MagicMock()
         mock_event_fc.content.parts = [mock_part_fc]
 
@@ -172,7 +174,7 @@ class TestProcessChat:
 
         with (
             patch("app.services.adk_service.create_tools") as mock_ct,
-            patch("app.services.adk_service.create_secretary_agent"),
+            patch("app.services.adk_service.create_weather_agent"),
             patch("app.services.adk_service.create_knowledge_agent"),
             patch("app.services.adk_service.create_root_agent") as mock_create_root,
             patch("app.services.adk_service.build_system_instruction"),
@@ -180,16 +182,16 @@ class TestProcessChat:
             patch.object(adk_svc, "_log_function_call") as mock_log_fc,
             patch.object(adk_svc, "_log_agent_delegation") as mock_log_del,
         ):
-            mock_ct.return_value = {"secretary": [], "knowledge": []}
+            mock_ct.return_value = {"weather": [], "calendar": [], "knowledge": []}
 
             # Provide sub_agents so delegation check works
-            mock_secretary = MagicMock()
-            mock_secretary.name = "SecretaryAgent"
+            mock_weather = MagicMock()
+            mock_weather.name = "WeatherAgent"
             mock_knowledge = MagicMock()
             mock_knowledge.name = "KnowledgeAgent"
             mock_root = MagicMock()
             mock_root.name = "VestaRootAgent"
-            mock_root.sub_agents = [mock_secretary, mock_knowledge]
+            mock_root.sub_agents = [mock_weather, mock_knowledge]
             mock_create_root.return_value = mock_root
 
             result = await adk_svc.process_chat(
@@ -201,7 +203,7 @@ class TestProcessChat:
 
             assert result == "Weather is sunny."
             mock_log_fc.assert_called_once_with(mock_fc)
-            mock_log_del.assert_called_once_with("SecretaryAgent")
+            mock_log_del.assert_called_once_with("WeatherAgent")
 
 
 # ------------------------------------------------------------------ #

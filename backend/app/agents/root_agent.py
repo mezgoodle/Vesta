@@ -20,7 +20,7 @@ def create_root_agent(
 
     Args:
         sub_agents: List of sub-agents to delegate to
-                    (``SecretaryAgent``, ``KnowledgeAgent``).
+                    (``WeatherAgent``, ``CalendarAgent``, ``KnowledgeAgent``).
         system_instruction: The dynamic system prompt (includes current time,
                             location defaults, conversation summary, and
                             delegation guidelines).

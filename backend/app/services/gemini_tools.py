@@ -42,8 +42,9 @@ def create_tools(
         db: The active database session (needed for calendar access).
 
     Returns:
-        A dict with two keys:
-        - ``"secretary"``: weather + calendar tools
+        A dict with three keys:
+        - ``"weather"``: weather tool
+        - ``"calendar"``: calendar tools
         - ``"knowledge"``: RAG tool
     """
 
@@ -260,7 +261,8 @@ def create_tools(
             )
 
     return {
-        "secretary": [get_weather_info, get_calendar_events, schedule_event_tool],
+        "weather": [get_weather_info],
+        "calendar": [get_calendar_events, schedule_event_tool],
         "knowledge": [consult_knowledge_base],
     }
 
@@ -293,14 +295,15 @@ def build_system_instruction(session_summary: str | None = None) -> str:
         f"Current Date and Time: {current_time_str}.\n"
         f"User's Location: Ukraine (default for weather).\n"
         f"--- DELEGATION GUIDELINES ---\n"
-        f"1. For weather or calendar/scheduling questions, delegate to SecretaryAgent.\n"
-        f"2. For questions about personal documents or knowledge base, delegate to KnowledgeAgent.\n"
-        f"3. For general conversation, respond directly without delegation.\n"
-        f"4. Proactivity: If the user asks about 'today' or 'my day', delegate to SecretaryAgent "
-        f"which will call BOTH calendar and weather tools.\n"
-        f"5. When scheduling, use the 'Current Date' above as a reference to calculate relative "
+        f"1. For weather questions, delegate to WeatherAgent.\n"
+        f"2. For calendar or scheduling questions, delegate to CalendarAgent.\n"
+        f"3. For questions about personal documents or knowledge base, delegate to KnowledgeAgent.\n"
+        f"4. For general conversation, respond directly without delegation.\n"
+        f"5. Proactivity: If the user asks about 'today' or 'my day', delegate first to "
+        f"CalendarAgent for schedule and then WeatherAgent for weather to provide a complete daily briefing.\n"
+        f"6. When scheduling, use the 'Current Date' above as a reference to calculate relative "
         f"dates like 'tomorrow' or 'next Friday'.\n"
-        f"6. Clarity: If the user's request is ambiguous (e.g., 'What's the weather?'), "
+        f"7. Clarity: If the user's request is ambiguous (e.g., 'What's the weather?'), "
         f"assume their current location (Ukraine) unless specified otherwise."
     )
 
