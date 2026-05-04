@@ -210,12 +210,12 @@ async def test_delete_chat_message_not_found(
 async def test_process_chat_message_success(
     client: AsyncClient,
     db_session: AsyncSession,
-    mock_llm_service: AsyncMock,
+    mock_adk_service: AsyncMock,
     auth_user: dict,
 ) -> None:
-    """Test successful chat message processing with mocked LLM service."""
+    """Test successful chat message processing with mocked ADK service."""
     # Setup mock
-    mock_llm_service.chat.return_value = "This is a mocked AI response"
+    mock_adk_service.process_chat.return_value = "This is a mocked AI response"
 
     # Use authenticated user
     user = auth_user["user"]
@@ -253,15 +253,15 @@ async def test_process_chat_message_success(
     assert assistant_msg.user_id == user.id
     assert assistant_msg.session_id == content["session_id"]
 
-    # Verify LLM service was called
-    mock_llm_service.chat.assert_called_once()
+    # Verify ADK service was called
+    mock_adk_service.process_chat.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_process_chat_message_user_not_found(
     client: AsyncClient,
     db_session: AsyncSession,
-    mock_llm_service: AsyncMock,
+    mock_adk_service: AsyncMock,
     auth_user: dict,
 ) -> None:
     """Test error handling when user doesn't exist."""
@@ -282,7 +282,7 @@ async def test_process_chat_message_user_not_found(
 async def test_process_chat_message_session_not_found(
     client: AsyncClient,
     db_session: AsyncSession,
-    mock_llm_service: AsyncMock,
+    mock_adk_service: AsyncMock,
     auth_user: dict,
 ) -> None:
     """Test error handling when session doesn't exist."""
@@ -304,7 +304,7 @@ async def test_process_chat_message_session_not_found(
 async def test_process_chat_message_session_wrong_user(
     client: AsyncClient,
     db_session: AsyncSession,
-    mock_llm_service: AsyncMock,
+    mock_adk_service: AsyncMock,
     auth_user: dict,
 ) -> None:
     """Test error handling when session belongs to a different user."""
@@ -341,12 +341,12 @@ async def test_process_chat_message_session_wrong_user(
 async def test_process_chat_message_llm_error(
     client: AsyncClient,
     db_session: AsyncSession,
-    mock_llm_service: AsyncMock,
+    mock_adk_service: AsyncMock,
     auth_user: dict,
 ) -> None:
-    """Test error handling when LLM service fails."""
+    """Test error handling when ADK service fails."""
     # Setup mock to raise an exception
-    mock_llm_service.chat.side_effect = Exception("LLM API error")
+    mock_adk_service.process_chat.side_effect = Exception("ADK API error")
 
     # Use authenticated user
     user = auth_user["user"]
@@ -376,12 +376,12 @@ async def test_process_chat_message_llm_error(
 async def test_process_chat_message_with_history(
     client: AsyncClient,
     db_session: AsyncSession,
-    mock_llm_service: AsyncMock,
+    mock_adk_service: AsyncMock,
     auth_user: dict,
 ) -> None:
-    """Test that conversation history is properly passed to LLM service."""
+    """Test that conversation history is properly passed to ADK service."""
     # Setup mock
-    mock_llm_service.chat.return_value = "Response with context"
+    mock_adk_service.process_chat.return_value = "Response with context"
 
     # Use authenticated user
     user = auth_user["user"]
@@ -422,15 +422,15 @@ async def test_process_chat_message_with_history(
 
     assert response.status_code == 200
 
-    # Verify LLM service was called with history
-    mock_llm_service.chat.assert_called_once()
-    call_args = mock_llm_service.chat.call_args
+    # Verify ADK service was called with history
+    mock_adk_service.process_chat.assert_called_once()
+    call_kwargs = mock_adk_service.process_chat.call_args.kwargs
 
     # Verify the user text
-    assert call_args.kwargs["user_text"] == "Third question"
+    assert call_kwargs["user_text"] == "Third question"
 
     # Verify history was passed
-    history_records = call_args.kwargs["history_records"]
+    history_records = call_kwargs["history_records"]
     assert len(history_records) == 4
 
     # Verify history is in correct order (oldest to newest)
@@ -450,12 +450,12 @@ async def test_process_chat_message_with_history(
 async def test_process_chat_message_background_task(
     client: AsyncClient,
     db_session: AsyncSession,
-    mock_llm_service: AsyncMock,
+    mock_adk_service: AsyncMock,
     auth_user: dict,
 ) -> None:
     """Test that background task is added when total messages reach SUMMARY_MESSAGE_WINDOW."""
     # Setup mock
-    mock_llm_service.chat.return_value = "Response with context"
+    mock_adk_service.process_chat.return_value = "Response with context"
 
     # Use authenticated user
     user = auth_user["user"]
@@ -509,12 +509,12 @@ async def test_process_chat_message_background_task(
 async def test_process_chat_message_with_session(
     client: AsyncClient,
     db_session: AsyncSession,
-    mock_llm_service: AsyncMock,
+    mock_adk_service: AsyncMock,
     auth_user: dict,
 ) -> None:
-    """Test that session is properly passed to LLM service."""
+    """Test that session is properly passed to ADK service."""
     # Setup mock
-    mock_llm_service.chat.return_value = "Response with context"
+    mock_adk_service.process_chat.return_value = "Response with context"
 
     # Use authenticated user
     user = auth_user["user"]
