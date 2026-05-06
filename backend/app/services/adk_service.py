@@ -3,7 +3,7 @@ ADK integration service — replaces the monolithic ``LLMService``.
 
 This service orchestrates the multi-agent system by:
 1. Creating per-request tool closures bound to ``user_id`` / ``db``.
-2. Building the agent hierarchy (root → secretary + knowledge).
+2. Building the agent hierarchy (root → weather + calendar + knowledge).
 3. Running the root agent via ADK's ``InMemoryRunner``.
 4. Extracting the final text response from ADK events.
 5. Logging tool calls and agent delegations to GCP.
@@ -21,10 +21,11 @@ from google.adk.runners import InMemoryRunner
 from google.genai import types
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.calendar_agent import create_calendar_agent
 from app.agents.knowledge_agent import create_knowledge_agent
 from app.agents.root_agent import create_root_agent
-from app.agents.secretary_agent import create_secretary_agent
 from app.agents.summary_agent import create_summary_agent
+from app.agents.weather_agent import create_weather_agent
 from app.core.config import settings
 from app.services.gemini_tools import build_system_instruction, create_tools
 
@@ -75,7 +76,7 @@ class ADKService:
 
         Steps:
             1. Create request-scoped tools (bound to ``user_id`` / ``db``).
-            2. Build agent hierarchy (root → secretary, knowledge).
+            2. Build agent hierarchy (root → weather, calendar, knowledge).
             3. Convert DB history to ADK-compatible content.
             4. Create an ephemeral ADK session and runner.
             5. Run the root agent and collect events.
@@ -99,8 +100,12 @@ class ADKService:
             tool_groups = create_tools(user_id=user_id, db=db)
 
             # 2. Build agent hierarchy
-            secretary = create_secretary_agent(
-                tools=tool_groups["secretary"],
+            weather = create_weather_agent(
+                tools=tool_groups["weather"],
+                model=self.model,
+            )
+            calendar = create_calendar_agent(
+                tools=tool_groups["calendar"],
                 model=self.model,
             )
             knowledge = create_knowledge_agent(
@@ -111,7 +116,7 @@ class ADKService:
             system_instruction = build_system_instruction(session_summary)
 
             root_agent = create_root_agent(
-                sub_agents=[secretary, knowledge],
+                sub_agents=[weather, calendar, knowledge],
                 system_instruction=system_instruction,
                 model=self.model,
             )

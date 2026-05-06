@@ -25,7 +25,7 @@ class TestGetWeatherInfo:
     @pytest.mark.asyncio
     async def test_success(self, tools):
         tool_groups, _ = tools
-        weather_tool = tool_groups["secretary"][0]  # get_weather_info
+        weather_tool = tool_groups["weather"][0]  # get_weather_info
 
         with patch(
             "app.services.gemini_tools.OpenMeteoService"
@@ -58,7 +58,7 @@ class TestGetWeatherInfo:
     @pytest.mark.asyncio
     async def test_api_error(self, tools):
         tool_groups, _ = tools
-        weather_tool = tool_groups["secretary"][0]
+        weather_tool = tool_groups["weather"][0]
 
         with patch(
             "app.services.gemini_tools.OpenMeteoService"
@@ -80,7 +80,7 @@ class TestGetCalendarEvents:
     @pytest.mark.asyncio
     async def test_success(self, tools):
         tool_groups, db = tools
-        calendar_tool = tool_groups["secretary"][1]  # get_calendar_events
+        calendar_tool = tool_groups["calendar"][0]  # get_calendar_events
 
         with patch(
             "app.services.gemini_tools.GoogleCalendarService"
@@ -107,7 +107,7 @@ class TestGetCalendarEvents:
     @pytest.mark.asyncio
     async def test_no_events(self, tools):
         tool_groups, _ = tools
-        calendar_tool = tool_groups["secretary"][1]
+        calendar_tool = tool_groups["calendar"][0]
 
         with patch(
             "app.services.gemini_tools.GoogleCalendarService"
@@ -121,7 +121,7 @@ class TestGetCalendarEvents:
     @pytest.mark.asyncio
     async def test_api_error(self, tools):
         tool_groups, _ = tools
-        calendar_tool = tool_groups["secretary"][1]
+        calendar_tool = tool_groups["calendar"][0]
 
         with patch(
             "app.services.gemini_tools.GoogleCalendarService"
@@ -139,7 +139,7 @@ class TestScheduleEventTool:
     @pytest.mark.asyncio
     async def test_success(self, tools):
         tool_groups, db = tools
-        schedule_tool = tool_groups["secretary"][2]  # schedule_event_tool
+        schedule_tool = tool_groups["calendar"][1]  # schedule_event_tool
 
         with patch(
             "app.services.gemini_tools.GoogleCalendarService"
@@ -171,7 +171,7 @@ class TestScheduleEventTool:
     @pytest.mark.asyncio
     async def test_invalid_datetime(self, tools):
         tool_groups, _ = tools
-        schedule_tool = tool_groups["secretary"][2]
+        schedule_tool = tool_groups["calendar"][1]
 
         result = await schedule_tool(
             summary="Test", start_time_iso="not-a-date"
