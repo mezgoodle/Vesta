@@ -13,20 +13,20 @@ from app.crud.crud_user import user as crud_user
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.token import TokenPayload
+from app.services.adk_service import ADKService, adk_service
 from app.services.google_calendar import (
     GoogleCalendarService,
     google_calendar_service,
 )
 from app.services.google_tts import GoogleTTSService, google_tts_service
 from app.services.knowledge import KnowledgeService, knowledge_service
-from app.services.llm import LLMService, llm_service
 from app.services.open_meteo_service import OpenMeteoService, open_meteo_service
 from app.services.weather import WeatherService, weather_service
 
 SessionDep = Annotated[AsyncSession, Depends(get_db)]
 WeatherServiceDep = Annotated[WeatherService, Depends(weather_service)]
 OpenMeteoServiceDep = Annotated[OpenMeteoService, Depends(open_meteo_service)]
-LLMServiceDep = Annotated[LLMService, Depends(llm_service)]
+ADKServiceDep = Annotated[ADKService, Depends(adk_service)]
 CalendarServiceDep = Annotated[GoogleCalendarService, Depends(google_calendar_service)]
 KnowledgeServiceDep = Annotated[KnowledgeService, Depends(knowledge_service)]
 TTSServiceDep = Annotated[GoogleTTSService, Depends(google_tts_service)]

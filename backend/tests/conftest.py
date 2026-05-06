@@ -10,6 +10,8 @@ from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
 from app.services.google_tts import GoogleTTSService, google_tts_service
+from app.services.adk_service import ADKService
+from app.services.adk_service import adk_service as adk_service_dep
 from app.services.llm import LLMService
 from app.services.llm import llm_service as llm_service_dep
 
@@ -104,6 +106,26 @@ async def mock_llm_service() -> AsyncGenerator[AsyncMock, None]:
     yield mock
 
     app.dependency_overrides.pop(llm_service_dep, None)
+
+
+@pytest.fixture
+async def mock_adk_service() -> AsyncGenerator[AsyncMock, None]:
+    """
+    Fixture for mocked ADK service.
+    Overrides the adk_service dependency.
+    """
+    mock = AsyncMock(spec=ADKService)
+    mock.process_chat = AsyncMock()
+    mock.generate_session_summary = AsyncMock()
+
+    async def override_adk_service():
+        yield mock
+
+    app.dependency_overrides[adk_service_dep] = override_adk_service
+
+    yield mock
+
+    app.dependency_overrides.pop(adk_service_dep, None)
 
 
 @pytest.fixture
