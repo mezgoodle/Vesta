@@ -51,6 +51,7 @@ class BaseAPIService(ABC):
         endpoint: str,
         params: dict | None = None,
         headers: dict | None = None,
+        timeout: int | None = None,
     ) -> tuple[int, dict | None]:
         """
         Make a GET request to the backend API.
@@ -66,9 +67,10 @@ class BaseAPIService(ABC):
         """
         url = f"{self.base_url}{self.API_PREFIX}{endpoint}"
         request_headers = self._get_headers(headers)
+        request_timeout = ClientTimeout(total=timeout) if timeout else self.timeout
 
         try:
-            async with aiohttp.ClientSession(timeout=self.timeout) as session:
+            async with aiohttp.ClientSession(timeout=request_timeout) as session:
                 async with session.get(
                     url, params=params, headers=request_headers
                 ) as response:
@@ -97,6 +99,7 @@ class BaseAPIService(ABC):
         endpoint: str,
         json_data: dict | None = None,
         headers: dict | None = None,
+        timeout: int | None = None,
     ) -> tuple[int, dict | None]:
         """
         Make a POST request to the backend API.
@@ -112,9 +115,10 @@ class BaseAPIService(ABC):
         """
         url = f"{self.base_url}{self.API_PREFIX}{endpoint}"
         request_headers = self._get_headers(headers)
+        request_timeout = ClientTimeout(total=timeout) if timeout else self.timeout
 
         try:
-            async with aiohttp.ClientSession(timeout=self.timeout) as session:
+            async with aiohttp.ClientSession(timeout=request_timeout) as session:
                 async with session.post(
                     url, json=json_data, headers=request_headers
                 ) as response:
@@ -143,6 +147,7 @@ class BaseAPIService(ABC):
         endpoint: str,
         json_data: dict | None = None,
         headers: dict | None = None,
+        timeout: int | None = None,
     ) -> tuple[int, dict | None]:
         """
         Make a PUT request to the backend API.
@@ -158,9 +163,10 @@ class BaseAPIService(ABC):
         """
         url = f"{self.base_url}{self.API_PREFIX}{endpoint}"
         request_headers = self._get_headers(headers)
+        request_timeout = ClientTimeout(total=timeout) if timeout else self.timeout
 
         try:
-            async with aiohttp.ClientSession(timeout=self.timeout) as session:
+            async with aiohttp.ClientSession(timeout=request_timeout) as session:
                 async with session.put(
                     url, json=json_data, headers=request_headers
                 ) as response:
@@ -174,6 +180,9 @@ class BaseAPIService(ABC):
                     self.logger.debug(f"PUT {url} - Status: {status}")
                     return status, data
 
+        except asyncio.TimeoutError:
+            self.logger.error(f"Timeout error during PUT request to {url}")
+            return 0, None
         except ClientError as e:
             self.logger.error(f"Connection error to {url}: {e}")
             return 0, None
@@ -186,6 +195,7 @@ class BaseAPIService(ABC):
         endpoint: str,
         json_data: dict | None = None,
         headers: dict | None = None,
+        timeout: int | None = None,
     ) -> tuple[int, dict | None]:
         """
         Make a PATCH request to the backend API.
@@ -201,9 +211,10 @@ class BaseAPIService(ABC):
         """
         url = f"{self.base_url}{self.API_PREFIX}{endpoint}"
         request_headers = self._get_headers(headers)
+        request_timeout = ClientTimeout(total=timeout) if timeout else self.timeout
 
         try:
-            async with aiohttp.ClientSession(timeout=self.timeout) as session:
+            async with aiohttp.ClientSession(timeout=request_timeout) as session:
                 async with session.patch(
                     url, json=json_data, headers=request_headers
                 ) as response:
@@ -217,6 +228,9 @@ class BaseAPIService(ABC):
                     self.logger.debug(f"PATCH {url} - Status: {status}")
                     return status, data
 
+        except asyncio.TimeoutError:
+            self.logger.error(f"Timeout error during PATCH request to {url}")
+            return 0, None
         except ClientError as e:
             self.logger.error(f"Connection error to {url}: {e}")
             return 0, None
@@ -225,7 +239,7 @@ class BaseAPIService(ABC):
             return 0, None
 
     async def _delete(
-        self, endpoint: str, headers: dict | None = None
+        self, endpoint: str, headers: dict | None = None, timeout: int | None = None
     ) -> tuple[int, dict | None]:
         """
         Make a DELETE request to the backend API.
@@ -240,9 +254,10 @@ class BaseAPIService(ABC):
         """
         url = f"{self.base_url}{self.API_PREFIX}{endpoint}"
         request_headers = self._get_headers(headers)
+        request_timeout = ClientTimeout(total=timeout) if timeout else self.timeout
 
         try:
-            async with aiohttp.ClientSession(timeout=self.timeout) as session:
+            async with aiohttp.ClientSession(timeout=request_timeout) as session:
                 async with session.delete(url, headers=request_headers) as response:
                     status = response.status
 
@@ -254,6 +269,9 @@ class BaseAPIService(ABC):
                     self.logger.debug(f"DELETE {url} - Status: {status}")
                     return status, data
 
+        except asyncio.TimeoutError:
+            self.logger.error(f"Timeout error during DELETE request to {url}")
+            return 0, None
         except ClientError as e:
             self.logger.error(f"Connection error to {url}: {e}")
             return 0, None

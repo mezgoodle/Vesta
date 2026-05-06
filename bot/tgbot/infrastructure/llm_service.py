@@ -6,7 +6,7 @@ from tgbot.infrastructure.base_service import BaseAPIService
 class LLMService(BaseAPIService):
     """Service for LLM operations."""
 
-    def __init__(self, base_url: str | None = None, timeout: int = 60):
+    def __init__(self, base_url: str | None = None, timeout: int = 10):
         super().__init__(base_url, timeout)
 
     async def process_prompt(
@@ -25,7 +25,9 @@ class LLMService(BaseAPIService):
         endpoint = "/chat/process"
 
         status, data = await self._post(
-            endpoint, {"user_id": user_id, "session_id": session_id, "message": prompt, "want_voice": want_voice}
+            endpoint, 
+            {"user_id": user_id, "session_id": session_id, "message": prompt, "want_voice": want_voice},
+            timeout=60
         )
 
         if status == 200:
