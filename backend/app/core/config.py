@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     OPENWEATHER_API_KEY: str = "test-weather-key"
 
     # Database
-    DATABASE_URL: str = "sqlite+aiosqlite:///./vesta.db"
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/vesta"
 
     # General
     DEBUG: bool = True
