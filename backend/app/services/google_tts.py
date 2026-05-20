@@ -40,11 +40,14 @@ class GoogleTTSService:
         Requires ``GOOGLE_APPLICATION_CREDENTIALS`` to be set in settings
         with the path to the GCP service account JSON key file.
         """
-        self.client = texttospeech.TextToSpeechClient(
-            credentials=service_account.Credentials.from_service_account_file(
-                settings.GOOGLE_APPLICATION_CREDENTIALS
+        if settings.GOOGLE_APPLICATION_CREDENTIALS:
+            self.client = texttospeech.TextToSpeechClient(
+                credentials=service_account.Credentials.from_service_account_file(
+                    settings.GOOGLE_APPLICATION_CREDENTIALS
+                )
             )
-        )
+        else:
+            self.client = texttospeech.TextToSpeechClient()
         self.logger = logging.getLogger(self.__class__.__name__)
 
         # Audio config is the same for all languages
