@@ -1,5 +1,8 @@
 from typing import AsyncGenerator
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
+# Mock create_superuser in app.main to prevent DB calls on lifespan startup during tests
+patch("app.main.create_superuser", new_callable=AsyncMock).start()
 
 import pytest
 from httpx import ASGITransport, AsyncClient

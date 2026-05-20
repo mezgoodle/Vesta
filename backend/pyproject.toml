@@ -13,7 +13,6 @@ dependencies = [
     "python-multipart",
     # Database
     "sqlalchemy",
-    "aiosqlite",
     "alembic",
     # AI & Google
     "google-adk",
@@ -41,6 +40,7 @@ dependencies = [
     "pwdlib[argon2]>=0.3.0",
     "pytz>=2026.1.post1",
     "google-cloud-texttospeech>=2.36.0",
+    "asyncpg>=0.31.0",
 ]
 
 [dependency-groups]
@@ -49,6 +49,7 @@ dev = [
     "pytest-cov",
     "pytest-asyncio",
     "ruff",
+    "aiosqlite",
 ]
 
 [tool.ruff]
