@@ -1,9 +1,6 @@
 from typing import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
-# Mock create_superuser in app.main to prevent DB calls on lifespan startup during tests
-patch("app.main.create_superuser", new_callable=AsyncMock).start()
-
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -12,11 +9,14 @@ from sqlalchemy.pool import StaticPool
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
-from app.services.google_tts import GoogleTTSService, google_tts_service
 from app.services.adk_service import ADKService
 from app.services.adk_service import adk_service as adk_service_dep
+from app.services.google_tts import GoogleTTSService, google_tts_service
 from app.services.llm import LLMService
 from app.services.llm import llm_service as llm_service_dep
+
+# Mock create_superuser in app.main to prevent DB calls on lifespan startup during tests
+patch("app.main.create_superuser", new_callable=AsyncMock).start()
 
 # Use in-memory SQLite database for tests
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
