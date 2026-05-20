@@ -49,6 +49,7 @@ dev = [
     "pytest-cov",
     "pytest-asyncio",
     "ruff",
+    "aiosqlite",
 ]
 
 [tool.ruff]
