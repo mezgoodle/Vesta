@@ -137,3 +137,6 @@ jobs:
             SYSTEM_INSTRUCTION=${{ secrets.SYSTEM_INSTRUCTION }}
             LLAMA_PARSE_API_KEY=${{ secrets.LLAMA_PARSE_API_KEY }}
             GOOGLE_DRIVE_FOLDER_ID=${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
