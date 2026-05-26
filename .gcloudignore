@@ -1,0 +1,19 @@
+# .gcloudignore
+# Explicitly control what gets uploaded to Google Cloud Build.
+# We omit .env so that the container configuration is preserved.
+
+.git
+.gitignore
+.venv
+backend/.venv
+bot/.venv
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+chroma_db/
+backend/chroma_db/
+logs_out.json
+logs_out_utf8.json
+vesta.db
+backend/vesta.db

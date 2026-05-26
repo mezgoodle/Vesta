@@ -72,10 +72,14 @@ async def run_async_migrations() -> None:
 
     """
 
+    section = config.get_section(config.config_ini_section, {})
+    section["sqlalchemy.url"] = settings.DATABASE_URL
+
     connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        section,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args={"statement_cache_size": 0},
     )
 
     async with connectable.connect() as connection:

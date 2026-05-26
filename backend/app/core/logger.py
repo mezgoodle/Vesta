@@ -32,11 +32,14 @@ def setup_logging() -> None:
         logger.info("Logging configured for LOCAL/DEBUG environment.")
     else:
         try:
-            client = google_logging.Client(
-                credentials=service_account.Credentials.from_service_account_file(
-                    settings.GOOGLE_APPLICATION_CREDENTIALS
+            if settings.GOOGLE_APPLICATION_CREDENTIALS:
+                client = google_logging.Client(
+                    credentials=service_account.Credentials.from_service_account_file(
+                        settings.GOOGLE_APPLICATION_CREDENTIALS
+                    )
                 )
-            )
+            else:
+                client = google_logging.Client()
             handler = CloudLoggingHandler(
                 client, name=settings.GCP_LOG_NAME, transport=BackgroundThreadTransport
             )
