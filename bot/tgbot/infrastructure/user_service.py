@@ -102,7 +102,7 @@ class UserService(BaseAPIService):
         Args:
             user_data: Dictionary of user data to create.
         """
-        endpoint = "/users"
+        endpoint = "/users/"
 
         status, data = await self._post(endpoint, user_data)
 

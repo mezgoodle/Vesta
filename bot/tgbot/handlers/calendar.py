@@ -1,8 +1,8 @@
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
-from loader import dp
 
+from loader import dp
 from tgbot.filters.approved_user import IsApprovedUserFilter
 from tgbot.infrastructure.calendar_service import calendar_service
 

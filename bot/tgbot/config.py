@@ -5,7 +5,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     bot_token: SecretStr
     admins: list[int] = [353057906]
-    backend_base_url: str = "http://localhost:8000"
+    backend_base_url: str = (
+        "https://vesta-backend-1074367258192.europe-central2.run.app"
+    )
     backend_api_key: SecretStr
 
     DEBUG: bool = True

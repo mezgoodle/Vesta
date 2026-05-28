@@ -4,6 +4,7 @@ from aiogram.exceptions import (
     TelegramAPIError,
     TelegramBadRequest,
 )
+
 from loader import dp
 
 logger = logging.getLogger(__name__)
@@ -28,4 +29,3 @@ async def errors_handler(update, exception) -> bool | None:
     # At least you have tried.
     logger.error(f"Update: {update} \n{exception}")
     return True
-

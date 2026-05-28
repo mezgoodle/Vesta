@@ -2,8 +2,8 @@ from aiogram import F, Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 from aiogram.utils.markdown import hbold
-from loader import bot, dp
 
+from loader import bot, dp
 from tgbot.config import Settings
 from tgbot.keyboards.inline.permission_request_keyboard import permissions_markup
 from tgbot.services.user_cache import UserCache

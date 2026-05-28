@@ -1,8 +1,8 @@
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
-from loader import dp
 
+from loader import dp
 from tgbot.filters.admin import IsAdminFilter
 from tgbot.infrastructure.user_service import user_service
 from tgbot.keyboards.inline.callbacks.user_edit import UserEditCallbackFactory

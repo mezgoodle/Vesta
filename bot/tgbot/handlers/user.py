@@ -2,8 +2,8 @@ from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 from aiogram.utils.markdown import hlink
-from loader import dp
 
+from loader import dp
 from tgbot.filters.approved_user import IsApprovedUserFilter
 from tgbot.infrastructure.user_service import user_service
 from tgbot.services.user_cache import UserCache

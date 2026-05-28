@@ -1,11 +1,12 @@
 import base64
+
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import BufferedInputFile, Message
 from aiogram.utils.markdown import hbold
-from loader import dp
 
+from loader import dp
 from tgbot.filters.approved_user import IsApprovedUserFilter
 from tgbot.infrastructure.llm_service import llm_service
 from tgbot.services.stt import stt_service
@@ -58,7 +59,11 @@ async def user_message_handler(message: Message, state: FSMContext, user_db_id: 
 
 
 async def _process_llm_request(
-    message: Message, state: FSMContext, user_db_id: int, text: str, want_voice: bool = False
+    message: Message,
+    state: FSMContext,
+    user_db_id: int,
+    text: str,
+    want_voice: bool = False,
 ):
     await state.update_data(message=text)
     data = await state.get_data()

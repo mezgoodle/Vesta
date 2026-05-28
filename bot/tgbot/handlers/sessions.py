@@ -3,8 +3,8 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from aiogram.utils.markdown import hbold
-from loader import dp
 
+from loader import dp
 from tgbot.filters.approved_user import IsApprovedUserFilter
 from tgbot.infrastructure.llm_service import llm_service
 from tgbot.keyboards.inline import session_keyboard, sessions_keyboard

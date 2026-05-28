@@ -3,6 +3,7 @@ import logging
 
 from aiogram import Bot, Dispatcher
 from aiogram.utils.callback_answer import CallbackAnswerMiddleware
+
 from loader import bot, dp
 from tgbot.config import Settings, config
 from tgbot.infrastructure.logger import setup_logging
