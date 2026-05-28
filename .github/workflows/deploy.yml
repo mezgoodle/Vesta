@@ -125,7 +125,11 @@ jobs:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
           image: ${{ env.IMAGE_TAG }}
-          flags: --max-instances=3 --memory=512Mi --cpu=1
+          flags: |
+            --max-instances=3
+            --memory=512Mi
+            --cpu=1
+            --allow-unauthenticated
           env_vars: |-
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
@@ -141,3 +145,9 @@ jobs:
             GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
             GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
+
+      - name: Hard-cap service scaling limits
+        run: |
+          gcloud run services update ${{ env.SERVICE_NAME }} \
+            --region=${{ env.REGION }} \
+            --max-instances=3
