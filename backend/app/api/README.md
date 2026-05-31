@@ -16,27 +16,35 @@ api/
 
 ### [Dependency Injection (deps.py)](./deps.py)
 
-Uses FastAPI's `Depends` system to decouple components and manage request lifecycle.
+Uses FastAPI's `Depends` system to decouple components and manage the request lifecycle.
 
-- **`get_db`**: Provides a database session for each request.
-- **`get_current_user`**: Validates JWT tokens and returns the authenticated user context.
-- **`get_current_active_superuser`**: Ensures the user has admin privileges.
+- **`SessionDep`**: Provides a scoped async database session (`AsyncSession`) for each request.
+- **`CurrentUser`**: Validates JWT bearer tokens or `X-API-Key` headers to fetch and inject the calling user context.
+- **`CurrentSuperUser`**: Restricts endpoints to admin-level accounts.
+- **`ADKServiceDep`**: Yields the ADK agent coordinator.
+- **`KnowledgeServiceDep`**: Yields the LlamaIndex base RAG service.
+- **`TTSServiceDep`**: Yields the Google TTS engine.
+- **`OpenMeteoServiceDep`**: Yields the free OpenMeteo weather client.
 
 ### [API Router (./v1/api.py)](./v1/api.py)
 
-Aggregates all endpoint routers into a single `api_router`. This is where the top-level routing structure is defined (e.g., `/users`, `/calendar`).
+Aggregates all endpoint routers into a single `api_router`. This is where the top-level routing structure is defined under the `/api/v1` namespace.
 
 ### Endpoints (./v1/endpoints/)
 
-Each module in this directory corresponds to a resource or feature area:
+Each module in this directory corresponds to a specific resource or feature area:
 
-- **`calendar.py`**: Calendar management endpoints.
-- **`chat.py`**: Chat interface endpoints.
-- **`devices.py`**: Smart home device control.
-- **`google_auth.py`**: Google OAuth callback handlers.
-- **`login.py`**: User authentication and token generation.
-- **`users.py`**: User account management.
-- **`weather.py`**: Weather data endpoints.
+- **`calendar.py`**: Connects to Google Calendar to schedule or update appointments.
+- **`chat.py`**: Primary conversational gateway `/chat/process` connected to the ADK agent coordinator.
+- **`devices.py`**: Connects to Home Assistant REST and WebSocket modules.
+- **`google_auth.py`**: Handles Google Consent Screen redirection and callback flows.
+- **`knowledge.py`**: Endpoint `/knowledge/sync` triggers background documentation ingestion from Google Drive.
+- **`login.py`**: Generates and checks JWT access tokens.
+- **`news.py`**: Registers or deletes news RSS subscriptions.
+- **`sessions.py`**: Manages conversational history session CRUD and updates.
+- **`tts.py`**: Exposes direct Text-To-Speech stream synthesis.
+- **`users.py`**: Manages Telegram user onboarding, approvals, profiles, and permissions.
+- **`weather.py`**: Serves city-based real-time weather and N-day geocoded forecasts via OpenMeteo.
 
 ## Versioning
 

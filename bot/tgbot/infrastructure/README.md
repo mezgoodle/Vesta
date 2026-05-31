@@ -1,105 +1,109 @@
 # Vesta API Infrastructure
 
-This module provides a professional OOP-based integration with the Vesta Backend API for the Telegram Bot.
+This module provides a professional, OOP-based API integration with the Vesta Backend API for the Telegram Bot.
 
-## Architecture
+---
 
-The infrastructure uses an **Abstract Base Service Pattern** with inheritance for clean, maintainable, and testable code.
+## 📐 Architecture
 
-### Design Pattern: Template Method + Inheritance
+The infrastructure uses an **Abstract Base Service Pattern** with inheritance to produce clean, maintainable, and testable code.
 
-```
+```text
 BaseAPIService (Abstract)
-    ├── _get()          # Protected HTTP methods
+    ├── _get()          # Protected async HTTP methods
     ├── _post()
     ├── _put()
     ├── _delete()
     └── _handle_error_response()
-         ↑
+         ▲
          │ (inherits)
          │
-    WeatherService
-    ForecastService
-    ... (other services)
+    ┌────┴────────────────────────┐
+    │                             │
+WeatherService              CalendarService   ... (other services)
 ```
 
-### Components
+---
 
-#### 1. **BaseAPIService** (`base_service.py`)
+## 🧱 Key Components
 
-Abstract base class providing common HTTP functionality.
+### 1. **BaseAPIService** (`base_service.py`)
+Abstract base class providing common HTTP and connection lifecycle management.
+*   **Protected HTTP wrappers**: Handles asynchronous `_get`, `_post`, `_put`, and `_delete` requests via `aiohttp`.
+*   **Centralized Error Handling**: Automatically converts network timeouts or HTTP errors into user-friendly error logs and alerts.
+*   **Service-to-Service Authorization**: Injects the required standard `X-API-Key` headers into all outgoing requests.
 
-**Features:**
+### 2. **WeatherService** (`weather_service.py`)
+Extends `BaseAPIService` to parse OpenMeteo forecast objects and format outputs.
+*   Converts JSON responses into standard telegram card layouts.
+*   Handles errors specifically within geocoding or forecast bounds.
 
-- Protected HTTP methods (`_get`, `_post`, `_put`, `_delete`)
-- Automatic error handling and logging
-- Configurable timeout and base URL
-- Common error response handling
+### 3. **CalendarService** (`calendar_service.py`)
+Extends `BaseAPIService` to coordinate event fetch/insert queries.
 
-**Why Abstract?**
+### 4. **LLMService** (`llm_service.py`)
+Extends `BaseAPIService` to transmit chat prompts to the backend's Google ADK endpoint under `/chat/process`. Supports voice streaming integrations.
 
-- Enforces consistent API interaction patterns
-- Reduces code duplication
-- Makes testing easier (mock once, use everywhere)
-- Provides a clear contract for all services
+### 5. **UserService** (`user_service.py`)
+Extends `BaseAPIService` to list approved users, trigger permissions updates, or generate calendar consent links.
 
-#### 2. **WeatherService** (`weather_service.py`)
+---
 
-Concrete service for weather operations.
+## ⚙️ Configuration
 
-**Features:**
-
-- Inherits HTTP methods from `BaseAPIService`
-- Implements weather-specific business logic
-- Formats weather data for users
-- Custom error messages for weather context
-
-#### 3. **ForecastService** (`forecast_service.py`)
-
-Example service demonstrating the pattern.
-
-**Purpose:**
-
-- Shows how to create new services
-- Template for extending functionality
-
-## Configuration
-
-Add the backend URL to your `.env` file:
-
+Set the backend base url inside the bot's `.env` configuration:
 ```env
 BACKEND_BASE_URL=http://localhost:8000
 ```
+If not specified, the system defaults to `http://localhost:8000`.
 
-If not specified, it defaults to `http://localhost:8000`.
+---
 
-## Usage
+## 📡 API Response Format
 
-### Using Existing Services
+### Weather Endpoint Forecast Schema (`/weather/current`)
+The endpoint queries the OpenMeteo engine and returns the following structure:
 
-```python
-from tgbot.infrastructure.weather_service import weather_service
-
-# Fetch weather data
-weather_info = await weather_service.get_current_weather("London")
-print(weather_info)
+```json
+{
+  "city_name": "London",
+  "current_temp": 15.5,
+  "current_conditions": "Partly cloudy",
+  "daily_forecasts": [
+    {
+      "date": "2026-05-31",
+      "max_temp": 18.2,
+      "min_temp": 12.1,
+      "precipitation_prob_max": 20
+    },
+    {
+      "date": "2026-06-01",
+      "max_temp": 19.5,
+      "min_temp": 11.8,
+      "precipitation_prob_max": 10
+    }
+  ]
+}
 ```
 
-### Creating a New Service
+---
+
+## 🛠️ Adding a New Service
+
+To integrate a new API endpoint area, extend `BaseAPIService`:
 
 ```python
 from typing import Optional
 from tgbot.infrastructure.base_service import BaseAPIService
 
 class AlertService(BaseAPIService):
-    """Service for weather alerts."""
+    """Service for handling smart alerts."""
 
     def __init__(self, base_url: Optional[str] = None, timeout: int = 10):
         super().__init__(base_url, timeout)
 
-    async def get_alerts(self, city_name: str) -> str:
-        """Fetch weather alerts for a city."""
-        endpoint = "/api/v1/weather/alerts"
+    async def get_active_alerts(self, city_name: str) -> str:
+        endpoint = "/alerts/active"
         params = {"city": city_name}
 
         status, data = await self._get(endpoint, params)
@@ -107,99 +111,22 @@ class AlertService(BaseAPIService):
         if status == 200:
             return self._format_alerts(data)
         else:
-            return self._handle_error_response(status, data, "fetching alerts")
+            return self._handle_error_response(status, data, "fetching active alerts")
 
     def _format_alerts(self, data: dict) -> str:
-        """Format alert data."""
-        # Your formatting logic here
-        pass
+        # Construct and return human-readable Markdown lists
+        return f"⚠️ Alert: {data.get('title')} - {data.get('description')}"
 
-# Create singleton
+# Instantiate as a singleton for export
 alert_service = AlertService()
 ```
 
-### In a Handler
+---
 
-```python
-from aiogram import types
-from tgbot.infrastructure.weather_service import weather_service
+## 🧪 Testing Services
 
-async def weather_handler(message: types.Message):
-    city = message.get_args()
-    weather = await weather_service.get_current_weather(city)
-    await message.reply(weather)
-```
-
-## OOP Principles Applied
-
-### 1. **Inheritance**
-
-Services inherit common HTTP functionality from `BaseAPIService`.
-
-### 2. **Encapsulation**
-
-- Protected methods (`_get`, `_post`) indicate internal API
-- Public methods (`get_current_weather`) are the service interface
-
-### 3. **Single Responsibility**
-
-- `BaseAPIService`: HTTP communication
-- `WeatherService`: Weather business logic
-- Each service: One domain of functionality
-
-### 4. **Open/Closed Principle**
-
-- Open for extension (create new services)
-- Closed for modification (don't change base class)
-
-### 5. **Dependency Inversion**
-
-- Services depend on abstraction (`BaseAPIService`)
-- Easy to mock for testing
-
-## Error Handling
-
-The base service handles common scenarios:
-
-1. **Backend Offline (status = 0)**: "❌ My brain is offline. Please try again later."
-2. **Not Found (404)**: "❌ Resource not found. Please check your input."
-3. **Bad Request (400)**: "❌ Invalid request. Please try again."
-4. **Server Error (500)**: "❌ Server error. Please try again later."
-5. **Network Timeout**: 10-second timeout (configurable)
-
-Services can override `_handle_error_response()` for custom error handling.
-
-## API Response Format
-
-### Weather Endpoint
-
-```json
-{
-  "temperature": 15.5,
-  "feels_like": 13.2,
-  "description": "partly cloudy",
-  "humidity": 65,
-  "wind_speed": 3.5,
-  "pressure": 1013
-}
-```
-
-## Features
-
-- ✅ Professional OOP design with inheritance
-- ✅ Abstract base class for consistency
-- ✅ Protected methods for encapsulation
-- ✅ Async/await support with `aiohttp`
-- ✅ Automatic timeout handling (configurable)
-- ✅ Comprehensive error handling
-- ✅ Detailed logging per service
-- ✅ Singleton pattern for easy reuse
-- ✅ Type hints for IDE support
-- ✅ Easy to extend and test
-
-## Testing
-
-### Unit Testing Example
+### Unit Testing Client Service Logic
+Mocking backend responses is simple using `unittest.mock.AsyncMock`:
 
 ```python
 import pytest
@@ -207,52 +134,25 @@ from unittest.mock import AsyncMock
 from tgbot.infrastructure.weather_service import WeatherService
 
 @pytest.mark.asyncio
-async def test_weather_service():
+async def test_weather_service_parsing():
     service = WeatherService()
 
-    # Mock the _get method
+    # Mock the internal protected _get method
     service._get = AsyncMock(return_value=(200, {
-        "temperature": 15.5,
-        "feels_like": 13.2,
-        "description": "partly cloudy",
-        "humidity": 65,
-        "wind_speed": 3.5,
-        "pressure": 1013
+        "city_name": "London",
+        "current_temp": 15.5,
+        "current_conditions": "Partly cloudy",
+        "daily_forecasts": [
+            {
+                "date": "2026-05-31",
+                "max_temp": 18.2,
+                "min_temp": 12.1,
+                "precipitation_prob_max": 20
+            }
+        ]
     }))
 
-    result = await service.get_current_weather("London")
+    result = await service.get_forecast("London", days=1)
     assert "London" in result
     assert "15.5°C" in result
 ```
-
-### Integration Testing
-
-1. Ensure your backend is running at the configured URL
-2. Use the `/weather` command in Telegram: `/weather London`
-3. Check logs for any errors
-
-## Advantages Over Composition
-
-| Aspect          | Composition (Old)            | Inheritance (New)       |
-| --------------- | ---------------------------- | ----------------------- |
-| Code Reuse      | Manual delegation            | Automatic inheritance   |
-| Consistency     | Each service implements HTTP | Enforced by base class  |
-| Testing         | Mock client in each service  | Mock once in base class |
-| Extensibility   | Add methods to client        | Override base methods   |
-| Maintainability | Changes affect all services  | Changes in one place    |
-
-## Dependencies
-
-- `aiohttp` - Async HTTP client
-- `pydantic-settings` - Configuration management
-
-All dependencies are listed in `requirements.txt`.
-
-## Best Practices
-
-1. **Always inherit from `BaseAPIService`** when creating new services
-2. **Use protected methods (`_get`, `_post`)** for HTTP calls
-3. **Implement public methods** for business logic
-4. **Override `_handle_error_response()`** for custom error handling
-5. **Create singletons** for services that don't need multiple instances
-6. **Add type hints** for better IDE support and documentation
