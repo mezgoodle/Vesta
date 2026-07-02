@@ -48,13 +48,29 @@ async def on_startup(bot: Bot, dispatcher: Dispatcher) -> None:
     register_all_handlers()
     register_global_middlewares(dispatcher, config)
     await register_all_commands(bot)
+
+    if not (config.DEBUG or not config.WEBHOOK_DOMAIN):
+        webhook_url = config.WEBHOOK_DOMAIN.rstrip("/") + config.WEBHOOK_PATH
+        secret_token = (
+            config.WEBHOOK_SECRET.get_secret_value()
+            if config.WEBHOOK_SECRET
+            else None
+        )
+        await bot.set_webhook(url=webhook_url, secret_token=secret_token)
+        logging.info(f"Webhook set to: {webhook_url}")
+
     await on_startup_notify(bot)
     logging.info("Bot started.")
 
 
-async def on_shutdown(dispatcher: Dispatcher) -> None:
+async def on_shutdown(bot: Bot, dispatcher: Dispatcher) -> None:
     await dispatcher.storage.close()
     logging.info("Storage closed.")
+
+    if not (config.DEBUG or not config.WEBHOOK_DOMAIN):
+        await bot.delete_webhook(drop_pending_updates=True)
+        logging.info("Webhook deleted.")
+
     logging.info("Bot stopped.")
 
 
@@ -68,10 +84,47 @@ async def main() -> None:
 
     dp.workflow_data.update(user_cache=user_cache)
 
-    # And the run events dispatching
-    await dp.start_polling(bot)
-    # * For the webhook usage:
-    # * https://docs.aiogram.dev/en/dev-3.x/dispatcher/webhook.html#examples
+    if config.DEBUG or not config.WEBHOOK_DOMAIN:
+        logging.info("Starting bot in Long Polling mode...")
+        await dp.start_polling(bot)
+    else:
+        logging.info("Starting bot in Webhook mode...")
+        import os
+        from aiohttp import web
+        from aiogram.webhook.aiohttp_server import (
+            SimpleRequestHandler,
+            setup_application,
+        )
+
+        if not config.WEBHOOK_SECRET:
+            raise ValueError(
+                "WEBHOOK_SECRET must be set when running in Webhook mode."
+            )
+
+        port_env = os.getenv("PORT")
+        port = int(port_env) if port_env else config.APP_PORT
+        host = config.APP_HOST
+
+        app = web.Application()
+
+        webhook_requests_handler = SimpleRequestHandler(
+            dispatcher=dp,
+            bot=bot,
+            secret_token=config.WEBHOOK_SECRET.get_secret_value(),
+        )
+        webhook_requests_handler.register(app, path=config.WEBHOOK_PATH)
+        setup_application(app, dp, bot=bot)
+
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, host=host, port=port)
+        await site.start()
+        logging.info(f"Webhook server running on {host}:{port}")
+
+        try:
+            await asyncio.Event().wait()
+        finally:
+            await runner.cleanup()
 
 
 if __name__ == "__main__":
