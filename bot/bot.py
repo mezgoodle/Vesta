@@ -66,11 +66,6 @@ async def on_startup(bot: Bot, dispatcher: Dispatcher) -> None:
 async def on_shutdown(bot: Bot, dispatcher: Dispatcher) -> None:
     await dispatcher.storage.close()
     logging.info("Storage closed.")
-
-    if not (config.DEBUG or not config.WEBHOOK_DOMAIN):
-        await bot.delete_webhook(drop_pending_updates=True)
-        logging.info("Webhook deleted.")
-
     logging.info("Bot stopped.")
 
 
@@ -121,8 +116,17 @@ async def main() -> None:
         await site.start()
         logging.info(f"Webhook server running on {host}:{port}")
 
+        import signal
+        stop_event = asyncio.Event()
         try:
-            await asyncio.Event().wait()
+            loop = asyncio.get_running_loop()
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                loop.add_signal_handler(sig, stop_event.set)
+        except NotImplementedError:
+            pass
+
+        try:
+            await stop_event.wait()
         finally:
             await runner.cleanup()
 

@@ -1,4 +1,4 @@
-from pydantic import SecretStr
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     WEBHOOK_SECRET: SecretStr | None = None
     APP_PORT: int = 8080
     APP_HOST: str = "0.0.0.0"
+
+    @field_validator("WEBHOOK_PATH")
+    @classmethod
+    def normalize_webhook_path(cls, v: str) -> str:
+        if not v.startswith("/"):
+            v = "/" + v
+        return v.rstrip("/")
 
     model_config = SettingsConfigDict(
         env_file=".env",
