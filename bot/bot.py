@@ -1,8 +1,15 @@
 import asyncio
 import logging
+import os
+import signal
 
 from aiogram import Bot, Dispatcher
 from aiogram.utils.callback_answer import CallbackAnswerMiddleware
+from aiogram.webhook.aiohttp_server import (
+    SimpleRequestHandler,
+    setup_application,
+)
+from aiohttp import web
 from loader import bot, dp
 from tgbot.config import Settings, config
 from tgbot.infrastructure.logger import setup_logging
@@ -52,9 +59,7 @@ async def on_startup(bot: Bot, dispatcher: Dispatcher) -> None:
     if not (config.DEBUG or not config.WEBHOOK_DOMAIN):
         webhook_url = config.WEBHOOK_DOMAIN.rstrip("/") + config.WEBHOOK_PATH
         secret_token = (
-            config.WEBHOOK_SECRET.get_secret_value()
-            if config.WEBHOOK_SECRET
-            else None
+            config.WEBHOOK_SECRET.get_secret_value() if config.WEBHOOK_SECRET else None
         )
         await bot.set_webhook(url=webhook_url, secret_token=secret_token)
         logging.info(f"Webhook set to: {webhook_url}")
@@ -84,17 +89,9 @@ async def main() -> None:
         await dp.start_polling(bot)
     else:
         logging.info("Starting bot in Webhook mode...")
-        import os
-        from aiohttp import web
-        from aiogram.webhook.aiohttp_server import (
-            SimpleRequestHandler,
-            setup_application,
-        )
 
         if not config.WEBHOOK_SECRET:
-            raise ValueError(
-                "WEBHOOK_SECRET must be set when running in Webhook mode."
-            )
+            raise ValueError("WEBHOOK_SECRET must be set when running in Webhook mode.")
 
         port_env = os.getenv("PORT")
         port = int(port_env) if port_env else config.APP_PORT
@@ -116,7 +113,6 @@ async def main() -> None:
         await site.start()
         logging.info(f"Webhook server running on {host}:{port}")
 
-        import signal
         stop_event = asyncio.Event()
         try:
             loop = asyncio.get_running_loop()
