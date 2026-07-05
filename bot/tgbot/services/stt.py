@@ -27,14 +27,23 @@ class GoogleSTTService:
         """
         Initialize the Google Speech-to-Text client.
 
-        Requires GOOGLE_APPLICATION_CREDENTIALS environment variable to be set
-        with the path to the service account JSON key file.
+        Uses GOOGLE_APPLICATION_CREDENTIALS if it points to a valid file,
+        otherwise falls back to Application Default Credentials (ADC) on GCP.
         """
+        import os
+
         self.location_code = "us"
-        self.client = SpeechClient(
-            credentials=service_account.Credentials.from_service_account_file(
+        credentials = None
+        if (
+            config.GOOGLE_APPLICATION_CREDENTIALS
+            and os.path.exists(config.GOOGLE_APPLICATION_CREDENTIALS)
+        ):
+            credentials = service_account.Credentials.from_service_account_file(
                 config.GOOGLE_APPLICATION_CREDENTIALS
-            ),
+            )
+
+        self.client = SpeechClient(
+            credentials=credentials,
             client_options=ClientOptions(
                 api_endpoint=f"{self.location_code}-speech.googleapis.com"
             ),
