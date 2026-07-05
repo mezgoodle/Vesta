@@ -303,6 +303,18 @@ class BaseAPIService(ABC):
             )
             self.logger.warning(f"Bad request while {context}: {error_msg}")
             return "❌ Invalid request. Please try again."
+        elif status == 401:
+            error_msg = (
+                data.get("detail", "Unauthorized") if data else "Unauthorized"
+            )
+            self.logger.warning(f"Unauthorized while {context}: {error_msg}")
+            return f"❌ Unauthorized: {error_msg}"
+        elif status == 403:
+            error_msg = (
+                data.get("detail", "Forbidden") if data else "Forbidden"
+            )
+            self.logger.warning(f"Forbidden while {context}: {error_msg}")
+            return f"❌ Forbidden: {error_msg}"
         elif status == 500:
             self.logger.error(f"Server error while {context}")
             return "❌ Server error. Please try again later."
