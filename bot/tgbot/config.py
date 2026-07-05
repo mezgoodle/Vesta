@@ -1,4 +1,4 @@
-from pydantic import SecretStr
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +16,20 @@ class Settings(BaseSettings):
     GCP_PROJECT_ID: str = ""
     GCP_LOG_NAME: str = "vesta-bot"
     GOOGLE_APPLICATION_CREDENTIALS: str = ""
+
+    # Webhook Settings
+    WEBHOOK_DOMAIN: str = ""
+    WEBHOOK_PATH: str = "/webhook"
+    WEBHOOK_SECRET: SecretStr | None = None
+    APP_PORT: int = 8080
+    APP_HOST: str = "0.0.0.0"
+
+    @field_validator("WEBHOOK_PATH")
+    @classmethod
+    def normalize_webhook_path(cls, v: str) -> str:
+        if not v.startswith("/"):
+            v = "/" + v
+        return v.rstrip("/")
 
     model_config = SettingsConfigDict(
         env_file=".env",
