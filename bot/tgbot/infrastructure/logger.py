@@ -57,8 +57,6 @@ def setup_logging() -> None:
             logging.basicConfig(
                 level=logging.INFO,
                 format="%(asctime)s :: %(levelname)s :: %(module)s.%(funcName)s :: %(lineno)d :: %(message)s",
-                filename="bot.log",
-                filemode="w",
             )
             logging.error(f"Failed to initialize Google Cloud Logging: {e}")
             logging.info("Fallback to standard logging.")
