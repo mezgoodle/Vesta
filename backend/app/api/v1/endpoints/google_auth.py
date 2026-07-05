@@ -124,9 +124,14 @@ async def google_callback(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to complete authentication: {str(e)}",
         ) from e
-    except Exception:
+    except Exception as e:
         # Unexpected error during token exchange
+        import logging
+        import traceback
+        logging.getLogger("uvicorn.error").error(
+            f"Unexpected error during google_callback: {e}\n{traceback.format_exc()}"
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal Server Error",
+            detail=f"Internal Server Error: {str(e)}",
         )
