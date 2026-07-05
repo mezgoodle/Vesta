@@ -12,6 +12,7 @@ env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REGION: europe-central2
   SERVICE_NAME: vesta-backend
+  BOT_SERVICE_NAME: vesta-bot
   REPO_NAME: vesta-repo
 
 jobs:
@@ -107,19 +108,22 @@ jobs:
       - name: Configure Docker authentication
         run: |-
           gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+      - name: Set Image Tags
+        run: |
+          echo "IMAGE_TAG=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+          echo "BOT_IMAGE_TAG=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.BOT_SERVICE_NAME }}:${GITHUB_SHA::7}" >> "$GITHUB_ENV"
 
-      - name: Set Image Tag
-        run: echo "IMAGE_TAG=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${GITHUB_SHA::7}" >> "$GITHUB_ENV"
-
-      - name: Build Docker image
+      - name: Build Docker images
         run: |-
           docker build -t ${{ env.IMAGE_TAG }} .
+          docker build -t ${{ env.BOT_IMAGE_TAG }} ./bot
 
-      - name: Push Docker image
+      - name: Push Docker images
         run: |-
           docker push ${{ env.IMAGE_TAG }}
+          docker push ${{ env.BOT_IMAGE_TAG }}
 
-      - name: Deploy to Cloud Run
+      - name: Deploy Backend to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.SERVICE_NAME }}
@@ -146,3 +150,22 @@ jobs:
             GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
             GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
+
+      - name: Deploy Bot to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.BOT_SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.BOT_IMAGE_TAG }}
+          flags: |
+            --max-instances=3
+            --memory=512Mi
+            --cpu=1
+            --allow-unauthenticated
+          env_vars: |-
+            DEBUG=false
+            BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
+            BACKEND_BASE_URL=${{ secrets.BACKEND_BASE_URL }}
+            BACKEND_API_KEY=${{ secrets.BACKEND_API_KEY }}
+            WEBHOOK_DOMAIN=${{ secrets.BOT_WEBHOOK_DOMAIN }}
+            WEBHOOK_SECRET=${{ secrets.BOT_WEBHOOK_SECRET }}
