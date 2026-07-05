@@ -1,5 +1,6 @@
 """Google OAuth2 authentication service."""
 
+import os
 from typing import Any
 
 from google.oauth2.credentials import Credentials
@@ -8,6 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.crud.crud_user import user as crud_user
+
+# Prevent oauthlib from raising exceptions if Google modifies or reorders scopes
+os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 
 
 class GoogleAuthService:
@@ -19,6 +23,7 @@ class GoogleAuthService:
         "https://www.googleapis.com/auth/calendar.readonly",
         "https://www.googleapis.com/auth/calendar.events.owned",
         "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile",
     ]
 
     def __init__(self) -> None:
