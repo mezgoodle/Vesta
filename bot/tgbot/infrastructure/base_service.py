@@ -30,6 +30,15 @@ class BaseAPIService(ABC):
         self.timeout = ClientTimeout(total=timeout)
         self.api_key = config.backend_api_key.get_secret_value()
         self.logger = logging.getLogger(self.__class__.__name__)
+        self._session: aiohttp.ClientSession | None = None
+
+    async def _get_session(self) -> aiohttp.ClientSession:
+        """
+        Get or create a reusable aiohttp ClientSession.
+        """
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession()
+        return self._session
 
     def _get_headers(self, custom_headers: dict | None = None) -> dict:
         """
@@ -54,7 +63,7 @@ class BaseAPIService(ABC):
         json_data: dict | None = None,
         headers: dict | None = None,
         timeout: int | None = None,
-        max_retries: int = 5,
+        max_retries: int | None = None,
         backoff_factor: float = 1.5,
         initial_delay: float = 1.0,
     ) -> tuple[int, dict | None]:
@@ -68,7 +77,7 @@ class BaseAPIService(ABC):
             json_data: JSON payload.
             headers: Optional custom headers.
             timeout: Request timeout in seconds.
-            max_retries: Maximum number of retries.
+            max_retries: Maximum number of retries. Defaults to 5 for GET and 1 for others.
             backoff_factor: Multiplier for retry delay.
             initial_delay: Starting delay in seconds.
 
@@ -76,42 +85,46 @@ class BaseAPIService(ABC):
             Tuple of (status_code, response_data).
             Returns (0, None) if connection fails.
         """
+        if max_retries is None:
+            max_retries = 5 if method == "GET" else 1
+
         url = f"{self.base_url}{self.API_PREFIX}{endpoint}"
         request_headers = self._get_headers(headers)
         request_timeout = ClientTimeout(total=timeout) if timeout else self.timeout
 
+        session = await self._get_session()
         delay = initial_delay
         for attempt in range(1, max_retries + 1):
             try:
-                async with aiohttp.ClientSession(timeout=request_timeout) as session:
-                    async with session.request(
-                        method,
-                        url,
-                        params=params,
-                        json=json_data,
-                        headers=request_headers,
-                    ) as response:
-                        status = response.status
+                async with session.request(
+                    method,
+                    url,
+                    params=params,
+                    json=json_data,
+                    headers=request_headers,
+                    timeout=request_timeout,
+                ) as response:
+                    status = response.status
 
-                        if response.content_type == "application/json":
-                            data = await response.json()
-                        else:
-                            data = {"detail": await response.text()}
+                    if response.content_type == "application/json":
+                        data = await response.json()
+                    else:
+                        data = {"detail": await response.text()}
 
-                        self.logger.debug(f"{method} {url} - Status: {status}")
+                    self.logger.debug(f"{method} {url} - Status: {status}")
 
-                        # Retry on 5xx server errors
-                        if status >= 500:
-                            if attempt == max_retries:
-                                self.logger.error(
-                                    f"Request {method} {url} failed with status {status} after {max_retries} attempts."
-                                )
-                                return status, data
-                            self.logger.warning(
-                                f"Attempt {attempt} for {method} {url} returned status {status}. Retrying in {delay}s..."
+                    # Retry on 5xx server errors
+                    if status >= 500:
+                        if attempt == max_retries:
+                            self.logger.error(
+                                f"Request {method} {url} failed with status {status} after {max_retries} attempts."
                             )
-                        else:
                             return status, data
+                        self.logger.warning(
+                            f"Attempt {attempt} for {method} {url} returned status {status}. Retrying in {delay}s..."
+                        )
+                    else:
+                        return status, data
 
             except asyncio.TimeoutError:
                 if attempt == max_retries:
@@ -148,12 +161,18 @@ class BaseAPIService(ABC):
         params: dict | None = None,
         headers: dict | None = None,
         timeout: int | None = None,
+        max_retries: int | None = None,
     ) -> tuple[int, dict | None]:
         """
         Make a GET request to the backend API with retries.
         """
         return await self._request(
-            "GET", endpoint, params=params, headers=headers, timeout=timeout
+            "GET",
+            endpoint,
+            params=params,
+            headers=headers,
+            timeout=timeout,
+            max_retries=max_retries,
         )
 
     async def _post(
@@ -162,12 +181,18 @@ class BaseAPIService(ABC):
         json_data: dict | None = None,
         headers: dict | None = None,
         timeout: int | None = None,
+        max_retries: int | None = None,
     ) -> tuple[int, dict | None]:
         """
         Make a POST request to the backend API with retries.
         """
         return await self._request(
-            "POST", endpoint, json_data=json_data, headers=headers, timeout=timeout
+            "POST",
+            endpoint,
+            json_data=json_data,
+            headers=headers,
+            timeout=timeout,
+            max_retries=max_retries,
         )
 
     async def _put(
@@ -176,12 +201,18 @@ class BaseAPIService(ABC):
         json_data: dict | None = None,
         headers: dict | None = None,
         timeout: int | None = None,
+        max_retries: int | None = None,
     ) -> tuple[int, dict | None]:
         """
         Make a PUT request to the backend API with retries.
         """
         return await self._request(
-            "PUT", endpoint, json_data=json_data, headers=headers, timeout=timeout
+            "PUT",
+            endpoint,
+            json_data=json_data,
+            headers=headers,
+            timeout=timeout,
+            max_retries=max_retries,
         )
 
     async def _patch(
@@ -190,21 +221,37 @@ class BaseAPIService(ABC):
         json_data: dict | None = None,
         headers: dict | None = None,
         timeout: int | None = None,
+        max_retries: int | None = None,
     ) -> tuple[int, dict | None]:
         """
         Make a PATCH request to the backend API with retries.
         """
         return await self._request(
-            "PATCH", endpoint, json_data=json_data, headers=headers, timeout=timeout
+            "PATCH",
+            endpoint,
+            json_data=json_data,
+            headers=headers,
+            timeout=timeout,
+            max_retries=max_retries,
         )
 
     async def _delete(
-        self, endpoint: str, headers: dict | None = None, timeout: int | None = None
+        self,
+        endpoint: str,
+        headers: dict | None = None,
+        timeout: int | None = None,
+        max_retries: int | None = None,
     ) -> tuple[int, dict | None]:
         """
         Make a DELETE request to the backend API with retries.
         """
-        return await self._request("DELETE", endpoint, headers=headers, timeout=timeout)
+        return await self._request(
+            "DELETE",
+            endpoint,
+            headers=headers,
+            timeout=timeout,
+            max_retries=max_retries,
+        )
 
     def _handle_error_response(
         self, status: int, data: dict | None, context: str
