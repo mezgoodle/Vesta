@@ -14,7 +14,7 @@ class UserService(BaseAPIService):
         """
         super().__init__(base_url, timeout)
 
-    async def get_approved_users(self) -> list[int]:
+    async def get_approved_users(self) -> list[dict] | None:
         """
         Get list of approved users.
         """
@@ -25,7 +25,7 @@ class UserService(BaseAPIService):
         if status == 200:
             return data
         else:
-            return []
+            return None
 
     async def enable_daily_summary(self, user_id: int) -> tuple[dict | None, str]:
         """

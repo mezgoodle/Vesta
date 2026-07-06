@@ -25,9 +25,14 @@ class LLMService(BaseAPIService):
         endpoint = "/chat/process"
 
         status, data = await self._post(
-            endpoint, 
-            {"user_id": user_id, "session_id": session_id, "message": prompt, "want_voice": want_voice},
-            timeout=60
+            endpoint,
+            {
+                "user_id": user_id,
+                "session_id": session_id,
+                "message": prompt,
+                "want_voice": want_voice,
+            },
+            timeout=60,
         )
 
         if status == 200:

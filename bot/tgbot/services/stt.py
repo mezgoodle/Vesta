@@ -34,9 +34,8 @@ class GoogleSTTService:
 
         self.location_code = "us"
         credentials = None
-        if (
+        if config.GOOGLE_APPLICATION_CREDENTIALS and os.path.exists(
             config.GOOGLE_APPLICATION_CREDENTIALS
-            and os.path.exists(config.GOOGLE_APPLICATION_CREDENTIALS)
         ):
             credentials = service_account.Credentials.from_service_account_file(
                 config.GOOGLE_APPLICATION_CREDENTIALS
