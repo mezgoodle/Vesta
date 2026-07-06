@@ -58,7 +58,11 @@ async def user_message_handler(message: Message, state: FSMContext, user_db_id: 
 
 
 async def _process_llm_request(
-    message: Message, state: FSMContext, user_db_id: int, text: str, want_voice: bool = False
+    message: Message,
+    state: FSMContext,
+    user_db_id: int,
+    text: str,
+    want_voice: bool = False,
 ):
     await state.update_data(message=text)
     data = await state.get_data()

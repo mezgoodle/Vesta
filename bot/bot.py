@@ -79,7 +79,18 @@ async def main() -> None:
     dp.shutdown.register(on_shutdown)
 
     user_cache = UserCache()
-    users_from_db = await user_service.get_approved_users()
+
+    # Retry cache initialization at startup until it successfully loads from the database
+    users_from_db = None
+    attempt = 1
+    while users_from_db is None:
+        logging.info(f"Fetching approved users from database (attempt {attempt})...")
+        users_from_db = await user_service.get_approved_users()
+        if users_from_db is None:
+            logging.warning("Failed to fetch approved users. Retrying in 5 seconds...")
+            await asyncio.sleep(5)
+            attempt += 1
+
     user_cache.load(users_from_db)
 
     dp.workflow_data.update(user_cache=user_cache)

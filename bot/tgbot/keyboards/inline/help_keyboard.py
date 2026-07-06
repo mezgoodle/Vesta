@@ -8,8 +8,7 @@ def create_markup() -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(
                     text="Посилання на сайт",
-                    url="https://mezgoodle.github.io/TelegramiaSite/telegramia"
-                    "/#manual",
+                    url="https://mezgoodle.github.io/TelegramiaSite/telegramia/#manual",
                 )
             ]
         ],

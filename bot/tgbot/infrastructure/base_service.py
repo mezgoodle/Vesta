@@ -46,20 +46,31 @@ class BaseAPIService(ABC):
             headers.update(custom_headers)
         return headers
 
-    async def _get(
+    async def _request(
         self,
+        method: str,
         endpoint: str,
         params: dict | None = None,
+        json_data: dict | None = None,
         headers: dict | None = None,
         timeout: int | None = None,
+        max_retries: int = 5,
+        backoff_factor: float = 1.5,
+        initial_delay: float = 1.0,
     ) -> tuple[int, dict | None]:
         """
-        Make a GET request to the backend API.
+        Make an HTTP request with exponential backoff retries.
 
         Args:
-            endpoint: API endpoint path (e.g., "/weather/current").
+            method: HTTP method (GET, POST, PUT, PATCH, DELETE).
+            endpoint: API endpoint path.
             params: Query parameters.
-            headers: Optional custom headers to include in the request.
+            json_data: JSON payload.
+            headers: Optional custom headers.
+            timeout: Request timeout in seconds.
+            max_retries: Maximum number of retries.
+            backoff_factor: Multiplier for retry delay.
+            initial_delay: Starting delay in seconds.
 
         Returns:
             Tuple of (status_code, response_data).
@@ -69,30 +80,81 @@ class BaseAPIService(ABC):
         request_headers = self._get_headers(headers)
         request_timeout = ClientTimeout(total=timeout) if timeout else self.timeout
 
-        try:
-            async with aiohttp.ClientSession(timeout=request_timeout) as session:
-                async with session.get(
-                    url, params=params, headers=request_headers
-                ) as response:
-                    status = response.status
+        delay = initial_delay
+        for attempt in range(1, max_retries + 1):
+            try:
+                async with aiohttp.ClientSession(timeout=request_timeout) as session:
+                    async with session.request(
+                        method,
+                        url,
+                        params=params,
+                        json=json_data,
+                        headers=request_headers,
+                    ) as response:
+                        status = response.status
 
-                    if response.content_type == "application/json":
-                        data = await response.json()
-                    else:
-                        data = {"detail": await response.text()}
+                        if response.content_type == "application/json":
+                            data = await response.json()
+                        else:
+                            data = {"detail": await response.text()}
 
-                    self.logger.debug(f"GET {url} - Status: {status}")
-                    return status, data
+                        self.logger.debug(f"{method} {url} - Status: {status}")
 
-        except asyncio.TimeoutError:
-            self.logger.error(f"Timeout error during GET request to {url}")
-            return 0, None
-        except ClientError as e:
-            self.logger.error(f"Connection error to {url}: {e}")
-            return 0, None
-        except Exception as e:
-            self.logger.error(f"Unexpected error during GET request to {url}: {e}")
-            return 0, None
+                        # Retry on 5xx server errors
+                        if status >= 500:
+                            if attempt == max_retries:
+                                self.logger.error(
+                                    f"Request {method} {url} failed with status {status} after {max_retries} attempts."
+                                )
+                                return status, data
+                            self.logger.warning(
+                                f"Attempt {attempt} for {method} {url} returned status {status}. Retrying in {delay}s..."
+                            )
+                        else:
+                            return status, data
+
+            except asyncio.TimeoutError:
+                if attempt == max_retries:
+                    self.logger.error(
+                        f"Timeout error during {method} request to {url} after {max_retries} attempts."
+                    )
+                    return 0, None
+                self.logger.warning(
+                    f"Attempt {attempt} for {method} {url} timed out. Retrying in {delay}s..."
+                )
+            except ClientError as e:
+                if attempt == max_retries:
+                    self.logger.error(
+                        f"Connection error to {url} after {max_retries} attempts: {e}"
+                    )
+                    return 0, None
+                self.logger.warning(
+                    f"Attempt {attempt} for {method} {url} failed with connection error: {e}. Retrying in {delay}s..."
+                )
+            except Exception as e:
+                self.logger.error(
+                    f"Unexpected error during {method} request to {url}: {e}"
+                )
+                return 0, None
+
+            await asyncio.sleep(delay)
+            delay *= backoff_factor
+
+        return 0, None
+
+    async def _get(
+        self,
+        endpoint: str,
+        params: dict | None = None,
+        headers: dict | None = None,
+        timeout: int | None = None,
+    ) -> tuple[int, dict | None]:
+        """
+        Make a GET request to the backend API with retries.
+        """
+        return await self._request(
+            "GET", endpoint, params=params, headers=headers, timeout=timeout
+        )
 
     async def _post(
         self,
@@ -102,45 +164,11 @@ class BaseAPIService(ABC):
         timeout: int | None = None,
     ) -> tuple[int, dict | None]:
         """
-        Make a POST request to the backend API.
-
-        Args:
-            endpoint: API endpoint path.
-            json_data: JSON payload.
-            headers: Optional custom headers to include in the request.
-
-        Returns:
-            Tuple of (status_code, response_data).
-            Returns (0, None) if connection fails.
+        Make a POST request to the backend API with retries.
         """
-        url = f"{self.base_url}{self.API_PREFIX}{endpoint}"
-        request_headers = self._get_headers(headers)
-        request_timeout = ClientTimeout(total=timeout) if timeout else self.timeout
-
-        try:
-            async with aiohttp.ClientSession(timeout=request_timeout) as session:
-                async with session.post(
-                    url, json=json_data, headers=request_headers
-                ) as response:
-                    status = response.status
-
-                    if response.content_type == "application/json":
-                        data = await response.json()
-                    else:
-                        data = {"detail": await response.text()}
-
-                    self.logger.debug(f"POST {url} - Status: {status}")
-                    return status, data
-
-        except asyncio.TimeoutError:
-            self.logger.error(f"Timeout error during POST request to {url}")
-            return 0, None
-        except ClientError as e:
-            self.logger.error(f"Connection error to {url}: {e}")
-            return 0, None
-        except Exception as e:
-            self.logger.error(f"Unexpected error during POST request to {url}: {e}")
-            return 0, None
+        return await self._request(
+            "POST", endpoint, json_data=json_data, headers=headers, timeout=timeout
+        )
 
     async def _put(
         self,
@@ -150,45 +178,11 @@ class BaseAPIService(ABC):
         timeout: int | None = None,
     ) -> tuple[int, dict | None]:
         """
-        Make a PUT request to the backend API.
-
-        Args:
-            endpoint: API endpoint path.
-            json_data: JSON payload.
-            headers: Optional custom headers to include in the request.
-
-        Returns:
-            Tuple of (status_code, response_data).
-            Returns (0, None) if connection fails.
+        Make a PUT request to the backend API with retries.
         """
-        url = f"{self.base_url}{self.API_PREFIX}{endpoint}"
-        request_headers = self._get_headers(headers)
-        request_timeout = ClientTimeout(total=timeout) if timeout else self.timeout
-
-        try:
-            async with aiohttp.ClientSession(timeout=request_timeout) as session:
-                async with session.put(
-                    url, json=json_data, headers=request_headers
-                ) as response:
-                    status = response.status
-
-                    if response.content_type == "application/json":
-                        data = await response.json()
-                    else:
-                        data = {"detail": await response.text()}
-
-                    self.logger.debug(f"PUT {url} - Status: {status}")
-                    return status, data
-
-        except asyncio.TimeoutError:
-            self.logger.error(f"Timeout error during PUT request to {url}")
-            return 0, None
-        except ClientError as e:
-            self.logger.error(f"Connection error to {url}: {e}")
-            return 0, None
-        except Exception as e:
-            self.logger.error(f"Unexpected error during PUT request to {url}: {e}")
-            return 0, None
+        return await self._request(
+            "PUT", endpoint, json_data=json_data, headers=headers, timeout=timeout
+        )
 
     async def _patch(
         self,
@@ -198,86 +192,19 @@ class BaseAPIService(ABC):
         timeout: int | None = None,
     ) -> tuple[int, dict | None]:
         """
-        Make a PATCH request to the backend API.
-
-        Args:
-            endpoint: API endpoint path.
-            json_data: JSON payload.
-            headers: Optional custom headers to include in the request.
-
-        Returns:
-            Tuple of (status_code, response_data).
-            Returns (0, None) if connection fails.
+        Make a PATCH request to the backend API with retries.
         """
-        url = f"{self.base_url}{self.API_PREFIX}{endpoint}"
-        request_headers = self._get_headers(headers)
-        request_timeout = ClientTimeout(total=timeout) if timeout else self.timeout
-
-        try:
-            async with aiohttp.ClientSession(timeout=request_timeout) as session:
-                async with session.patch(
-                    url, json=json_data, headers=request_headers
-                ) as response:
-                    status = response.status
-
-                    if response.content_type == "application/json":
-                        data = await response.json()
-                    else:
-                        data = {"detail": await response.text()}
-
-                    self.logger.debug(f"PATCH {url} - Status: {status}")
-                    return status, data
-
-        except asyncio.TimeoutError:
-            self.logger.error(f"Timeout error during PATCH request to {url}")
-            return 0, None
-        except ClientError as e:
-            self.logger.error(f"Connection error to {url}: {e}")
-            return 0, None
-        except Exception as e:
-            self.logger.error(f"Unexpected error during PATCH request to {url}: {e}")
-            return 0, None
+        return await self._request(
+            "PATCH", endpoint, json_data=json_data, headers=headers, timeout=timeout
+        )
 
     async def _delete(
         self, endpoint: str, headers: dict | None = None, timeout: int | None = None
     ) -> tuple[int, dict | None]:
         """
-        Make a DELETE request to the backend API.
-
-        Args:
-            endpoint: API endpoint path.
-            headers: Optional custom headers to include in the request.
-
-        Returns:
-            Tuple of (status_code, response_data).
-            Returns (0, None) if connection fails.
+        Make a DELETE request to the backend API with retries.
         """
-        url = f"{self.base_url}{self.API_PREFIX}{endpoint}"
-        request_headers = self._get_headers(headers)
-        request_timeout = ClientTimeout(total=timeout) if timeout else self.timeout
-
-        try:
-            async with aiohttp.ClientSession(timeout=request_timeout) as session:
-                async with session.delete(url, headers=request_headers) as response:
-                    status = response.status
-
-                    if response.content_type == "application/json":
-                        data = await response.json()
-                    else:
-                        data = {"detail": await response.text()}
-
-                    self.logger.debug(f"DELETE {url} - Status: {status}")
-                    return status, data
-
-        except asyncio.TimeoutError:
-            self.logger.error(f"Timeout error during DELETE request to {url}")
-            return 0, None
-        except ClientError as e:
-            self.logger.error(f"Connection error to {url}: {e}")
-            return 0, None
-        except Exception as e:
-            self.logger.error(f"Unexpected error during DELETE request to {url}: {e}")
-            return 0, None
+        return await self._request("DELETE", endpoint, headers=headers, timeout=timeout)
 
     def _handle_error_response(
         self, status: int, data: dict | None, context: str
@@ -304,15 +231,11 @@ class BaseAPIService(ABC):
             self.logger.warning(f"Bad request while {context}: {error_msg}")
             return "❌ Invalid request. Please try again."
         elif status == 401:
-            error_msg = (
-                data.get("detail", "Unauthorized") if data else "Unauthorized"
-            )
+            error_msg = data.get("detail", "Unauthorized") if data else "Unauthorized"
             self.logger.warning(f"Unauthorized while {context}: {error_msg}")
             return f"❌ Unauthorized: {error_msg}"
         elif status == 403:
-            error_msg = (
-                data.get("detail", "Forbidden") if data else "Forbidden"
-            )
+            error_msg = data.get("detail", "Forbidden") if data else "Forbidden"
             self.logger.warning(f"Forbidden while {context}: {error_msg}")
             return f"❌ Forbidden: {error_msg}"
         elif status == 500:

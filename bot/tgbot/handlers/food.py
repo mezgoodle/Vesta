@@ -36,8 +36,7 @@ async def food_chosen(message: Message, state: FSMContext):
 @router.message(OrderFood.choosing_food_name)
 async def food_chosen_incorrectly(message: Message):
     await message.answer(
-        text="I don't know such a dish.\n\n"
-        "Please, choose from a list above:",
+        text="I don't know such a dish.\n\nPlease, choose from a list above:",
         reply_markup=make_row_keyboard(FOOD_NAMES),
     )
 
