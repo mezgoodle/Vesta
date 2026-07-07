@@ -40,6 +40,14 @@ def mock_httpx_client():
         yield mock_client
 
 
+@pytest.fixture
+def mock_home_service():
+    with patch("app.api.v1.endpoints.cron.HomeAssistantService") as mock_home_cls:
+        mock_service = AsyncMock()
+        mock_home_cls.return_value = mock_service
+        yield mock_service
+
+
 @pytest.mark.asyncio
 async def test_cron_endpoints_require_cron_secret(client: AsyncClient) -> None:
     # Test morning digest endpoint fails without secret
@@ -136,6 +144,7 @@ async def test_morning_digest_success(
 async def test_check_power_status_success(
     client: AsyncClient,
     db_session: AsyncSession,
+    mock_home_service,
 ) -> None:
     # Create test user
     user = User(
@@ -165,6 +174,16 @@ async def test_check_power_status_success(
     db_session.add_all([device1, device2])
     await db_session.commit()
 
+    # Mock HA get_state calls
+    async def mock_get_state(entity_id: str):
+        if entity_id == "light.living_room":
+            return {"entity_id": entity_id, "state": "on"}
+        elif entity_id == "switch.kitchen_plug":
+            return {"entity_id": entity_id, "state": "unavailable"}
+        return {"state": "unknown"}
+
+    mock_home_service.get_state.side_effect = mock_get_state
+
     # Send POST request with correct header secret
     response = await client.post(
         f"{settings.API_V1_STR}/cron/check-power-status",
@@ -182,3 +201,8 @@ async def test_check_power_status_success(
     assert devices[0]["state"] == "on"
     assert devices[0]["status"] == "online"
     assert devices[1]["name"] == "Kitchen Smart Plug"
+    assert devices[1]["state"] == "unavailable"
+    assert devices[1]["status"] == "offline"
+
+    # Verify home service client was closed
+    mock_home_service.close.assert_called_once()

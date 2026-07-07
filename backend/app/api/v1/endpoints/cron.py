@@ -13,6 +13,7 @@ from app.schemas.weather import WeatherData
 from app.services.google_calendar import google_calendar_service_instance
 from app.services.llm import LLMService
 from app.services.weather import weather_service_instance
+from app.services.home import HomeAssistantService
 
 logger = logging.getLogger(__name__)
 
@@ -111,18 +112,24 @@ async def post_check_power_status(db: SessionDep) -> dict[str, Any]:
     devices = result.scalars().all()
 
     checked_devices = []
-    for device in devices:
-        logger.info(
-            f"Checking power status for device {device.name} "
-            f"(entity_id: {device.entity_id}, room: {device.room})"
-        )
-        checked_devices.append({
-            "id": device.id,
-            "name": device.name,
-            "entity_id": device.entity_id,
-            "status": "online",
-            "state": "on"
-        })
+    home_service = HomeAssistantService()
+    try:
+        for device in devices:
+            logger.info(
+                f"Checking power status for device {device.name} "
+                f"(entity_id: {device.entity_id}, room: {device.room})"
+            )
+            state_data = await home_service.get_state(device.entity_id)
+            state_val = state_data.get("state", "unknown")
+            checked_devices.append({
+                "id": device.id,
+                "name": device.name,
+                "entity_id": device.entity_id,
+                "status": "online" if state_val != "unavailable" else "offline",
+                "state": state_val
+            })
+    finally:
+        await home_service.close()
 
     logger.info(f"Power status check completed for {len(checked_devices)} devices.")
     return {
