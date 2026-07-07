@@ -33,7 +33,6 @@ dependencies = [
     "cryptography",
     # Utils
     "python-dotenv",
-    "apscheduler",
     "httpx",
     "tzdata",
     "tenacity",
