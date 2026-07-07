@@ -11,7 +11,7 @@ This is the backend service for the Vesta Smart Home Assistant, built with FastA
 - 💬 **AI Chat**: Conversational interface powered by OpenAI/Google AI
 - 🔐 **User Authentication**: Secure JWT-based authentication
 - 📊 **Database**: SQLite with SQLAlchemy ORM and Alembic migrations
-- ⏰ **Task Scheduler**: Automated background tasks
+- ⏰ **Task Scheduler (Serverless)**: Secure, HTTP-triggered background tasks (compatible with GCP Cloud Run + Cloud Scheduler)
 
 ## Prerequisites
 
@@ -83,6 +83,11 @@ This is the backend service for the Vesta Smart Home Assistant, built with FastA
     GOOGLE_APPLICATION_CREDENTIALS=path/to/credentials.json
     GOOGLE_API_KEY=your_google_api_key
     GOOGLE_MODEL_NAME=gemini-pro
+
+    # Security Configuration
+    CRON_SECRET_KEY=your-cron-secret-key
+    SECRET_KEY=your-jwt-secret-key
+    BACKEND_API_KEY=your-backend-api-key
     ```
 
 3.  **Database Setup:**
@@ -151,8 +156,16 @@ pytest -v
 
 ### Smart Devices
 
-- `GET /api/v1/devices/` - List all devices
-- `POST /api/v1/devices/{device_id}/control` - Control a device
+- `GET /api/v1/devices/` - Retrieve all smart devices
+- `POST /api/v1/devices/` - Create a new smart device
+- `GET /api/v1/devices/{device_id}` - Get a smart device by ID
+- `PUT /api/v1/devices/{device_id}` - Update a smart device
+- `DELETE /api/v1/devices/{device_id}` - Delete a smart device
+
+### Cron (Background Tasks)
+
+- `POST /api/v1/cron/morning-digest` - Trigger daily morning digests (secured by `X-Cron-Secret` header)
+- `POST /api/v1/cron/check-power-status` - Trigger device power status check (secured by `X-Cron-Secret` header)
 
 ### Weather
 
@@ -178,19 +191,19 @@ backend/
 │   │   ├── deps.py              # Dependency injection
 │   │   └── v1/
 │   │       ├── api.py           # API router aggregation
-│   │       └── endpoints/       # API endpoint modules
-│   │           ├── calendar.py
-│   │           ├── chat.py
-│   │           ├── devices.py
-│   │           ├── google_auth.py
-│   │           ├── login.py
-│   │           ├── news.py
-│   │           ├── users.py
-│   │           └── weather.py
+│   │       ├── endpoints/       # API endpoint modules
+│   │       │   ├── calendar.py
+│   │       │   ├── chat.py
+│   │       │   ├── cron.py          # Secure cron job endpoints
+│   │       │   ├── devices.py
+│   │       │   ├── google_auth.py
+│   │       │   ├── login.py
+│   │       │   ├── news.py
+│   │       │   ├── users.py
+│   │       │   └── weather.py
 │   ├── core/
 │   │   ├── config.py            # Application settings
 │   │   ├── logger.py            # Logging configuration
-│   │   ├── scheduler.py         # Background task scheduler
 │   │   └── security.py          # Authentication utilities
 │   ├── crud/                    # Database operations
 │   ├── db/

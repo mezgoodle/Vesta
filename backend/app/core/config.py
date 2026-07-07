@@ -32,6 +32,7 @@ class Settings(BaseSettings):
 
     # Security - API Key for service-to-service communication
     BACKEND_API_KEY: str = "your-backend-api-key-here"
+    CRON_SECRET_KEY: str = "dev-cron-secret-key"
 
     # GCP
     GCP_LOG_NAME: str = "vesta-backend"

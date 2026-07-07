@@ -20,15 +20,6 @@ Configures the application's logging behavior.
 - Supports different logging levels (DEBUG, INFO, ERROR).
 - Can be configured to output to console or files.
 
-### [Scheduler (scheduler.py)](file:///c:/Projects/Vesta/backend/app/core/scheduler.py)
-
-Manages background tasks using `APScheduler`.
-
-- Handling periodic tasks like refreshing tokens or polling for updates.
-- **Key Functions**:
-  - `start_scheduler()`: Initializes the scheduler on app startup.
-  - `shutdown_scheduler()`: Gracefully stops tasks on app shutdown.
-
 ### [Security (security.py)](file:///c:/Projects/Vesta/backend/app/core/security.py)
 
 Handles cryptographic operations and token management.

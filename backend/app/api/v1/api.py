@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     calendar,
     chat,
+    cron,
     devices,
     google_auth,
     knowledge,
@@ -28,3 +29,4 @@ api_router.include_router(
 )
 api_router.include_router(calendar.router, prefix="/calendar", tags=["calendar"])
 api_router.include_router(tts.router, prefix="/tts", tags=["tts"])
+api_router.include_router(cron.router, prefix="/cron", tags=["cron"])

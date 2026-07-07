@@ -2,7 +2,7 @@ from secrets import compare_digest
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, Query, Security, status
+from fastapi import Depends, HTTPException, Query, Security, status, Header
 from fastapi.security import APIKeyHeader, OAuth2PasswordBearer
 from jwt import PyJWTError
 from sqlalchemy import select
@@ -125,3 +125,20 @@ async def get_target_user_id(
 
 
 TargetUserId = Annotated[int, Depends(get_target_user_id)]
+
+
+async def verify_cron_secret(
+    x_cron_secret: Annotated[str | None, Header(alias="X-Cron-Secret")] = None,
+) -> str:
+    """
+    Verify the X-Cron-Secret header against the configured CRON_SECRET_KEY.
+    """
+    if not x_cron_secret or not compare_digest(x_cron_secret, settings.CRON_SECRET_KEY):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: Invalid cron secret",
+        )
+    return x_cron_secret
+
+
+CronSecretDep = Annotated[str, Depends(verify_cron_secret)]
