@@ -206,3 +206,74 @@ async def test_check_power_status_success(
 
     # Verify home service client was closed
     mock_home_service.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_check_power_status_partial_failure(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    mock_home_service,
+) -> None:
+    # Create test user
+    user = User(
+        email="cron-device-fail-user@example.com",
+        hashed_password="hashedpassword",
+        telegram_id=11223,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    # Create test devices
+    device1 = SmartDevice(
+        user_id=user.id,
+        name="Failed Device",
+        entity_id="light.failed",
+        device_type="light",
+        room="Living Room",
+    )
+    device2 = SmartDevice(
+        user_id=user.id,
+        name="Working Device",
+        entity_id="light.working",
+        device_type="light",
+        room="Kitchen",
+    )
+    db_session.add_all([device1, device2])
+    await db_session.commit()
+
+    # Mock HA get_state calls: first raises exception, second succeeds
+    async def mock_get_state(entity_id: str):
+        if entity_id == "light.failed":
+            raise RuntimeError("HA API Connection Timeout")
+        elif entity_id == "light.working":
+            return {"entity_id": entity_id, "state": "off"}
+        return {"state": "unknown"}
+
+    mock_home_service.get_state.side_effect = mock_get_state
+
+    # Send POST request
+    response = await client.post(
+        f"{settings.API_V1_STR}/cron/check-power-status",
+        headers={"X-Cron-Secret": settings.CRON_SECRET_KEY},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["checked_devices_count"] == 2
+    
+    devices = data["devices"]
+    assert len(devices) == 2
+    # Failed device returns state "unknown" and status "offline"
+    assert devices[0]["name"] == "Failed Device"
+    assert devices[0]["state"] == "unknown"
+    assert devices[0]["status"] == "offline"
+    # Working device returns its actual mock state
+    assert devices[1]["name"] == "Working Device"
+    assert devices[1]["state"] == "off"
+    assert devices[1]["status"] == "online"
+
+    # Verify home service client was closed
+    mock_home_service.close.assert_called_once()
+

@@ -119,13 +119,20 @@ async def post_check_power_status(db: SessionDep) -> dict[str, Any]:
                 f"Checking power status for device {device.name} "
                 f"(entity_id: {device.entity_id}, room: {device.room})"
             )
-            state_data = await home_service.get_state(device.entity_id)
-            state_val = state_data.get("state", "unknown")
+            try:
+                state_data = await home_service.get_state(device.entity_id)
+                state_val = (state_data or {}).get("state", "unknown")
+            except Exception:
+                logger.exception(
+                    f"Failed to fetch state for device {device.name} "
+                    f"(entity_id: {device.entity_id})"
+                )
+                state_val = "unknown"
             checked_devices.append({
                 "id": device.id,
                 "name": device.name,
                 "entity_id": device.entity_id,
-                "status": "online" if state_val != "unavailable" else "offline",
+                "status": "online" if state_val not in ("unavailable", "unknown") else "offline",
                 "state": state_val
             })
     finally:
