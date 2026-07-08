@@ -172,3 +172,4 @@ jobs:
             BACKEND_API_KEY=${{ secrets.BACKEND_API_KEY }}
             WEBHOOK_DOMAIN=${{ secrets.BOT_WEBHOOK_DOMAIN }}
             WEBHOOK_SECRET=${{ secrets.BOT_WEBHOOK_SECRET }}
+            GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}

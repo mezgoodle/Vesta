@@ -31,15 +31,36 @@ class GoogleSTTService:
         otherwise falls back to Application Default Credentials (ADC) on GCP.
         """
         import os
+        import json
+        import google.auth
 
         self.location_code = "us"
         credentials = None
+        self.project_id = config.GCP_PROJECT_ID
+
         if config.GOOGLE_APPLICATION_CREDENTIALS and os.path.exists(
             config.GOOGLE_APPLICATION_CREDENTIALS
         ):
             credentials = service_account.Credentials.from_service_account_file(
                 config.GOOGLE_APPLICATION_CREDENTIALS
             )
+            # Try to load project_id from the service account key file if not set in config
+            try:
+                with open(config.GOOGLE_APPLICATION_CREDENTIALS, "r") as f:
+                    sa_info = json.load(f)
+                    if not self.project_id and "project_id" in sa_info:
+                        self.project_id = sa_info["project_id"]
+            except Exception:
+                pass
+
+        # Fallback to default google credentials to get project ID (e.g. on Cloud Run)
+        if not self.project_id:
+            try:
+                _, default_project_id = google.auth.default()
+                if default_project_id:
+                    self.project_id = default_project_id
+            except Exception as e:
+                self.logger.warning("Could not automatically determine GCP project ID", exc_info=e)
 
         self.client = SpeechClient(
             credentials=credentials,
@@ -53,7 +74,7 @@ class GoogleSTTService:
             language_codes=["en-US", "uk-UA"],
             model="chirp_3",
         )
-        self.logger.info("GoogleSTTService initialized successfully")
+        self.logger.info(f"GoogleSTTService initialized successfully with project: {self.project_id}")
 
     async def recognize(self, audio_bytes: bytes) -> Optional[str]:
         """
@@ -74,7 +95,7 @@ class GoogleSTTService:
 
         try:
             request = RecognizeRequest(
-                recognizer=f"projects/{config.GCP_PROJECT_ID}/locations/{self.location_code}/recognizers/_",
+                recognizer=f"projects/{self.project_id}/locations/{self.location_code}/recognizers/_",
                 config=self.config,
                 content=audio_bytes,
             )
