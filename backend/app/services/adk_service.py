@@ -32,7 +32,6 @@ from app.agents.weather_agent import create_weather_agent
 from app.core.config import settings
 from app.services.gemini_tools import (
     build_personalized_prompt,
-    build_system_instruction,
     create_tools,
 )
 

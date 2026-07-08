@@ -5,7 +5,6 @@ from app.crud.crud_user import user as crud_user
 from app.schemas.user import UserCreate
 from app.services.gemini_tools import (
     build_personalized_prompt,
-    build_system_instruction,
     create_tools,
 )
 
