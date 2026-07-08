@@ -150,6 +150,9 @@ jobs:
             GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
             GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
+            BACKEND_API_KEY=${{ secrets.BACKEND_API_KEY }}
+            CRON_SECRET_KEY=${{ secrets.CRON_SECRET_KEY }}
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
 
       - name: Deploy Bot to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
