@@ -78,9 +78,8 @@ class TestProcessChat:
         with (
             patch("app.services.adk_service.create_tools") as mock_create_tools,
             patch("app.services.adk_service.create_weather_agent"),
-            patch("app.services.adk_service.create_knowledge_agent"),
             patch("app.services.adk_service.create_root_agent") as mock_create_root,
-            patch("app.services.adk_service.build_system_instruction"),
+            patch("app.services.adk_service.build_personalized_prompt", new_callable=AsyncMock),
             patch("app.services.adk_service.InMemoryRunner", return_value=mock_runner),
         ):
             mock_create_tools.return_value = {
@@ -118,9 +117,8 @@ class TestProcessChat:
         with (
             patch("app.services.adk_service.create_tools") as mock_ct,
             patch("app.services.adk_service.create_weather_agent"),
-            patch("app.services.adk_service.create_knowledge_agent"),
             patch("app.services.adk_service.create_root_agent") as mock_create_root,
-            patch("app.services.adk_service.build_system_instruction"),
+            patch("app.services.adk_service.build_personalized_prompt", new_callable=AsyncMock),
             patch("app.services.adk_service.InMemoryRunner", return_value=mock_runner),
         ):
             mock_ct.return_value = {
@@ -175,9 +173,8 @@ class TestProcessChat:
         with (
             patch("app.services.adk_service.create_tools") as mock_ct,
             patch("app.services.adk_service.create_weather_agent"),
-            patch("app.services.adk_service.create_knowledge_agent"),
             patch("app.services.adk_service.create_root_agent") as mock_create_root,
-            patch("app.services.adk_service.build_system_instruction"),
+            patch("app.services.adk_service.build_personalized_prompt", new_callable=AsyncMock),
             patch("app.services.adk_service.InMemoryRunner", return_value=mock_runner),
             patch.object(adk_svc, "_log_function_call") as mock_log_fc,
             patch.object(adk_svc, "_log_agent_delegation") as mock_log_del,
