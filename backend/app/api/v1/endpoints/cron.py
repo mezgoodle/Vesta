@@ -34,61 +34,62 @@ async def send_daily_digests(db: AsyncSession) -> int:
     logger.info("🌅 Starting Daily Morning Digest...")
     service = LLMService()
     sent_count = 0
+    try:
+        stmt = select(User).where(
+            User.is_daily_summary_enabled,
+            User.google_refresh_token.isnot(None),
+            User.telegram_id.isnot(None),
+        )
+        result = await db.execute(stmt)
+        users = result.scalars().all()
 
-    stmt = select(User).where(
-        User.is_daily_summary_enabled,
-        User.google_refresh_token.isnot(None),
-        User.telegram_id.isnot(None),
-    )
-    result = await db.execute(stmt)
-    users = result.scalars().all()
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for user in users:
+                try:
+                    events = await google_calendar_service_instance.get_today_events(
+                        user.id, db
+                    )
+                    if not events:
+                        continue
 
-    for user in users:
-        try:
-            events = await google_calendar_service_instance.get_today_events(
-                user.id, db
-            )
-            if not events:
-                continue
+                    weather: WeatherData = (
+                        await weather_service_instance.get_current_weather_by_city_name(
+                            user.city_name or "Kyiv"
+                        )
+                    )
 
-            weather: WeatherData = (
-                await weather_service_instance.get_current_weather_by_city_name(
-                    user.city_name or "Kyiv"
-                )
-            )
+                    events_text = "\n".join(
+                        [
+                            f"- {e.start_time.strftime('%H:%M') if e.start_time else 'All day'}: {e.summary}"
+                            for e in events
+                        ]
+                    )
+                    weather_text = f"Погода в місті {weather.city}: {weather.temp}°C, {weather.description}"
 
-            events_text = "\n".join(
-                [
-                    f"- {e.start_time.strftime('%H:%M') if e.start_time else 'All day'}: {e.summary}"
-                    for e in events
-                ]
-            )
-            weather_text = f"Погода в місті {weather.city}: {weather.temp}°C, {weather.description}"
+                    prompt = (
+                        f"Ось мій розклад на сьогодні:\n{events_text}\n\n"
+                        f"{weather_text}\n\n"
+                        "Напиши мені коротке, позитивне ранкове привітання та підсумок мого дня. "
+                        "Використовуй емодзі. Звертайся до мене на ім'я (якщо знаєш) або просто друже."
+                    )
 
-            prompt = (
-                f"Ось мій розклад на сьогодні:\n{events_text}\n\n"
-                f"{weather_text}\n\n"
-                "Напиши мені коротке, позитивне ранкове привітання та підсумок мого дня. "
-                "Використовуй емодзі. Звертайся до мене на ім'я (якщо знаєш) або просто друже."
-            )
+                    digest_text = await service.chat(prompt, [], user.id, db)
+                    response = await client.post(
+                        f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage",
+                        data={
+                            "chat_id": user.telegram_id,
+                            "text": digest_text,
+                        },
+                    )
+                    response.raise_for_status()
 
-            digest_text = await service.chat(prompt, [], user.id, db)
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage",
-                    data={
-                        "chat_id": user.telegram_id,
-                        "text": digest_text,
-                        "parse_mode": "HTML",
-                    },
-                )
-                response.raise_for_status()
+                    logger.info(f"Digest sent to user {user.id}")
+                    sent_count += 1
 
-            logger.info(f"Digest sent to user {user.id}")
-            sent_count += 1
-
-        except Exception as e:
-            logger.error(f"Failed to send digest to user {user.id}: {e}")
+                except Exception as e:
+                    logger.error(f"Failed to send digest to user {user.id}: {e}")
+    finally:
+        service.close()
 
     return sent_count
 
