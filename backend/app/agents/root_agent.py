@@ -15,7 +15,7 @@ def create_root_agent(
     sub_agents: list[LlmAgent],
     system_instruction: str,
     model: str,
-    tools: list[Callable] = None,
+    tools: list[Callable] | None = None,
 ) -> LlmAgent:
     """
     Create the Vesta root dispatcher agent.

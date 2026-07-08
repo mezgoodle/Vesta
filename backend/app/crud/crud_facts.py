@@ -8,13 +8,14 @@ from app.schemas.user_facts import FactCreate, FactUpdate
 
 class CRUDUserFact(CRUDBase[UserFact, FactCreate, FactUpdate]):
     async def get_by_user_id(
-        self, db: AsyncSession, *, user_id: int
+        self, db: AsyncSession, *, user_id: int, limit: int = 100
     ) -> list[UserFact]:
-        """Fetch all facts for a specific user, ensuring strict multi-tenant isolation."""
+        """Fetch facts for a specific user up to a limit, ensuring strict multi-tenant isolation."""
         result = await db.execute(
             select(UserFact)
             .filter(UserFact.user_id == user_id)
             .order_by(UserFact.created_at.desc())
+            .limit(limit)
         )
         return list(result.scalars().all())
 
