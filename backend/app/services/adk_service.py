@@ -17,7 +17,7 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
-import pytz
+from zoneinfo import ZoneInfo
 
 from google.adk.events import Event
 from google.adk.runners import InMemoryRunner
@@ -103,7 +103,7 @@ class ADKService:
             tool_groups = create_tools(user_id=user_id, db=db)
 
             # Calculate current time for Europe/Kyiv timezone to pass to sub-agents
-            tz = pytz.timezone("Europe/Kyiv")
+            tz = ZoneInfo("Europe/Kyiv")
             now = datetime.datetime.now(tz)
             current_time_str = now.strftime("%Y-%m-%d %H:%M (%A)")
 
@@ -124,7 +124,10 @@ class ADKService:
                 current_time_str=current_time_str,
             )
 
-            system_instruction = build_system_instruction(session_summary)
+            system_instruction = build_system_instruction(
+                session_summary=session_summary,
+                current_time_str=current_time_str,
+            )
 
             root_agent = create_root_agent(
                 sub_agents=[weather, calendar, knowledge],
