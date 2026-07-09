@@ -15,7 +15,7 @@ dependencies = [
     "sqlalchemy",
     "alembic",
     # AI & Google
-    "google-adk",
+    "google-adk>=2.0.0",
     "google-genai",
     "google-cloud-logging",
     "google-api-python-client",

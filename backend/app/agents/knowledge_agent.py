@@ -46,4 +46,6 @@ def create_knowledge_agent(tools: list[Callable], model: str) -> LlmAgent:
             "Always respond in a friendly, concise manner."
         ),
         tools=tools,
+        mode="single_turn",
     )
+
