@@ -12,9 +12,12 @@ The ``generate_session_summary`` method uses a standalone ``SummaryAgent``
 for rolling conversation summaries (invoked by background tasks).
 """
 
+import datetime
 import logging
 import os
 from typing import TYPE_CHECKING
+
+import pytz
 
 from google.adk.events import Event
 from google.adk.runners import InMemoryRunner
@@ -99,18 +102,26 @@ class ADKService:
             # 1. Create tools bound to this request's context
             tool_groups = create_tools(user_id=user_id, db=db)
 
+            # Calculate current time for Europe/Kyiv timezone to pass to sub-agents
+            tz = pytz.timezone("Europe/Kyiv")
+            now = datetime.datetime.now(tz)
+            current_time_str = now.strftime("%Y-%m-%d %H:%M (%A)")
+
             # 2. Build agent hierarchy
             weather = create_weather_agent(
                 tools=tool_groups["weather"],
                 model=self.model,
+                current_time_str=current_time_str,
             )
             calendar = create_calendar_agent(
                 tools=tool_groups["calendar"],
                 model=self.model,
+                current_time_str=current_time_str,
             )
             knowledge = create_knowledge_agent(
                 tools=tool_groups["knowledge"],
                 model=self.model,
+                current_time_str=current_time_str,
             )
 
             system_instruction = build_system_instruction(session_summary)
