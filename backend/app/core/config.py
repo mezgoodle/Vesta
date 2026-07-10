@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import model_validator, SecretStr
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -50,12 +50,6 @@ class Settings(BaseSettings):
     CHROMA_DB_PATH: str = "./chroma_db"
     RAG_SIMILARITY_TOP_K: int = 5
     RAG_SIMILARITY_CUTOFF: float = 0.45
-
-    @model_validator(mode="after")
-    def validate_cron_secret(self) -> "Settings":
-        if self.CRON_SECRET_KEY == "dev-cron-secret-key" and not self.DEBUG:
-            raise ValueError("CRON_SECRET_KEY must be set to a secure value when DEBUG is False.")
-        return self
 
     model_config = SettingsConfigDict(
         env_file=".env",

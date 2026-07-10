@@ -14,7 +14,6 @@ from app.schemas.weather import WeatherData
 def mock_llm_service():
     with patch("app.api.v1.endpoints.cron.LLMService") as mock_llm_cls:
         mock_service = AsyncMock()
-        mock_service.close = MagicMock()
         mock_llm_cls.return_value = mock_service
         yield mock_service
 
