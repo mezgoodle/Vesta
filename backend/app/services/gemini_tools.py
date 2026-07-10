@@ -44,10 +44,11 @@ def create_tools(
         db: The active database session (needed for calendar access).
 
     Returns:
-        A dict with three keys:
+        A dict with four keys:
         - ``"weather"``: weather tool
         - ``"calendar"``: calendar tools
         - ``"knowledge"``: RAG tool
+        - ``"memory"``: memory tools (remember/delete user fact)
     """
 
     # ------------------------------------------------------------------ #
@@ -288,6 +289,7 @@ def create_tools(
             )
             return f"Saved fact: [ID: {created.id}] {created.fact_content}"
         except Exception as e:
+            await db.rollback()
             logger.exception("Failed to save user fact: %s", e)
             return "Unable to save fact at this moment."
 
@@ -316,6 +318,7 @@ def create_tools(
                 return f"Successfully deleted fact [ID: {fact_id}]"
             return f"Fact [ID: {fact_id}] not found or does not belong to you."
         except Exception as e:
+            await db.rollback()
             logger.exception("Failed to delete user fact: %s", e)
             return f"Unable to delete fact [ID: {fact_id}]."
 
@@ -429,11 +432,17 @@ async def build_personalized_prompt(
             memory_section += "Stored user facts:\n"
             # Return in chronological order (oldest first)
             for fact in reversed(facts):
-                cat_str = f" ({fact.category})" if fact.category else ""
                 # Escape backticks and replace newlines to prevent markdown/instruction injection
                 sanitized_content = fact.fact_content.replace("`", "'").replace(
                     "\n", " "
                 )
+                if fact.category:
+                    sanitized_category = fact.category.replace("`", "'").replace(
+                        "\n", " "
+                    )
+                    cat_str = f" ({sanitized_category})"
+                else:
+                    cat_str = ""
                 memory_section += f"[ID: {fact.id}]{cat_str} {sanitized_content}\n"
         else:
             memory_section += "No personal facts stored yet. Use memory tools when the user shares details about themselves.\n"
