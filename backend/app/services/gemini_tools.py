@@ -22,7 +22,9 @@ from typing import Callable
 from zoneinfo import ZoneInfo
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.crud.crud_facts import user_fact as crud_user_fact
 from app.schemas.calendar import CalendarEventCreate
+from app.schemas.user_facts import FactCreate
 from app.services.google_calendar import GoogleCalendarService
 from app.services.knowledge import KnowledgeService
 from app.services.open_meteo_service import OpenMeteoService
@@ -280,11 +282,10 @@ def create_tools(
             A success message confirming the fact has been saved.
         """
         try:
-            from app.crud.crud_facts import user_fact as crud_user_fact
-            from app.schemas.user_facts import FactCreate
-
             obj_in = FactCreate(fact_content=fact_content, category=category)
-            created = await crud_user_fact.create_fact(db, user_id=user_id, obj_in=obj_in)
+            created = await crud_user_fact.create_fact(
+                db, user_id=user_id, obj_in=obj_in
+            )
             return f"Saved fact: [ID: {created.id}] {created.fact_content}"
         except Exception as e:
             logger.exception("Failed to save user fact: %s", e)
@@ -308,9 +309,9 @@ def create_tools(
             A message confirming the fact was successfully deleted or not found.
         """
         try:
-            from app.crud.crud_facts import user_fact as crud_user_fact
-
-            deleted = await crud_user_fact.delete_fact(db, fact_id=fact_id, user_id=user_id)
+            deleted = await crud_user_fact.delete_fact(
+                db, fact_id=fact_id, user_id=user_id
+            )
             if deleted:
                 return f"Successfully deleted fact [ID: {fact_id}]"
             return f"Fact [ID: {fact_id}] not found or does not belong to you."
@@ -410,8 +411,6 @@ async def build_personalized_prompt(
     )
 
     try:
-        from app.crud.crud_facts import user_fact as crud_user_fact
-
         # Limit to the most recent 50 facts to prevent unbounded system prompt growth
         facts = await crud_user_fact.get_by_user_id(db, user_id=user_id, limit=50)
 
@@ -432,7 +431,9 @@ async def build_personalized_prompt(
             for fact in reversed(facts):
                 cat_str = f" ({fact.category})" if fact.category else ""
                 # Escape backticks and replace newlines to prevent markdown/instruction injection
-                sanitized_content = fact.fact_content.replace("`", "'").replace("\n", " ")
+                sanitized_content = fact.fact_content.replace("`", "'").replace(
+                    "\n", " "
+                )
                 memory_section += f"[ID: {fact.id}]{cat_str} {sanitized_content}\n"
         else:
             memory_section += "No personal facts stored yet. Use memory tools when the user shares details about themselves.\n"

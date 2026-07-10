@@ -8,6 +8,7 @@ need any tools, the root agent responds directly.
 """
 
 from typing import Callable
+
 from google.adk.agents import LlmAgent
 
 
