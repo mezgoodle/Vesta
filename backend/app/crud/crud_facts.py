@@ -7,6 +7,18 @@ from app.schemas.user_facts import FactCreate, FactUpdate
 
 
 class CRUDUserFact(CRUDBase[UserFact, FactCreate, FactUpdate]):
+    async def get(self, *args, **kwargs):
+        raise NotImplementedError("Use tenant-scoped methods instead")
+
+    async def get_multi(self, *args, **kwargs):
+        raise NotImplementedError("Use tenant-scoped methods instead")
+
+    async def update(self, *args, **kwargs):
+        raise NotImplementedError("Use tenant-scoped methods instead")
+
+    async def remove(self, *args, **kwargs):
+        raise NotImplementedError("Use tenant-scoped methods instead")
+
     async def get_by_user_id(
         self, db: AsyncSession, *, user_id: int, limit: int = 100
     ) -> list[UserFact]:
@@ -14,7 +26,7 @@ class CRUDUserFact(CRUDBase[UserFact, FactCreate, FactUpdate]):
         result = await db.execute(
             select(UserFact)
             .filter(UserFact.user_id == user_id)
-            .order_by(UserFact.created_at.desc())
+            .order_by(UserFact.created_at.desc(), UserFact.id.desc())
             .limit(limit)
         )
         return list(result.scalars().all())

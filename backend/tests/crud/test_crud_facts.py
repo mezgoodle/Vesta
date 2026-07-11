@@ -85,3 +85,31 @@ async def test_fact_multi_tenant_isolation(db_session: AsyncSession) -> None:
     # User A should now have 0 facts
     facts_a_after = await crud_user_fact.get_by_user_id(db_session, user_id=user_a.id)
     assert len(facts_a_after) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_by_user_id_with_limit(db_session: AsyncSession) -> None:
+    # 1. Create a user
+    user = await crud_user.create(
+        db_session,
+        obj_in=UserCreate(
+            telegram_id=33333,
+            full_name="Alice Limit",
+            username="alicelimit",
+        ),
+    )
+
+    # 2. Create 5 facts for this user
+    for i in range(5):
+        fact_in = FactCreate(fact_content=f"Fact number {i}", category="preferences")
+        await crud_user_fact.create_fact(db_session, user_id=user.id, obj_in=fact_in)
+
+    # 3. Retrieve with limit=3
+    facts = await crud_user_fact.get_by_user_id(db_session, user_id=user.id, limit=3)
+    assert len(facts) == 3
+
+    # 4. Verify they are the most recent (last created)
+    # i.e., "Fact number 4", "Fact number 3", "Fact number 2"
+    assert facts[0].fact_content == "Fact number 4"
+    assert facts[1].fact_content == "Fact number 3"
+    assert facts[2].fact_content == "Fact number 2"
