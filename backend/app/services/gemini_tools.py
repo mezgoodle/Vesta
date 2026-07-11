@@ -19,7 +19,7 @@ import datetime
 import logging
 from typing import Callable
 
-import pytz
+from zoneinfo import ZoneInfo
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.calendar import CalendarEventCreate
@@ -272,7 +272,10 @@ def create_tools(
 # ------------------------------------------------------------------ #
 
 
-def build_system_instruction(session_summary: str | None = None) -> str:
+def build_system_instruction(
+    session_summary: str | None = None,
+    current_time_str: str | None = None,
+) -> str:
     """
     Build the dynamic system instruction for the root agent.
 
@@ -280,15 +283,17 @@ def build_system_instruction(session_summary: str | None = None) -> str:
 
     Args:
         session_summary: Optional rolling summary of the conversation so far.
+        current_time_str: Optional current date/time context.
 
     Returns:
         The full system instruction string.
     """
     from app.core.config import settings
 
-    tz = pytz.timezone("Europe/Kyiv")
-    now = datetime.datetime.now(tz)
-    current_time_str = now.strftime("%Y-%m-%d %H:%M (%A)")
+    if not current_time_str:
+        tz = ZoneInfo("Europe/Kyiv")
+        now = datetime.datetime.now(tz)
+        current_time_str = now.strftime("%Y-%m-%d %H:%M (%A)")
 
     dynamic_system_instruction = (
         f"{settings.SYSTEM_INSTRUCTION}\n"
