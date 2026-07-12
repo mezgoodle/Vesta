@@ -8,6 +8,7 @@ from app.models.chat import ChatHistory
 from app.models.device import SmartDevice
 from app.models.news import NewsSubscription
 from app.models.user import User
+from app.models.user_facts import UserFact
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config

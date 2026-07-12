@@ -30,7 +30,10 @@ from app.agents.root_agent import create_root_agent
 from app.agents.summary_agent import create_summary_agent
 from app.agents.weather_agent import create_weather_agent
 from app.core.config import settings
-from app.services.gemini_tools import build_system_instruction, create_tools
+from app.services.gemini_tools import (
+    build_personalized_prompt,
+    create_tools,
+)
 
 if TYPE_CHECKING:
     from app.models.chat import ChatHistory
@@ -124,7 +127,9 @@ class ADKService:
                 current_time_str=current_time_str,
             )
 
-            system_instruction = build_system_instruction(
+            system_instruction = await build_personalized_prompt(
+                db=db,
+                user_id=user_id,
                 session_summary=session_summary,
                 current_time_str=current_time_str,
             )
@@ -133,6 +138,7 @@ class ADKService:
                 sub_agents=[weather, calendar, knowledge],
                 system_instruction=system_instruction,
                 model=self.model,
+                tools=tool_groups.get("memory"),
             )
 
             # 3. Convert DB history to ADK content

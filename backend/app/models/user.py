@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from app.models.chat import ChatHistory, ChatSession
     from app.models.device import SmartDevice
     from app.models.news import NewsSubscription
+    from app.models.user_facts import UserFact
 
 
 class User(Base):
@@ -41,5 +42,8 @@ class User(Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     sessions: Mapped[list["ChatSession"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    facts: Mapped[list["UserFact"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
