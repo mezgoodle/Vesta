@@ -142,7 +142,9 @@ class GoogleAuthService:
             raise Exception(f"Failed to get user info from Google: {str(e)}") from e
 
         # Update user with refresh token and email
-        update_data = {"google_refresh_token": credentials.refresh_token}
+        update_data = {
+            "google_refresh_token": credentials.refresh_token,
+        }
         if email:
             update_data["email"] = email
 

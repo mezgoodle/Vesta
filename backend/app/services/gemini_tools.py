@@ -426,16 +426,15 @@ def build_system_instruction(
         f"User's Location: Ukraine (default for weather).\n"
         f"--- DELEGATION GUIDELINES ---\n"
         f"1. For weather questions, delegate to WeatherAgent.\n"
-        f"2. For calendar or scheduling questions, delegate to CalendarAgent.\n"
+        f"2. For calendar, scheduling, email, or inbox questions, delegate to SecretaryAgent.\n"
         f"3. For questions about personal documents or knowledge base, delegate to KnowledgeAgent.\n"
         f"4. For general conversation, respond directly without delegation.\n"
         f"5. Proactivity: If the user asks about 'today' or 'my day', delegate first to "
-        f"CalendarAgent for schedule and then WeatherAgent for weather to provide a complete daily briefing.\n"
-        f"6. When scheduling, use the 'Current Date' above as a reference to calculate relative "
+        f"SecretaryAgent for schedule and then WeatherAgent for weather to provide a complete daily briefing.\n"
+        f"6. When scheduling or referencing dates, use the 'Current Date' above as a reference to calculate relative "
         f"dates like 'tomorrow' or 'next Friday'.\n"
         f"7. Clarity: If the user's request is ambiguous (e.g., 'What's the weather?'), "
-        f"assume their current location (Ukraine) unless specified otherwise.\n"
-        f"8. For email, inbox, or message queries, delegate to EmailAgent."
+        f"assume their current location (Ukraine) unless specified otherwise."
     )
 
     if session_summary:

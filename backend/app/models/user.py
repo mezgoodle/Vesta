@@ -31,6 +31,10 @@ class User(Base):
     is_daily_summary_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    @property
+    def has_google_token(self) -> bool:
+        return self.google_refresh_token is not None
+
     # Relationships
     chat_history: Mapped[list["ChatHistory"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"

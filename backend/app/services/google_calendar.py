@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime, time, timedelta
+import logging
 from typing import Any
 
 import pytz
@@ -12,6 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.crud.crud_user import user as crud_user
 from app.schemas.calendar import CalendarEvent, CalendarEventCreate
+
+logger = logging.getLogger(__name__)
 
 
 class GoogleCalendarService:
