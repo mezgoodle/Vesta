@@ -3,9 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from google.auth.exceptions import RefreshError
-from googleapiclient.errors import HttpError
 
-from app.schemas.gmail import EmailMessage
 from app.services.gmail_service import GmailService
 
 
