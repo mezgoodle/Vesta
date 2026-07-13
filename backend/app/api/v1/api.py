@@ -5,6 +5,7 @@ from app.api.v1.endpoints import (
     chat,
     cron,
     devices,
+    gmail,
     google_auth,
     knowledge,
     login,
@@ -28,5 +29,6 @@ api_router.include_router(
     google_auth.router, prefix="/google-auth", tags=["google-auth"]
 )
 api_router.include_router(calendar.router, prefix="/calendar", tags=["calendar"])
+api_router.include_router(gmail.router, prefix="/gmail", tags=["gmail"])
 api_router.include_router(tts.router, prefix="/tts", tags=["tts"])
 api_router.include_router(cron.router, prefix="/cron", tags=["cron"])

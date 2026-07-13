@@ -25,6 +25,7 @@ from google.genai import types
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.calendar_agent import create_calendar_agent
+from app.agents.email_agent import create_email_agent
 from app.agents.knowledge_agent import create_knowledge_agent
 from app.agents.root_agent import create_root_agent
 from app.agents.summary_agent import create_summary_agent
@@ -126,6 +127,11 @@ class ADKService:
                 model=self.model,
                 current_time_str=current_time_str,
             )
+            email = create_email_agent(
+                tools=tool_groups["email"],
+                model=self.model,
+                current_time_str=current_time_str,
+            )
 
             system_instruction = await build_personalized_prompt(
                 db=db,
@@ -135,7 +141,7 @@ class ADKService:
             )
 
             root_agent = create_root_agent(
-                sub_agents=[weather, calendar, knowledge],
+                sub_agents=[weather, calendar, knowledge, email],
                 system_instruction=system_instruction,
                 model=self.model,
                 tools=tool_groups.get("memory"),

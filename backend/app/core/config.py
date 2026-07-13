@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: SecretStr = SecretStr("")
     GOOGLE_REDIRECT_URI: str = ""
+    GMAIL_BODY_TRUNCATE_LEN: int = 1500
 
     # RAG / Knowledge Base
     LLAMA_PARSE_API_KEY: str = ""
