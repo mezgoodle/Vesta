@@ -240,9 +240,14 @@ class GmailService:
                 "Re-authorization required."
             ) from e
         except HttpError as e:
-            raise HttpError(resp=e.resp, content=e.content, uri=e.uri) from e
-        except Exception as e:
-            raise Exception(f"Failed to fetch Gmail messages: {str(e)}") from e
+            if e.resp.status in (403, 400) and any(phrase in str(e).lower() for phrase in ("scope", "insufficient")):
+                raise ValueError(
+                    "Gmail access is not authorized. Please run the Google OAuth flow "
+                    "again to grant Vesta permission to read your emails."
+                ) from e
+            raise
+        except Exception:
+            raise
 
     def _get_email_sync(self, service: Any, message_id: str) -> EmailMessage:
         """
@@ -315,9 +320,14 @@ class GmailService:
                 "Re-authorization required."
             ) from e
         except HttpError as e:
-            raise HttpError(resp=e.resp, content=e.content, uri=e.uri) from e
-        except Exception as e:
-            raise Exception(f"Failed to fetch Gmail message {message_id}: {str(e)}") from e
+            if e.resp.status in (403, 400) and any(phrase in str(e).lower() for phrase in ("scope", "insufficient")):
+                raise ValueError(
+                    "Gmail access is not authorized. Please run the Google OAuth flow "
+                    "again to grant Vesta permission to read your emails."
+                ) from e
+            raise
+        except Exception:
+            raise
 
 
 gmail_service_instance = GmailService()

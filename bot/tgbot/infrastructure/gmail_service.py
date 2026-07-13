@@ -1,3 +1,4 @@
+from html import escape
 from aiogram.utils.formatting import Bold, Underline
 from aiogram.utils.markdown import hbold
 
@@ -42,7 +43,7 @@ class GmailService(BaseAPIService):
         elif status == 403:
             return "❌ Google access expired. Please re-authorize via /google_auth."
         elif status == 404:
-            return f"❌ No emails found matching search: <code>{query}</code>"
+            return f"❌ No emails found matching search: <code>{escape(query)}</code>"
         else:
             return self._handle_error_response(status, data, f"fetching emails for query: {query}")
 
@@ -55,16 +56,16 @@ class GmailService(BaseAPIService):
             count = data.get("count", 0)
 
             if count == 0 or not emails:
-                return f"📨 No emails found matching search: <code>{query}</code>"
+                return f"📨 No emails found matching search: <code>{escape(query)}</code>"
 
-            header = f"📨 {hbold('Emails')} ({count} message{'s' if count != 1 else ''} matching <code>{query}</code>):\n\n"
+            header = f"📨 {hbold('Emails')} ({count} message{'s' if count != 1 else ''} matching <code>{escape(query)}</code>):\n\n"
 
             email_messages = []
             for idx, email in enumerate(emails, 1):
-                sender = email.get("sender", "Unknown Sender")
+                sender = escape(email.get("sender", "Unknown Sender"))
                 subject = email.get("subject", "No Subject")
-                date = email.get("date", "Unknown Date")
-                snippet = email.get("snippet", "")
+                date = escape(email.get("date", "Unknown Date"))
+                snippet = escape(email.get("snippet", ""))
 
                 # Format event message
                 email_msg = f"{hbold(idx)}. {Underline(Bold(subject)).as_html()}\n"

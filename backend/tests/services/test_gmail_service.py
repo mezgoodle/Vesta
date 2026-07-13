@@ -104,6 +104,75 @@ async def test_get_emails_success(gmail_service):
 
 
 @pytest.mark.asyncio
+async def test_get_emails_truncation(gmail_service):
+    db_mock = AsyncMock()
+    user_id = 42
+
+    user_mock = MagicMock()
+    user_mock.google_refresh_token = "valid_refresh_token"
+
+    mock_service = MagicMock()
+    mock_service.users().messages().list().execute.return_value = {
+        "messages": [{"id": "msg123"}]
+    }
+
+    # Body longer than 1500 chars (truncate length default is 1500)
+    long_body = b"A" * 2000
+    plain_data = base64.urlsafe_b64encode(long_body).decode("utf-8")
+    mock_service.users().messages().get().execute.return_value = {
+        "id": "msg123",
+        "snippet": "Hello user...",
+        "payload": {
+            "mimeType": "text/plain",
+            "body": {"data": plain_data},
+            "headers": []
+        }
+    }
+
+    with patch.object(gmail_service, "_get_gmail_client", AsyncMock(return_value=mock_service)):
+        with patch("app.services.gmail_service.crud_user.get", AsyncMock(return_value=user_mock)):
+            emails = await gmail_service.get_emails(user_id=user_id, db=db_mock)
+            
+            assert len(emails) == 1
+            email = emails[0]
+            assert len(email.body) == 1500 + len("\n... [truncated]")
+            assert email.body.endswith("\n... [truncated]")
+
+
+@pytest.mark.asyncio
+async def test_get_emails_fallback_to_snippet(gmail_service):
+    db_mock = AsyncMock()
+    user_id = 42
+
+    user_mock = MagicMock()
+    user_mock.google_refresh_token = "valid_refresh_token"
+
+    mock_service = MagicMock()
+    mock_service.users().messages().list().execute.return_value = {
+        "messages": [{"id": "msg123"}]
+    }
+
+    # Empty payload body
+    mock_service.users().messages().get().execute.return_value = {
+        "id": "msg123",
+        "snippet": "Fallback Snippet Here",
+        "payload": {
+            "mimeType": "text/plain",
+            "body": {"data": ""},
+            "headers": []
+        }
+    }
+
+    with patch.object(gmail_service, "_get_gmail_client", AsyncMock(return_value=mock_service)):
+        with patch("app.services.gmail_service.crud_user.get", AsyncMock(return_value=user_mock)):
+            emails = await gmail_service.get_emails(user_id=user_id, db=db_mock)
+            
+            assert len(emails) == 1
+            email = emails[0]
+            assert email.body == "Fallback Snippet Here"
+
+
+@pytest.mark.asyncio
 async def test_get_email_by_id_success(gmail_service):
     db_mock = AsyncMock()
     user_id = 42

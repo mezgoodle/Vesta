@@ -1,6 +1,8 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from google.auth.exceptions import RefreshError
+from googleapiclient.errors import HttpError
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -145,5 +147,178 @@ async def test_get_emails_unauthorized(
 
         assert response.status_code == 401
         assert "not authorized" in response.json()["detail"].lower()
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_get_emails_refresh_error(
+    client: AsyncClient, db_session: AsyncSession, auth_user: dict
+) -> None:
+    """Test get_emails when Google token refresh fails (403 Forbidden)."""
+    user = auth_user["user"]
+    headers = auth_user["headers"]
+
+    await crud_user.update(
+        db_session, db_obj=user, obj_in={"google_refresh_token": "test_refresh_token"}
+    )
+
+    mock_service = AsyncMock()
+    mock_service.get_emails.side_effect = RefreshError("Token expired")
+
+    async def override_gmail_service():
+        return mock_service
+
+    app.dependency_overrides[gmail_service] = override_gmail_service
+
+    try:
+        response = await client.get(
+            f"{settings.API_V1_STR}/gmail/messages",
+            params={"user_id": user.id},
+            headers=headers,
+        )
+
+        assert response.status_code == 403
+        assert "expired/revoked" in response.json()["detail"].lower()
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_get_emails_http_error_generic(
+    client: AsyncClient, db_session: AsyncSession, auth_user: dict
+) -> None:
+    """Test get_emails on non-404 Google API HttpError (500 Internal Error)."""
+    user = auth_user["user"]
+    headers = auth_user["headers"]
+
+    await crud_user.update(
+        db_session, db_obj=user, obj_in={"google_refresh_token": "test_refresh_token"}
+    )
+
+    resp = MagicMock()
+    resp.status = 502
+    resp.reason = "Bad Gateway"
+    
+    mock_service = AsyncMock()
+    mock_service.get_emails.side_effect = HttpError(resp=resp, content=b"Bad Gateway")
+
+    async def override_gmail_service():
+        return mock_service
+
+    app.dependency_overrides[gmail_service] = override_gmail_service
+
+    try:
+        response = await client.get(
+            f"{settings.API_V1_STR}/gmail/messages",
+            params={"user_id": user.id},
+            headers=headers,
+        )
+
+        assert response.status_code == 500
+        assert "Google API error occurred" in response.json()["detail"]
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_get_email_by_id_http_error_404(
+    client: AsyncClient, db_session: AsyncSession, auth_user: dict
+) -> None:
+    """Test get_email_by_id when email does not exist (404 Not Found)."""
+    user = auth_user["user"]
+    headers = auth_user["headers"]
+
+    await crud_user.update(
+        db_session, db_obj=user, obj_in={"google_refresh_token": "test_refresh_token"}
+    )
+
+    resp = MagicMock()
+    resp.status = 404
+    resp.reason = "Not Found"
+    
+    mock_service = AsyncMock()
+    mock_service.get_email_by_id.side_effect = HttpError(resp=resp, content=b"Not Found")
+
+    async def override_gmail_service():
+        return mock_service
+
+    app.dependency_overrides[gmail_service] = override_gmail_service
+
+    try:
+        response = await client.get(
+            f"{settings.API_V1_STR}/gmail/messages/msg999",
+            params={"user_id": user.id},
+            headers=headers,
+        )
+
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"].lower()
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_get_emails_generic_exception(
+    client: AsyncClient, db_session: AsyncSession, auth_user: dict
+) -> None:
+    """Test get_emails when an unexpected error happens (500)."""
+    user = auth_user["user"]
+    headers = auth_user["headers"]
+
+    await crud_user.update(
+        db_session, db_obj=user, obj_in={"google_refresh_token": "test_refresh_token"}
+    )
+
+    mock_service = AsyncMock()
+    mock_service.get_emails.side_effect = Exception("System crash")
+
+    async def override_gmail_service():
+        return mock_service
+
+    app.dependency_overrides[gmail_service] = override_gmail_service
+
+    try:
+        response = await client.get(
+            f"{settings.API_V1_STR}/gmail/messages",
+            params={"user_id": user.id},
+            headers=headers,
+        )
+
+        assert response.status_code == 500
+        assert "unexpected error occurred" in response.json()["detail"].lower()
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_get_emails_bad_request_value_error(
+    client: AsyncClient, db_session: AsyncSession, auth_user: dict
+) -> None:
+    """Test get_emails when ValueError is raised without auth-related message (400)."""
+    user = auth_user["user"]
+    headers = auth_user["headers"]
+
+    await crud_user.update(
+        db_session, db_obj=user, obj_in={"google_refresh_token": "test_refresh_token"}
+    )
+
+    mock_service = AsyncMock()
+    mock_service.get_emails.side_effect = ValueError("Invalid query format")
+
+    async def override_gmail_service():
+        return mock_service
+
+    app.dependency_overrides[gmail_service] = override_gmail_service
+
+    try:
+        response = await client.get(
+            f"{settings.API_V1_STR}/gmail/messages",
+            params={"user_id": user.id},
+            headers=headers,
+        )
+
+        assert response.status_code == 400
+        assert "invalid query format" in response.json()["detail"].lower()
     finally:
         app.dependency_overrides.clear()
