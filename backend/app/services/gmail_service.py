@@ -240,11 +240,29 @@ class GmailService:
                 "Re-authorization required."
             ) from e
         except HttpError as e:
-            if e.resp.status in (403, 400) and any(phrase in str(e).lower() for phrase in ("scope", "insufficient")):
-                raise ValueError(
-                    "Gmail access is not authorized. Please run the Google OAuth flow "
-                    "again to grant Vesta permission to read your emails."
-                ) from e
+            if e.resp.status == 403:
+                try:
+                    import json
+                    err_data = json.loads(e.content.decode("utf-8"))
+                    error_details = err_data.get("error", {})
+                    message = error_details.get("message", "").lower()
+                    errors = error_details.get("errors", [])
+                    reasons = [err.get("reason", "") for err in errors]
+                    is_scope_error = (
+                        "scope" in message
+                        or "insufficient" in message
+                        or any(
+                            r in ("ACCESS_TOKEN_SCOPE_INSUFFICIENT", "insufficientPermissions")
+                            for r in reasons
+                        )
+                    )
+                    if is_scope_error:
+                        raise ValueError(
+                            "Gmail access is not authorized. Please run the Google OAuth flow "
+                            "again to grant Vesta permission to read your emails."
+                        ) from e
+                except (json.JSONDecodeError, TypeError, KeyError):
+                    pass
             raise
         except Exception:
             raise
@@ -320,11 +338,29 @@ class GmailService:
                 "Re-authorization required."
             ) from e
         except HttpError as e:
-            if e.resp.status in (403, 400) and any(phrase in str(e).lower() for phrase in ("scope", "insufficient")):
-                raise ValueError(
-                    "Gmail access is not authorized. Please run the Google OAuth flow "
-                    "again to grant Vesta permission to read your emails."
-                ) from e
+            if e.resp.status == 403:
+                try:
+                    import json
+                    err_data = json.loads(e.content.decode("utf-8"))
+                    error_details = err_data.get("error", {})
+                    message = error_details.get("message", "").lower()
+                    errors = error_details.get("errors", [])
+                    reasons = [err.get("reason", "") for err in errors]
+                    is_scope_error = (
+                        "scope" in message
+                        or "insufficient" in message
+                        or any(
+                            r in ("ACCESS_TOKEN_SCOPE_INSUFFICIENT", "insufficientPermissions")
+                            for r in reasons
+                        )
+                    )
+                    if is_scope_error:
+                        raise ValueError(
+                            "Gmail access is not authorized. Please run the Google OAuth flow "
+                            "again to grant Vesta permission to read your emails."
+                        ) from e
+                except (json.JSONDecodeError, TypeError, KeyError):
+                    pass
             raise
         except Exception:
             raise

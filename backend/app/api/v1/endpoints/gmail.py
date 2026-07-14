@@ -22,6 +22,12 @@ def _translate_gmail_exception(e: Exception, *, message_id: str | None = None) -
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=str(e),
             ) from e
+        if "failed to create credentials" in error_msg or "failed to build" in error_msg:
+            logger.error("Gmail client construction failed: %s", e)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Google API error occurred. Please try again later.",
+            ) from e
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
@@ -36,6 +42,11 @@ def _translate_gmail_exception(e: Exception, *, message_id: str | None = None) -
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Message with ID {message_id} not found.",
+            ) from e
+        if e.resp.status == 401:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Google authentication credentials invalid or expired. Please re-authorize.",
             ) from e
         logger.error("Google Gmail API error: %s", e)
         raise HTTPException(
