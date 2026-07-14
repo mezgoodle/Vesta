@@ -31,6 +31,12 @@ def mock_weather_service():
 
 
 @pytest.fixture
+def mock_gmail_service():
+    with patch("app.api.v1.endpoints.cron.gmail_service_instance") as mock_service:
+        yield mock_service
+
+
+@pytest.fixture
 def mock_httpx_client():
     with patch("app.api.v1.endpoints.cron.httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
@@ -76,6 +82,7 @@ async def test_morning_digest_success(
     mock_llm_service,
     mock_calendar_service,
     mock_weather_service,
+    mock_gmail_service,
     mock_httpx_client,
 ) -> None:
     # Create test user in DB
@@ -90,6 +97,9 @@ async def test_morning_digest_success(
     db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)
+
+    # Mock gmail service
+    mock_gmail_service.get_emails = AsyncMock(return_value=[])
 
     # Mock calendar events
     event = MagicMock()
@@ -138,6 +148,95 @@ async def test_morning_digest_success(
     kwargs = mock_httpx_client.post.call_args.kwargs
     assert kwargs["data"]["chat_id"] == 98765
     assert kwargs["data"]["text"] == "Good morning! FastAPI Standup is at 09:00."
+
+
+@pytest.mark.asyncio
+async def test_morning_digest_with_emails(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    mock_llm_service,
+    mock_calendar_service,
+    mock_weather_service,
+    mock_gmail_service,
+    mock_httpx_client,
+) -> None:
+    # Create test user in DB
+    user = User(
+        email="cron-digest-emails@example.com",
+        hashed_password="hashedpassword",
+        telegram_id=98765,
+        city_name="Kyiv",
+        is_daily_summary_enabled=True,
+        google_refresh_token="valid-refresh-token",
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    # Mock gmail service with unread emails
+    from app.schemas.gmail import EmailMessage
+    email = EmailMessage(
+        id="msg123",
+        sender="Boss <boss@example.com>",
+        subject="Urgent Meeting",
+        date="2026-07-14",
+        snippet="Please review the budget.",
+        body="Please review the budget.",
+    )
+    mock_gmail_service.get_emails = AsyncMock(return_value=[email])
+
+    # Mock calendar events
+    event = MagicMock()
+    event.start_time = datetime.time(9, 0)
+    event.summary = "FastAPI Standup"
+    mock_calendar_service.get_today_events = AsyncMock(return_value=[event])
+
+    # Mock weather service
+    mock_weather = MagicMock(spec=WeatherData)
+    mock_weather.city = "Kyiv"
+    mock_weather.temp = 20
+    mock_weather.description = "Clear sky"
+    mock_weather_service.get_current_weather_by_city_name = AsyncMock(
+        return_value=mock_weather
+    )
+
+    # Mock LLM service
+    mock_llm_service.chat.return_value = "Good morning! You have 1 unread email from Boss."
+
+    # Mock Telegram API response
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_httpx_client.post.return_value = mock_response
+
+    # Send POST request with correct header secret
+    response = await client.post(
+        f"{settings.API_V1_STR}/cron/morning-digest",
+        headers={"X-Cron-Secret": settings.CRON_SECRET_KEY},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["sent_digests_count"] == 1
+
+    # Verify calendar call
+    mock_calendar_service.get_today_events.assert_called_once_with(
+        user.id, db_session
+    )
+
+    # Verify gmail call
+    mock_gmail_service.get_emails.assert_called_once_with(
+        user_id=user.id, db=db_session, query="is:unread", max_results=5
+    )
+
+    # Verify LLM call
+    mock_llm_service.chat.assert_called_once()
+    
+    # Verify the prompt contained the email info
+    args = mock_llm_service.chat.call_args[0]
+    prompt = args[0]
+    assert "Urgent Meeting" in prompt
+    assert "boss@example.com" in prompt
 
 
 @pytest.mark.asyncio

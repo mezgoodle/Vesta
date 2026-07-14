@@ -20,7 +20,17 @@ def format_user_data(user_data: Dict[str, Any]) -> str:
     daily_summary = user_data.get("is_daily_summary_enabled", False)
 
     has_google_token = user_data.get("has_google_token", False)
-    google_status = "✅ Connected" if has_google_token else "❌ Disconnected"
+    google_token_status = user_data.get("google_token_status")
+
+    if has_google_token:
+        if google_token_status == "revoked":
+            google_status = "🔴 Revoked (re-auth required)"
+        elif google_token_status == "expired":
+            google_status = "🟡 Expired (re-auth required)"
+        else:
+            google_status = "✅ Connected"
+    else:
+        google_status = "❌ Disconnected"
 
     lines = [
         f"👤 {hbold('User Profile')}",

@@ -83,12 +83,14 @@ class GoogleCalendarService:
             return events_result.get("items", [])
 
         except RefreshError as e:
+            await self._handle_auth_error(user_id, db, e)
             raise RefreshError(
                 f"Failed to refresh access token for user {user_id}. "
                 "The refresh token may be expired or revoked. "
                 "Please re-authorize the application."
             ) from e
         except HttpError as e:
+            await self._handle_auth_error(user_id, db, e)
             raise HttpError(
                 resp=e.resp,
                 content=e.content,
@@ -368,12 +370,14 @@ class GoogleCalendarService:
             }
 
         except RefreshError as e:
+            await self._handle_auth_error(user_id, db, e)
             raise RefreshError(
                 f"Failed to refresh access token for user {user_id}. "
                 "The refresh token may be expired or revoked. "
                 "Please re-authorize the application."
             ) from e
         except HttpError as e:
+            await self._handle_auth_error(user_id, db, e)
             raise HttpError(
                 resp=e.resp,
                 content=e.content,
@@ -381,6 +385,48 @@ class GoogleCalendarService:
             ) from e
         except Exception as e:
             raise Exception(f"Failed to create calendar event: {str(e)}") from e
+
+    async def _handle_auth_error(
+        self, user_id: int, db: AsyncSession, exception: Exception
+    ) -> None:
+        """Update google_token_status when an auth error is encountered."""
+        status_val = None
+        if isinstance(exception, RefreshError):
+            status_val = "expired"
+        elif isinstance(exception, HttpError):
+            if exception.resp.status == 403:
+                try:
+                    import json
+                    err_data = json.loads(exception.content.decode("utf-8"))
+                    error_details = err_data.get("error", {})
+                    message = error_details.get("message", "").lower()
+                    errors = error_details.get("errors", [])
+                    reasons = [err.get("reason", "") for err in errors]
+                    is_scope_error = (
+                        "scope" in message
+                        or "insufficient" in message
+                        or any(
+                            r in ("ACCESS_TOKEN_SCOPE_INSUFFICIENT", "insufficientPermissions")
+                            for r in reasons
+                        )
+                    )
+                    if is_scope_error:
+                        status_val = "revoked"
+                except Exception:
+                    if any(phrase in str(exception).lower() for phrase in ("scope", "insufficient", "permission")):
+                        status_val = "revoked"
+            elif exception.resp.status == 401:
+                status_val = "expired"
+
+        if status_val:
+            try:
+                user = await crud_user.get(db, id=user_id)
+                if user and user.google_token_status != status_val:
+                    await crud_user.update(
+                        db, db_obj=user, obj_in={"google_token_status": status_val}
+                    )
+            except Exception as e:
+                logger.error("Failed to update google_token_status for user %s: %s", user_id, e)
 
 
 google_calendar_service_instance = GoogleCalendarService()

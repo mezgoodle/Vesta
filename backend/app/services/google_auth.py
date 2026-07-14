@@ -144,6 +144,7 @@ class GoogleAuthService:
         # Update user with refresh token and email
         update_data = {
             "google_refresh_token": credentials.refresh_token,
+            "google_token_status": "valid",
         }
         if email:
             update_data["email"] = email

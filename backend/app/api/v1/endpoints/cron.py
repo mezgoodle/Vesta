@@ -11,6 +11,7 @@ from app.models.user import User
 from app.models.device import SmartDevice
 from app.schemas.weather import WeatherData
 from app.services.google_calendar import google_calendar_service_instance
+from app.services.gmail_service import gmail_service_instance
 from app.services.llm import LLMService
 from app.services.weather import weather_service_instance
 from app.services.home import HomeAssistantService
@@ -57,6 +58,15 @@ async def send_daily_digests(db: AsyncSession) -> int:
                 )
             )
 
+            # Fetch unread emails
+            emails = []
+            try:
+                emails = await gmail_service_instance.get_emails(
+                    user_id=user.id, db=db, query="is:unread", max_results=5
+                )
+            except Exception as e:
+                logger.warning(f"Failed to fetch emails for daily digest for user {user.id}: {e}")
+
             events_text = "\n".join(
                 [
                     f"- {e.start_time.strftime('%H:%M') if e.start_time else 'All day'}: {e.summary}"
@@ -64,12 +74,21 @@ async def send_daily_digests(db: AsyncSession) -> int:
                 ]
             )
             weather_text = f"Погода в місті {weather.city}: {weather.temp}°C, {weather.description}"
+            
+            if emails:
+                emails_text = "Непрочитані листи:\n" + "\n".join(
+                    [f"- від {e.sender}: {e.subject}" for e in emails]
+                )
+            else:
+                emails_text = "Непрочитаних листів немає."
 
             prompt = (
                 f"Ось мій розклад на сьогодні:\n{events_text}\n\n"
                 f"{weather_text}\n\n"
+                f"{emails_text}\n\n"
                 "Напиши мені коротке, позитивне ранкове привітання та підсумок мого дня. "
-                "Використовуй емодзі. Звертайся до мене на ім'я (якщо знаєш) або просто друже."
+                "Використовуй емодзі. Звертайся до мене на ім'я (якщо знаєш) або просто друже.\n\n"
+                f"{settings.TELEGRAM_HTML_GUIDELINES}"
             )
 
             digest_text = await service.chat(prompt, [], user.id, db)
