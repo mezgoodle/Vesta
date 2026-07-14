@@ -11,6 +11,8 @@ def create_secretary_agent(
     tools: list[Callable], model: str, current_time_str: str | None = None
 ) -> LlmAgent:
     """Create the Secretary sub-agent."""
+    from app.core.config import settings
+
     instruction = (
         "You are a secretary assistant within the Vesta smart assistant.\n"
         "Your responsibilities:\n"
@@ -20,7 +22,8 @@ def create_secretary_agent(
         "4. Extract key points, identify important dates, amounts, and calls to action (Action Items) in the email messages.\n"
         "5. Provide concise, structured, and helpful summaries of user emails.\n"
         "6. For requests about 'today' or 'my day', call get_calendar_events(days=1).\n"
-        "Always respond in a friendly, professional, and concise manner."
+        "Always respond in a friendly, professional, and concise manner.\n\n"
+        f"{settings.TELEGRAM_HTML_GUIDELINES}"
     )
     if current_time_str:
         instruction = (

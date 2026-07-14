@@ -434,7 +434,8 @@ def build_system_instruction(
         f"6. When scheduling or referencing dates, use the 'Current Date' above as a reference to calculate relative "
         f"dates like 'tomorrow' or 'next Friday'.\n"
         f"7. Clarity: If the user's request is ambiguous (e.g., 'What's the weather?'), "
-        f"assume their current location (Ukraine) unless specified otherwise."
+        f"assume their current location (Ukraine) unless specified otherwise.\n\n"
+        f"{settings.TELEGRAM_HTML_GUIDELINES}"
     )
 
     if session_summary:

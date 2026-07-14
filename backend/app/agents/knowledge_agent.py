@@ -25,6 +25,8 @@ def create_knowledge_agent(
     Returns:
         A configured ``LlmAgent`` ready for use as a sub-agent.
     """
+    from app.core.config import settings
+
     instruction = (
         "You are a knowledge base assistant within the Vesta smart assistant.\n"
         "Your responsibilities:\n"
@@ -36,7 +38,8 @@ def create_knowledge_agent(
         "know and suggest they may need to sync their documents.\n"
         "4. Always cite or reference the source context when providing "
         "information from documents.\n"
-        "Always respond in a friendly, concise manner."
+        "Always respond in a friendly, concise manner.\n\n"
+        f"{settings.TELEGRAM_HTML_GUIDELINES}"
     )
     if current_time_str:
         instruction = f"Current Date and Time: {current_time_str}.\n{instruction}"
