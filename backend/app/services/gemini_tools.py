@@ -18,17 +18,17 @@ import asyncio
 import datetime
 import logging
 from typing import Callable
-
 from zoneinfo import ZoneInfo
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud.crud_facts import user_fact as crud_user_fact
 from app.schemas.calendar import CalendarEventCreate
 from app.schemas.user_facts import FactCreate
+from app.services.gmail_service import GmailService
 from app.services.google_calendar import GoogleCalendarService
 from app.services.knowledge import KnowledgeService
 from app.services.open_meteo_service import OpenMeteoService
-from app.services.gmail_service import GmailService
 
 logger = logging.getLogger(__name__)
 

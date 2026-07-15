@@ -1,4 +1,5 @@
 from html import escape
+
 from aiogram.utils.formatting import Bold, Underline
 from aiogram.utils.markdown import hbold
 
@@ -9,9 +10,6 @@ class GmailService(BaseAPIService):
     """Service for Gmail operations on the Telegram bot side."""
 
     def __init__(self, base_url: str | None = None, timeout: int = 10):
-        """
-        Initialize the Gmail service.
-        """
         super().__init__(base_url, timeout)
 
     async def get_emails(
@@ -45,7 +43,9 @@ class GmailService(BaseAPIService):
         elif status == 404:
             return f"❌ No emails found matching search: <code>{escape(query)}</code>"
         else:
-            return self._handle_error_response(status, data, f"fetching emails for query: {query}")
+            return self._handle_error_response(
+                status, data, f"fetching emails for query: {query}"
+            )
 
     def _format_email_data(self, data: dict, query: str) -> str:
         """
@@ -56,7 +56,9 @@ class GmailService(BaseAPIService):
             count = data.get("count", 0)
 
             if count == 0 or not emails:
-                return f"📨 No emails found matching search: <code>{escape(query)}</code>"
+                return (
+                    f"📨 No emails found matching search: <code>{escape(query)}</code>"
+                )
 
             header = f"📨 {hbold('Emails')} ({count} message{'s' if count != 1 else ''} matching <code>{escape(query)}</code>):\n\n"
 

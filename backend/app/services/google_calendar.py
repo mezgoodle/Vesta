@@ -1,7 +1,7 @@
 import asyncio
-from datetime import datetime, time, timedelta
 import json
 import logging
+from datetime import datetime, time, timedelta
 from typing import Any
 
 import pytz
@@ -406,14 +406,21 @@ class GoogleCalendarService:
                         "scope" in message
                         or "insufficient" in message
                         or any(
-                            r in ("ACCESS_TOKEN_SCOPE_INSUFFICIENT", "insufficientPermissions")
+                            r
+                            in (
+                                "ACCESS_TOKEN_SCOPE_INSUFFICIENT",
+                                "insufficientPermissions",
+                            )
                             for r in reasons
                         )
                     )
                     if is_scope_error:
                         status_val = "revoked"
                 except Exception:
-                    if any(phrase in str(exception).lower() for phrase in ("scope", "insufficient", "permission")):
+                    if any(
+                        phrase in str(exception).lower()
+                        for phrase in ("scope", "insufficient", "permission")
+                    ):
                         status_val = "revoked"
             elif exception.resp.status == 401:
                 status_val = "expired"
@@ -427,7 +434,9 @@ class GoogleCalendarService:
                     )
             except Exception as e:
                 await db.rollback()
-                logger.error("Failed to update google_token_status for user %s: %s", user_id, e)
+                logger.error(
+                    "Failed to update google_token_status for user %s: %s", user_id, e
+                )
 
 
 google_calendar_service_instance = GoogleCalendarService()

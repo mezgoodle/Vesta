@@ -16,7 +16,6 @@ import datetime
 import logging
 import os
 from typing import TYPE_CHECKING
-
 from zoneinfo import ZoneInfo
 
 from google.adk.events import Event

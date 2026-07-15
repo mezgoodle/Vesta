@@ -1,4 +1,5 @@
 import logging
+
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
@@ -33,9 +34,13 @@ async def emails_command(message: Message, user_db_id: int, command: CommandObje
             logger.warning("Failed to delete checking message: %s", e)
         await message.answer(response)
     except Exception as e:
-        logger.error("Failed to fetch emails for user %s: %s", user_db_id, e, exc_info=True)
+        logger.error(
+            "Failed to fetch emails for user %s: %s", user_db_id, e, exc_info=True
+        )
         try:
             await checking_msg.delete()
         except Exception as del_err:
-            logger.warning("Failed to delete checking message during error cleanup: %s", del_err)
+            logger.warning(
+                "Failed to delete checking message during error cleanup: %s", del_err
+            )
         await message.answer("❌ Failed to fetch emails. Please try again later.")
