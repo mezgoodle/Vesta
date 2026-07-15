@@ -2,7 +2,7 @@ from secrets import compare_digest
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, Query, Security, status, Header
+from fastapi import Depends, Header, HTTPException, Query, Security, status
 from fastapi.security import APIKeyHeader, OAuth2PasswordBearer
 from jwt import PyJWTError
 from sqlalchemy import select
@@ -14,13 +14,13 @@ from app.db.session import get_db
 from app.models.user import User
 from app.schemas.token import TokenPayload
 from app.services.adk_service import ADKService, adk_service
-from app.services.google_calendar import (
-    GoogleCalendarService,
-    google_calendar_service,
-)
 from app.services.gmail_service import (
     GmailService,
     gmail_service,
+)
+from app.services.google_calendar import (
+    GoogleCalendarService,
+    google_calendar_service,
 )
 from app.services.google_tts import GoogleTTSService, google_tts_service
 from app.services.knowledge import KnowledgeService, knowledge_service

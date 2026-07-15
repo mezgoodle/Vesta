@@ -1,20 +1,21 @@
 import logging
-import httpx
 from typing import Any
+
+import httpx
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import SessionDep, verify_cron_secret
 from app.core.config import settings
-from app.models.user import User
 from app.models.device import SmartDevice
+from app.models.user import User
 from app.schemas.weather import WeatherData
-from app.services.google_calendar import google_calendar_service_instance
 from app.services.gmail_service import gmail_service_instance
+from app.services.google_calendar import google_calendar_service_instance
+from app.services.home import HomeAssistantService
 from app.services.llm import LLMService
 from app.services.weather import weather_service_instance
-from app.services.home import HomeAssistantService
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +26,10 @@ router = APIRouter(dependencies=[Depends(verify_cron_secret)])
 async def send_daily_digests(db: AsyncSession) -> int:
     """
     Run daily morning digests for enabled users.
-    
+
     Args:
         db: The database session.
-        
+
     Returns:
         int: The number of successfully sent digests.
     """
@@ -51,7 +52,9 @@ async def send_daily_digests(db: AsyncSession) -> int:
                     user.id, db
                 )
             except Exception as e:
-                logger.warning(f"Failed to fetch calendar events for user {user.id}: {e}")
+                logger.warning(
+                    f"Failed to fetch calendar events for user {user.id}: {e}"
+                )
                 events = []
 
             weather: WeatherData = (
@@ -60,14 +63,15 @@ async def send_daily_digests(db: AsyncSession) -> int:
                 )
             )
 
-            # Fetch unread emails
             emails = None
             try:
                 emails = await gmail_service_instance.get_emails(
                     user_id=user.id, db=db, query="is:unread", max_results=5
                 )
             except Exception as e:
-                logger.warning(f"Failed to fetch emails for daily digest for user {user.id}: {e}")
+                logger.warning(
+                    f"Failed to fetch emails for daily digest for user {user.id}: {e}"
+                )
 
             if events:
                 events_text = "\n".join(
@@ -79,7 +83,7 @@ async def send_daily_digests(db: AsyncSession) -> int:
             else:
                 events_text = "Сьогодні немає запланованих подій у календарі."
             weather_text = f"Погода в місті {weather.city}: {weather.temp}°C, {weather.description}"
-            
+
             if emails is None:
                 emails_text = "Не вдалося перевірити непрочитані листи."
             elif emails:
@@ -154,13 +158,17 @@ async def post_check_power_status(db: SessionDep) -> dict[str, Any]:
                     f"(entity_id: {device.entity_id})"
                 )
                 state_val = "unknown"
-            checked_devices.append({
-                "id": device.id,
-                "name": device.name,
-                "entity_id": device.entity_id,
-                "status": "online" if state_val not in ("unavailable", "unknown") else "offline",
-                "state": state_val
-            })
+            checked_devices.append(
+                {
+                    "id": device.id,
+                    "name": device.name,
+                    "entity_id": device.entity_id,
+                    "status": "online"
+                    if state_val not in ("unavailable", "unknown")
+                    else "offline",
+                    "state": state_val,
+                }
+            )
     finally:
         await home_service.close()
 
@@ -168,5 +176,5 @@ async def post_check_power_status(db: SessionDep) -> dict[str, Any]:
     return {
         "status": "success",
         "checked_devices_count": len(checked_devices),
-        "devices": checked_devices
+        "devices": checked_devices,
     }

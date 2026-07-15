@@ -6,12 +6,13 @@ from typing import Callable
 
 from google.adk.agents import LlmAgent
 
+from app.core.config import settings
+
 
 def create_weather_agent(
     tools: list[Callable], model: str, current_time_str: str | None = None
 ) -> LlmAgent:
     """Create the Weather sub-agent."""
-    from app.core.config import settings
 
     instruction = (
         "You are a weather assistant within the Vesta smart assistant.\n"
@@ -42,4 +43,3 @@ def create_weather_agent(
         tools=tools,
         mode="single_turn",
     )
-

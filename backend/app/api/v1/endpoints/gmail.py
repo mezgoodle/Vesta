@@ -1,4 +1,5 @@
 import logging
+
 from fastapi import APIRouter, HTTPException, Query, status
 from google.auth.exceptions import RefreshError
 from googleapiclient.errors import HttpError
@@ -11,10 +12,6 @@ router = APIRouter()
 
 
 def _translate_gmail_exception(e: Exception, *, message_id: str | None = None) -> None:
-    """
-    Map GmailService exceptions to HTTPException and raise.
-    Logs sensitive internal details instead of leaking them to clients.
-    """
     if isinstance(e, ValueError):
         error_msg = str(e).lower()
         if "not authorized" in error_msg or "no refresh token" in error_msg:
@@ -22,7 +19,10 @@ def _translate_gmail_exception(e: Exception, *, message_id: str | None = None) -
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=str(e),
             ) from e
-        if "failed to create credentials" in error_msg or "failed to build" in error_msg:
+        if (
+            "failed to create credentials" in error_msg
+            or "failed to build" in error_msg
+        ):
             logger.error("Gmail client construction failed: %s", e)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -73,9 +73,6 @@ async def get_emails(
         description="Number of emails to fetch (1-20)",
     ),
 ) -> EmailMessageList:
-    """
-    Search and retrieve Gmail messages for a specific user.
-    """
     try:
         emails = await gmail_service.get_emails(
             user_id=user_id,
@@ -95,9 +92,6 @@ async def get_email_by_id(
     gmail_service: GmailServiceDep,
     user_id: TargetUserId,
 ) -> EmailMessage:
-    """
-    Get a single Gmail message by ID.
-    """
     try:
         return await gmail_service.get_email_by_id(
             user_id=user_id,

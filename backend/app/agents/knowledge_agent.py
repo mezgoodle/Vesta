@@ -9,6 +9,8 @@ from typing import Callable
 
 from google.adk.agents import LlmAgent
 
+from app.core.config import settings
+
 
 def create_knowledge_agent(
     tools: list[Callable], model: str, current_time_str: str | None = None
@@ -25,7 +27,6 @@ def create_knowledge_agent(
     Returns:
         A configured ``LlmAgent`` ready for use as a sub-agent.
     """
-    from app.core.config import settings
 
     instruction = (
         "You are a knowledge base assistant within the Vesta smart assistant.\n"
@@ -58,4 +59,3 @@ def create_knowledge_agent(
         tools=tools,
         mode="single_turn",
     )
-
