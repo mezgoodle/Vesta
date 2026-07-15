@@ -151,6 +151,83 @@ async def test_morning_digest_success(
 
 
 @pytest.mark.asyncio
+async def test_morning_digest_no_events(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    mock_llm_service,
+    mock_calendar_service,
+    mock_weather_service,
+    mock_gmail_service,
+    mock_httpx_client,
+) -> None:
+    # Create test user in DB
+    user = User(
+        email="cron-digest-no-events@example.com",
+        hashed_password="hashedpassword",
+        telegram_id=98765,
+        city_name="Kyiv",
+        is_daily_summary_enabled=True,
+        google_refresh_token="valid-refresh-token",
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    # Mock gmail service
+    mock_gmail_service.get_emails = AsyncMock(return_value=[])
+
+    # Mock calendar events to be empty
+    mock_calendar_service.get_today_events = AsyncMock(return_value=[])
+
+    # Mock weather service
+    mock_weather = MagicMock(spec=WeatherData)
+    mock_weather.city = "Kyiv"
+    mock_weather.temp = 20
+    mock_weather.description = "Clear sky"
+    mock_weather_service.get_current_weather_by_city_name = AsyncMock(
+        return_value=mock_weather
+    )
+
+    # Mock LLM service
+    mock_llm_service.chat.return_value = "Good morning! No events today."
+
+    # Mock Telegram API response
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_httpx_client.post.return_value = mock_response
+
+    # Send POST request with correct header secret
+    response = await client.post(
+        f"{settings.API_V1_STR}/cron/morning-digest",
+        headers={"X-Cron-Secret": settings.CRON_SECRET_KEY},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["sent_digests_count"] == 1
+
+    # Verify calendar call
+    mock_calendar_service.get_today_events.assert_called_once_with(
+        user.id, db_session
+    )
+
+    # Verify LLM call
+    mock_llm_service.chat.assert_called_once()
+    
+    # Verify the prompt contained the "no events" info
+    args = mock_llm_service.chat.call_args[0]
+    prompt = args[0]
+    assert "Сьогодні немає запланованих подій у календарі." in prompt
+
+    # Verify Telegram sendMessage post call
+    mock_httpx_client.post.assert_called_once()
+    kwargs = mock_httpx_client.post.call_args.kwargs
+    assert kwargs["data"]["chat_id"] == 98765
+    assert kwargs["data"]["text"] == "Good morning! No events today."
+
+
+@pytest.mark.asyncio
 async def test_morning_digest_with_emails(
     client: AsyncClient,
     db_session: AsyncSession,

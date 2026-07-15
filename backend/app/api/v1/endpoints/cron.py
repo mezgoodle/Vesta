@@ -49,8 +49,6 @@ async def send_daily_digests(db: AsyncSession) -> int:
             events = await google_calendar_service_instance.get_today_events(
                 user.id, db
             )
-            if not events:
-                continue
 
             weather: WeatherData = (
                 await weather_service_instance.get_current_weather_by_city_name(
@@ -67,12 +65,15 @@ async def send_daily_digests(db: AsyncSession) -> int:
             except Exception as e:
                 logger.warning(f"Failed to fetch emails for daily digest for user {user.id}: {e}")
 
-            events_text = "\n".join(
-                [
-                    f"- {e.start_time.strftime('%H:%M') if e.start_time else 'All day'}: {e.summary}"
-                    for e in events
-                ]
-            )
+            if events:
+                events_text = "\n".join(
+                    [
+                        f"- {e.start_time.strftime('%H:%M') if e.start_time else 'All day'}: {e.summary}"
+                        for e in events
+                    ]
+                )
+            else:
+                events_text = "Сьогодні немає запланованих подій у календарі."
             weather_text = f"Погода в місті {weather.city}: {weather.temp}°C, {weather.description}"
             
             if emails:
