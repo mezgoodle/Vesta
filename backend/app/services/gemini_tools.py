@@ -18,13 +18,14 @@ import asyncio
 import datetime
 import logging
 from typing import Callable
-
 from zoneinfo import ZoneInfo
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud.crud_facts import user_fact as crud_user_fact
 from app.schemas.calendar import CalendarEventCreate
 from app.schemas.user_facts import FactCreate
+from app.services.gmail_service import GmailService
 from app.services.google_calendar import GoogleCalendarService
 from app.services.knowledge import KnowledgeService
 from app.services.open_meteo_service import OpenMeteoService
@@ -234,6 +235,66 @@ def create_tools(
             return "Unable to create calendar event. Please try again later."
 
     # ------------------------------------------------------------------ #
+    # Email tools                                                        #
+    # ------------------------------------------------------------------ #
+
+    async def check_emails(query: str = "is:unread", max_results: int = 5) -> str:
+        """
+        Search, retrieve, and read the authenticated user's email messages using Gmail search.
+
+        Use this function when the user asks to check their email, find messages, search their inbox,
+        or read emails. You can use standard Gmail search operators in the query parameter.
+
+        Common query examples:
+        - "is:unread" (default) -> finds all unread messages
+        - "from:boss@company.com" -> emails from a specific sender
+        - "subject:invoice" -> emails with "invoice" in the subject
+        - "newer_than:1d" -> emails received in the last 24 hours
+        - "newer_than:7d" -> emails received in the last week
+        - "is:important" -> emails marked as important
+        - "project update" -> search for terms in subject or body
+
+        Args:
+            query: Gmail search query string. Use search operators to filter results.
+                   Default is "is:unread".
+            max_results: Maximum number of emails to retrieve (1 to 10). Default is 5.
+
+        Returns:
+            A formatted string containing the list of matching emails with their details
+            (Sender, Subject, Date, Snippet, and Body preview), or an error message if failed.
+        """
+        try:
+            # Clamp max_results between 1 and 10 to protect token budget
+            max_results = max(1, min(int(max_results), 10))
+            gmail_svc = GmailService()
+            emails = await gmail_svc.get_emails(
+                user_id=user_id,
+                db=db,
+                query=query,
+                max_results=max_results,
+            )
+
+            if not emails:
+                return f"No emails found matching query '{query}'."
+
+            result = f"Emails matching query '{query}':\n"
+            for i, email in enumerate(emails, 1):
+                result += (
+                    f"--- Email {i} ---\n"
+                    f"📧 From: {email.sender}\n"
+                    f"📝 Subject: {email.subject}\n"
+                    f"📅 Date: {email.date}\n"
+                    f"📌 Snippet: {email.snippet}\n"
+                    f"💬 Body:\n{email.body}\n\n"
+                )
+
+            return result.strip()
+
+        except Exception:
+            logger.exception("Gmail API tool error for user %s", user_id)
+            return "Unable to fetch emails at this moment. Please ensure you have authorized Gmail access."
+
+    # ------------------------------------------------------------------ #
     # Knowledge base tool                                                 #
     # ------------------------------------------------------------------ #
 
@@ -325,6 +386,7 @@ def create_tools(
     return {
         "weather": [get_weather_info],
         "calendar": [get_calendar_events, schedule_event_tool],
+        "email": [check_emails],
         "knowledge": [consult_knowledge_base],
         "memory": [remember_user_fact, delete_user_fact],
     }
@@ -364,15 +426,16 @@ def build_system_instruction(
         f"User's Location: Ukraine (default for weather).\n"
         f"--- DELEGATION GUIDELINES ---\n"
         f"1. For weather questions, delegate to WeatherAgent.\n"
-        f"2. For calendar or scheduling questions, delegate to CalendarAgent.\n"
+        f"2. For calendar, scheduling, email, or inbox questions, delegate to SecretaryAgent.\n"
         f"3. For questions about personal documents or knowledge base, delegate to KnowledgeAgent.\n"
         f"4. For general conversation, respond directly without delegation.\n"
         f"5. Proactivity: If the user asks about 'today' or 'my day', delegate first to "
-        f"CalendarAgent for schedule and then WeatherAgent for weather to provide a complete daily briefing.\n"
-        f"6. When scheduling, use the 'Current Date' above as a reference to calculate relative "
+        f"SecretaryAgent for schedule and then WeatherAgent for weather to provide a complete daily briefing.\n"
+        f"6. When scheduling or referencing dates, use the 'Current Date' above as a reference to calculate relative "
         f"dates like 'tomorrow' or 'next Friday'.\n"
         f"7. Clarity: If the user's request is ambiguous (e.g., 'What's the weather?'), "
-        f"assume their current location (Ukraine) unless specified otherwise."
+        f"assume their current location (Ukraine) unless specified otherwise.\n\n"
+        f"{settings.TELEGRAM_HTML_GUIDELINES}"
     )
 
     if session_summary:

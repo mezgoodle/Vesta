@@ -8,6 +8,7 @@ from . import (
     user,
     help,
     calendar,
+    gmail,
     user_update,
     echo,
 )

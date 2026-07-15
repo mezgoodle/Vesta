@@ -40,9 +40,21 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str = ""
     GOOGLE_MODEL_NAME: str = ""
     SYSTEM_INSTRUCTION: str = "You are Vesta, a helpful smart home assistant."
+    TELEGRAM_HTML_GUIDELINES: str = (
+        "--- TELEGRAM HTML FORMATTING RULES ---\n"
+        "You must format all your final user-facing text using HTML tags compatible with Telegram parse mode.\n"
+        "Allowed HTML tags:\n"
+        "- <b>bold</b> (use <b> instead of Markdown **)\n"
+        "- <i>italic</i> (use <i> instead of Markdown *)\n"
+        "- <code>code</code> (use <code> instead of backticks `)\n"
+        "- <a href=\"URL\">link text</a> (use <a> instead of [text](url))\n"
+        "CRITICAL: Never output Markdown formatting (such as **, *, `). Always translate them to equivalent HTML tags. "
+        "Malformed or unclosed tags will break the message delivery, so ensure all HTML tags are closed correctly."
+    )
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: SecretStr = SecretStr("")
     GOOGLE_REDIRECT_URI: str = ""
+    GMAIL_BODY_TRUNCATE_LEN: int = 1500
 
     # RAG / Knowledge Base
     LLAMA_PARSE_API_KEY: str = ""

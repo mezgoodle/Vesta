@@ -2,7 +2,7 @@ from secrets import compare_digest
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, Query, Security, status, Header
+from fastapi import Depends, Header, HTTPException, Query, Security, status
 from fastapi.security import APIKeyHeader, OAuth2PasswordBearer
 from jwt import PyJWTError
 from sqlalchemy import select
@@ -14,6 +14,10 @@ from app.db.session import get_db
 from app.models.user import User
 from app.schemas.token import TokenPayload
 from app.services.adk_service import ADKService, adk_service
+from app.services.gmail_service import (
+    GmailService,
+    gmail_service,
+)
 from app.services.google_calendar import (
     GoogleCalendarService,
     google_calendar_service,
@@ -28,6 +32,7 @@ WeatherServiceDep = Annotated[WeatherService, Depends(weather_service)]
 OpenMeteoServiceDep = Annotated[OpenMeteoService, Depends(open_meteo_service)]
 ADKServiceDep = Annotated[ADKService, Depends(adk_service)]
 CalendarServiceDep = Annotated[GoogleCalendarService, Depends(google_calendar_service)]
+GmailServiceDep = Annotated[GmailService, Depends(gmail_service)]
 KnowledgeServiceDep = Annotated[KnowledgeService, Depends(knowledge_service)]
 TTSServiceDep = Annotated[GoogleTTSService, Depends(google_tts_service)]
 

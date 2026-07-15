@@ -44,4 +44,5 @@ class UserInDBBase(UserBase, BaseSchemaInDB):
 
 # Properties to return to client
 class User(UserInDBBase):
-    pass
+    has_google_token: bool = False
+    google_token_status: str | None = None

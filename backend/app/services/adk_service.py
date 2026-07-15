@@ -16,7 +16,6 @@ import datetime
 import logging
 import os
 from typing import TYPE_CHECKING
-
 from zoneinfo import ZoneInfo
 
 from google.adk.events import Event
@@ -24,9 +23,9 @@ from google.adk.runners import InMemoryRunner
 from google.genai import types
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents.calendar_agent import create_calendar_agent
 from app.agents.knowledge_agent import create_knowledge_agent
 from app.agents.root_agent import create_root_agent
+from app.agents.secretary_agent import create_secretary_agent
 from app.agents.summary_agent import create_summary_agent
 from app.agents.weather_agent import create_weather_agent
 from app.core.config import settings
@@ -116,13 +115,13 @@ class ADKService:
                 model=self.model,
                 current_time_str=current_time_str,
             )
-            calendar = create_calendar_agent(
-                tools=tool_groups["calendar"],
+            knowledge = create_knowledge_agent(
+                tools=tool_groups["knowledge"],
                 model=self.model,
                 current_time_str=current_time_str,
             )
-            knowledge = create_knowledge_agent(
-                tools=tool_groups["knowledge"],
+            secretary = create_secretary_agent(
+                tools=tool_groups["calendar"] + tool_groups["email"],
                 model=self.model,
                 current_time_str=current_time_str,
             )
@@ -135,7 +134,7 @@ class ADKService:
             )
 
             root_agent = create_root_agent(
-                sub_agents=[weather, calendar, knowledge],
+                sub_agents=[weather, knowledge, secretary],
                 system_instruction=system_instruction,
                 model=self.model,
                 tools=tool_groups.get("memory"),

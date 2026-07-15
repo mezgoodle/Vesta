@@ -22,6 +22,7 @@ class GoogleAuthService:
         "openid",
         "https://www.googleapis.com/auth/calendar.readonly",
         "https://www.googleapis.com/auth/calendar.events.owned",
+        "https://www.googleapis.com/auth/gmail.readonly",
         "https://www.googleapis.com/auth/userinfo.email",
         "https://www.googleapis.com/auth/userinfo.profile",
     ]
@@ -141,7 +142,10 @@ class GoogleAuthService:
             raise Exception(f"Failed to get user info from Google: {str(e)}") from e
 
         # Update user with refresh token and email
-        update_data = {"google_refresh_token": credentials.refresh_token}
+        update_data = {
+            "google_refresh_token": credentials.refresh_token,
+            "google_token_status": "valid",
+        }
         if email:
             update_data["email"] = email
 

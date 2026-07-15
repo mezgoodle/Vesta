@@ -85,6 +85,7 @@ class TestProcessChat:
             mock_create_tools.return_value = {
                 "weather": [AsyncMock()],
                 "calendar": [AsyncMock(), AsyncMock()],
+                "email": [AsyncMock()],
                 "knowledge": [AsyncMock()],
             }
             # Root agent needs sub_agents for the delegation check
@@ -124,6 +125,7 @@ class TestProcessChat:
             mock_ct.return_value = {
                 "weather": [],
                 "calendar": [],
+                "email": [],
                 "knowledge": [],
             }
             mock_root = MagicMock()
@@ -179,7 +181,7 @@ class TestProcessChat:
             patch.object(adk_svc, "_log_function_call") as mock_log_fc,
             patch.object(adk_svc, "_log_agent_delegation") as mock_log_del,
         ):
-            mock_ct.return_value = {"weather": [], "calendar": [], "knowledge": []}
+            mock_ct.return_value = {"weather": [], "calendar": [], "email": [], "knowledge": []}
 
             # Provide sub_agents so delegation check works
             mock_weather = MagicMock()

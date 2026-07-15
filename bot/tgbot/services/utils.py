@@ -19,6 +19,19 @@ def format_user_data(user_data: Dict[str, Any]) -> str:
     is_superuser = user_data.get("is_superuser", False)
     daily_summary = user_data.get("is_daily_summary_enabled", False)
 
+    has_google_token = user_data.get("has_google_token", False)
+    google_token_status = user_data.get("google_token_status")
+
+    if has_google_token:
+        if google_token_status == "revoked":
+            google_status = "🔴 Revoked (re-auth required)"
+        elif google_token_status == "expired":
+            google_status = "🟡 Expired (re-auth required)"
+        else:
+            google_status = "✅ Connected"
+    else:
+        google_status = "❌ Disconnected"
+
     lines = [
         f"👤 {hbold('User Profile')}",
         "",
@@ -33,6 +46,7 @@ def format_user_data(user_data: Dict[str, Any]) -> str:
         f"• {'✅' if is_allowed else '❌'} {hbold('Access Allowed')}",
         f"• {'✅' if is_superuser else '❌'} {hbold('Superuser')}",
         f"• {'✅' if daily_summary else '❌'} {hbold('Daily Summary')}",
+        f"• {google_status} {hbold('Google Account')}",
     ]
 
     return "\n".join(lines)
