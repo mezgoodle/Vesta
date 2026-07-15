@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime, time, timedelta
+import json
 import logging
 from typing import Any
 
@@ -396,7 +397,6 @@ class GoogleCalendarService:
         elif isinstance(exception, HttpError):
             if exception.resp.status == 403:
                 try:
-                    import json
                     err_data = json.loads(exception.content.decode("utf-8"))
                     error_details = err_data.get("error", {})
                     message = error_details.get("message", "").lower()
@@ -426,6 +426,7 @@ class GoogleCalendarService:
                         db, db_obj=user, obj_in={"google_token_status": status_val}
                     )
             except Exception as e:
+                await db.rollback()
                 logger.error("Failed to update google_token_status for user %s: %s", user_id, e)
 
 

@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import json
 import logging
 from typing import Any
 
@@ -244,7 +245,6 @@ class GmailService:
             await self._handle_auth_error(user_id, db, e)
             if e.resp.status == 403:
                 try:
-                    import json
                     err_data = json.loads(e.content.decode("utf-8"))
                     error_details = err_data.get("error", {})
                     message = error_details.get("message", "").lower()
@@ -344,7 +344,6 @@ class GmailService:
             await self._handle_auth_error(user_id, db, e)
             if e.resp.status == 403:
                 try:
-                    import json
                     err_data = json.loads(e.content.decode("utf-8"))
                     error_details = err_data.get("error", {})
                     message = error_details.get("message", "").lower()
@@ -379,7 +378,6 @@ class GmailService:
         elif isinstance(exception, HttpError):
             if exception.resp.status == 403:
                 try:
-                    import json
                     err_data = json.loads(exception.content.decode("utf-8"))
                     error_details = err_data.get("error", {})
                     message = error_details.get("message", "").lower()
@@ -409,6 +407,7 @@ class GmailService:
                         db, db_obj=user, obj_in={"google_token_status": status_val}
                     )
             except Exception as e:
+                await db.rollback()
                 logger.error("Failed to update google_token_status for user %s: %s", user_id, e)
 
 

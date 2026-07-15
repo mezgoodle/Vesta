@@ -46,9 +46,13 @@ async def send_daily_digests(db: AsyncSession) -> int:
 
     for user in users:
         try:
-            events = await google_calendar_service_instance.get_today_events(
-                user.id, db
-            )
+            try:
+                events = await google_calendar_service_instance.get_today_events(
+                    user.id, db
+                )
+            except Exception as e:
+                logger.warning(f"Failed to fetch calendar events for user {user.id}: {e}")
+                events = []
 
             weather: WeatherData = (
                 await weather_service_instance.get_current_weather_by_city_name(
@@ -57,7 +61,7 @@ async def send_daily_digests(db: AsyncSession) -> int:
             )
 
             # Fetch unread emails
-            emails = []
+            emails = None
             try:
                 emails = await gmail_service_instance.get_emails(
                     user_id=user.id, db=db, query="is:unread", max_results=5
@@ -76,7 +80,9 @@ async def send_daily_digests(db: AsyncSession) -> int:
                 events_text = "Сьогодні немає запланованих подій у календарі."
             weather_text = f"Погода в місті {weather.city}: {weather.temp}°C, {weather.description}"
             
-            if emails:
+            if emails is None:
+                emails_text = "Не вдалося перевірити непрочитані листи."
+            elif emails:
                 emails_text = "Непрочитані листи:\n" + "\n".join(
                     [f"- від {e.sender}: {e.subject}" for e in emails]
                 )

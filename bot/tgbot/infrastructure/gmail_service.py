@@ -63,7 +63,7 @@ class GmailService(BaseAPIService):
             email_messages = []
             for idx, email in enumerate(emails, 1):
                 sender = escape(email.get("sender", "Unknown Sender"))
-                subject = escape(email.get("subject", "No Subject"))
+                subject = email.get("subject", "No Subject")
                 date = escape(email.get("date", "Unknown Date"))
                 snippet = escape(email.get("snippet", ""))
 
