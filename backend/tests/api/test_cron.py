@@ -332,6 +332,73 @@ async def test_morning_digest_with_emails(
 
 
 @pytest.mark.asyncio
+async def test_morning_digest_weather_failure(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    mock_llm_service,
+    mock_calendar_service,
+    mock_weather_service,
+    mock_gmail_service,
+    mock_httpx_client,
+) -> None:
+    # Create test user in DB
+    user = User(
+        email="cron-digest-weather-fail@example.com",
+        hashed_password="hashedpassword",
+        telegram_id=98765,
+        city_name="Kyiv",
+        is_daily_summary_enabled=True,
+        google_refresh_token="valid-refresh-token",
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    # Mock gmail service
+    mock_gmail_service.get_emails = AsyncMock(return_value=[])
+
+    # Mock calendar events
+    mock_calendar_service.get_today_events = AsyncMock(return_value=[])
+
+    # Mock weather service to raise exception
+    mock_weather_service.get_weather = AsyncMock(
+        side_effect=RuntimeError("Weather API connection timed out")
+    )
+
+    # Mock LLM service
+    mock_llm_service.chat.return_value = "Good morning! Weather is unavailable but you have a good day."
+
+    # Mock Telegram API response
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_httpx_client.post.return_value = mock_response
+
+    # Send POST request with correct header secret
+    response = await client.post(
+        f"{settings.API_V1_STR}/cron/morning-digest",
+        headers={"X-Cron-Secret": settings.CRON_SECRET_KEY},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["sent_digests_count"] == 1
+
+    # Verify weather call was attempted
+    mock_weather_service.get_weather.assert_called_once_with(
+        city=user.city_name, days=1
+    )
+
+    # Verify LLM call
+    mock_llm_service.chat.assert_called_once()
+    
+    # Verify the prompt contained the fallback weather message
+    args = mock_llm_service.chat.call_args[0]
+    prompt = args[0]
+    assert "Не вдалося отримати дані про погоду." in prompt
+
+
+@pytest.mark.asyncio
 async def test_check_power_status_success(
     client: AsyncClient,
     db_session: AsyncSession,

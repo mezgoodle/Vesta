@@ -57,9 +57,15 @@ async def send_daily_digests(db: AsyncSession) -> int:
                 )
                 events = []
 
-            weather: OpenMeteoResponse = await open_meteo_service_instance.get_weather(
-                city=user.city_name or "Kyiv", days=1
-            )
+            weather: OpenMeteoResponse | None = None
+            try:
+                weather = await open_meteo_service_instance.get_weather(
+                    city=user.city_name or "Kyiv", days=1
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to fetch weather for user {user.id}: {e}"
+                )
 
             emails = None
             try:
@@ -80,16 +86,20 @@ async def send_daily_digests(db: AsyncSession) -> int:
                 )
             else:
                 events_text = "Сьогодні немає запланованих подій у календарі."
-            weather_text = (
-                f"Погода в місті {weather.city_name}: "
-                f"зараз {weather.current_temp}°C, {weather.current_conditions}."
-            )
-            if weather.daily_forecasts:
-                today = weather.daily_forecasts[0]
-                weather_text += (
-                    f" Прогноз на сьогодні: макс {today.max_temp}°C, мін {today.min_temp}°C, "
-                    f"ймовірність опадів {today.precipitation_prob_max}%."
+
+            if weather:
+                weather_text = (
+                    f"Погода в місті {weather.city_name}: "
+                    f"зараз {weather.current_temp}°C, {weather.current_conditions}."
                 )
+                if weather.daily_forecasts:
+                    today = weather.daily_forecasts[0]
+                    weather_text += (
+                        f" Прогноз на сьогодні: макс {today.max_temp}°C, мін {today.min_temp}°C, "
+                        f"ймовірність опадів {today.precipitation_prob_max}%."
+                    )
+            else:
+                weather_text = "Не вдалося отримати дані про погоду."
 
             if emails is None:
                 emails_text = "Не вдалося перевірити пошту."
