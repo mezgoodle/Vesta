@@ -43,16 +43,25 @@ def test_sync_with_drive_success(mock_settings, mock_chroma_client):
     _, mock_collection = mock_chroma_client
 
     mock_doc = MagicMock()
+    mock_doc.doc_id = "test-doc-id"
 
     with (
         patch("app.services.knowledge.LlamaParse") as MockParser,
         patch("app.services.knowledge.GoogleDriveReader") as MockReader,
         patch("app.services.knowledge.GoogleGenaiEmbedding"),
         patch("app.services.knowledge.ChromaVectorStore"),
-        patch("app.services.knowledge.StorageContext"),
+        patch("app.services.knowledge.StorageContext") as MockStorageContext,
         patch("app.services.knowledge.VectorStoreIndex") as MockIndex,
+        patch("app.services.knowledge.os.path.exists", return_value=False),
     ):
         MockReader.return_value.load_data.return_value = [mock_doc]
+
+        mock_storage_ctx = MagicMock()
+        mock_storage_ctx.docstore.get_all_ref_doc_info.return_value = {}
+        MockStorageContext.from_defaults.return_value = mock_storage_ctx
+
+        mock_index_instance = MagicMock()
+        MockIndex.from_vector_store.return_value = mock_index_instance
 
         svc = KnowledgeService()
         svc.sync_with_drive()
@@ -63,10 +72,17 @@ def test_sync_with_drive_success(mock_settings, mock_chroma_client):
             folder_id="test-folder-id"
         )
 
-        # Index must be built from the returned documents
-        MockIndex.from_documents.assert_called_once()
-        call_args = MockIndex.from_documents.call_args
-        assert call_args.args[0] == [mock_doc]
+        # Index must be initialized from vector store
+        MockIndex.from_vector_store.assert_called_once()
+
+        # refresh_ref_docs must be called with the documents
+        mock_index_instance.refresh_ref_docs.assert_called_once_with(
+            [mock_doc],
+            update_kwargs={"delete_kwargs": {"delete_from_docstore": True}},
+        )
+
+        # Storage context must be persisted
+        mock_storage_ctx.persist.assert_called_once_with(persist_dir="/tmp/test_chroma")
 
         # LlamaParse must be configured as a file extractor
         MockParser.assert_called_once_with(
@@ -87,7 +103,7 @@ def test_sync_with_drive_no_documents(mock_settings, mock_chroma_client):
         svc = KnowledgeService()
         svc.sync_with_drive()
 
-        MockIndex.from_documents.assert_not_called()
+        MockIndex.from_vector_store.assert_not_called()
 
 
 def test_sync_with_drive_missing_llama_key(mock_chroma_client):

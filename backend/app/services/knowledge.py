@@ -180,15 +180,40 @@ class KnowledgeService:
 
         # --- 3. Embed + store into ChromaDB ---
         vector_store = self._get_chroma_store()
-        storage_context = StorageContext.from_defaults(vector_store=vector_store)
         embed_model = self._get_embed_model()
 
-        VectorStoreIndex.from_documents(
-            documents,
+        docstore_json_path = os.path.join(settings.CHROMA_DB_PATH, "docstore.json")
+        if os.path.exists(docstore_json_path):
+            storage_context = StorageContext.from_defaults(
+                vector_store=vector_store,
+                persist_dir=settings.CHROMA_DB_PATH,
+            )
+        else:
+            storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+        index = VectorStoreIndex.from_vector_store(
+            vector_store,
             storage_context=storage_context,
             embed_model=embed_model,
-            show_progress=True,
         )
+
+        index.refresh_ref_docs(
+            documents,
+            update_kwargs={"delete_kwargs": {"delete_from_docstore": True}},
+        )
+
+        # Remove documents that were deleted from Google Drive
+        current_doc_ids = {doc.doc_id for doc in documents}
+        ref_doc_infos = storage_context.docstore.get_all_ref_doc_info()
+        if ref_doc_infos:
+            for ref_doc_id in list(ref_doc_infos.keys()):
+                if ref_doc_id not in current_doc_ids:
+                    logger.info(
+                        f"Removing deleted document from index: {ref_doc_id}"
+                    )
+                    index.delete_ref_doc(ref_doc_id, delete_from_docstore=True)
+
+        storage_context.persist(persist_dir=settings.CHROMA_DB_PATH)
 
         logger.info(
             "Drive sync complete – ChromaDB updated.",
