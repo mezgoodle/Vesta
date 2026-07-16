@@ -10,12 +10,12 @@ from app.api.deps import SessionDep, verify_cron_secret
 from app.core.config import settings
 from app.models.device import SmartDevice
 from app.models.user import User
-from app.schemas.weather import WeatherData
+from app.schemas.open_meteo import OpenMeteoResponse
 from app.services.gmail_service import gmail_service_instance
 from app.services.google_calendar import google_calendar_service_instance
 from app.services.home import HomeAssistantService
 from app.services.llm import LLMService
-from app.services.weather import weather_service_instance
+from app.services.open_meteo_service import open_meteo_service_instance
 
 logger = logging.getLogger(__name__)
 
@@ -57,16 +57,14 @@ async def send_daily_digests(db: AsyncSession) -> int:
                 )
                 events = []
 
-            weather: WeatherData = (
-                await weather_service_instance.get_current_weather_by_city_name(
-                    user.city_name or "Kyiv"
-                )
+            weather: OpenMeteoResponse = await open_meteo_service_instance.get_weather(
+                city=user.city_name or "Kyiv", days=1
             )
 
             emails = None
             try:
                 emails = await gmail_service_instance.get_emails(
-                    user_id=user.id, db=db, query="is:unread", max_results=5
+                    user_id=user.id, db=db, query="newer_than:1d", max_results=5
                 )
             except Exception as e:
                 logger.warning(
@@ -82,16 +80,25 @@ async def send_daily_digests(db: AsyncSession) -> int:
                 )
             else:
                 events_text = "Сьогодні немає запланованих подій у календарі."
-            weather_text = f"Погода в місті {weather.city}: {weather.temp}°C, {weather.description}"
+            weather_text = (
+                f"Погода в місті {weather.city_name}: "
+                f"зараз {weather.current_temp}°C, {weather.current_conditions}."
+            )
+            if weather.daily_forecasts:
+                today = weather.daily_forecasts[0]
+                weather_text += (
+                    f" Прогноз на сьогодні: макс {today.max_temp}°C, мін {today.min_temp}°C, "
+                    f"ймовірність опадів {today.precipitation_prob_max}%."
+                )
 
             if emails is None:
-                emails_text = "Не вдалося перевірити непрочитані листи."
+                emails_text = "Не вдалося перевірити пошту."
             elif emails:
-                emails_text = "Непрочитані листи:\n" + "\n".join(
+                emails_text = "Останні листи за добу:\n" + "\n".join(
                     [f"- від {e.sender}: {e.subject}" for e in emails]
                 )
             else:
-                emails_text = "Непрочитаних листів немає."
+                emails_text = "За останню добу нових листів не було."
 
             prompt = (
                 f"Ось мій розклад на сьогодні:\n{events_text}\n\n"

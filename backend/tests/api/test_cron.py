@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.user import User
 from app.models.device import SmartDevice
-from app.schemas.weather import WeatherData
+from app.schemas.open_meteo import OpenMeteoResponse, DailyForecast
 
 
 @pytest.fixture
@@ -26,7 +26,7 @@ def mock_calendar_service():
 
 @pytest.fixture
 def mock_weather_service():
-    with patch("app.api.v1.endpoints.cron.weather_service_instance") as mock_service:
+    with patch("app.api.v1.endpoints.cron.open_meteo_service_instance") as mock_service:
         yield mock_service
 
 
@@ -108,11 +108,16 @@ async def test_morning_digest_success(
     mock_calendar_service.get_today_events = AsyncMock(return_value=[event])
 
     # Mock weather service
-    mock_weather = MagicMock(spec=WeatherData)
-    mock_weather.city = "Kyiv"
-    mock_weather.temp = 20
-    mock_weather.description = "Clear sky"
-    mock_weather_service.get_current_weather_by_city_name = AsyncMock(
+    mock_weather = MagicMock(spec=OpenMeteoResponse)
+    mock_weather.city_name = "Kyiv"
+    mock_weather.current_temp = 20.0
+    mock_weather.current_conditions = "Clear sky"
+    forecast = MagicMock(spec=DailyForecast)
+    forecast.max_temp = 25.0
+    forecast.min_temp = 15.0
+    forecast.precipitation_prob_max = 10
+    mock_weather.daily_forecasts = [forecast]
+    mock_weather_service.get_weather = AsyncMock(
         return_value=mock_weather
     )
 
@@ -180,11 +185,16 @@ async def test_morning_digest_no_events(
     mock_calendar_service.get_today_events = AsyncMock(return_value=[])
 
     # Mock weather service
-    mock_weather = MagicMock(spec=WeatherData)
-    mock_weather.city = "Kyiv"
-    mock_weather.temp = 20
-    mock_weather.description = "Clear sky"
-    mock_weather_service.get_current_weather_by_city_name = AsyncMock(
+    mock_weather = MagicMock(spec=OpenMeteoResponse)
+    mock_weather.city_name = "Kyiv"
+    mock_weather.current_temp = 20.0
+    mock_weather.current_conditions = "Clear sky"
+    forecast = MagicMock(spec=DailyForecast)
+    forecast.max_temp = 25.0
+    forecast.min_temp = 15.0
+    forecast.precipitation_prob_max = 10
+    mock_weather.daily_forecasts = [forecast]
+    mock_weather_service.get_weather = AsyncMock(
         return_value=mock_weather
     )
 
@@ -269,11 +279,16 @@ async def test_morning_digest_with_emails(
     mock_calendar_service.get_today_events = AsyncMock(return_value=[event])
 
     # Mock weather service
-    mock_weather = MagicMock(spec=WeatherData)
-    mock_weather.city = "Kyiv"
-    mock_weather.temp = 20
-    mock_weather.description = "Clear sky"
-    mock_weather_service.get_current_weather_by_city_name = AsyncMock(
+    mock_weather = MagicMock(spec=OpenMeteoResponse)
+    mock_weather.city_name = "Kyiv"
+    mock_weather.current_temp = 20.0
+    mock_weather.current_conditions = "Clear sky"
+    forecast = MagicMock(spec=DailyForecast)
+    forecast.max_temp = 25.0
+    forecast.min_temp = 15.0
+    forecast.precipitation_prob_max = 10
+    mock_weather.daily_forecasts = [forecast]
+    mock_weather_service.get_weather = AsyncMock(
         return_value=mock_weather
     )
 
@@ -303,7 +318,7 @@ async def test_morning_digest_with_emails(
 
     # Verify gmail call
     mock_gmail_service.get_emails.assert_called_once_with(
-        user_id=user.id, db=db_session, query="is:unread", max_results=5
+        user_id=user.id, db=db_session, query="newer_than:1d", max_results=5
     )
 
     # Verify LLM call
