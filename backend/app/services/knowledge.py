@@ -235,7 +235,6 @@ class KnowledgeService:
 
         index.refresh_ref_docs(
             documents,
-            update_kwargs={"delete_kwargs": {"delete_from_docstore": True}},
         )
 
         # Remove documents that were deleted from Google Drive

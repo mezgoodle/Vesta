@@ -78,7 +78,6 @@ def test_sync_with_drive_success(mock_settings, mock_chroma_client):
         # refresh_ref_docs must be called with the documents
         mock_index_instance.refresh_ref_docs.assert_called_once_with(
             [mock_doc],
-            update_kwargs={"delete_kwargs": {"delete_from_docstore": True}},
         )
 
         # Storage context must be persisted
@@ -133,7 +132,6 @@ def test_sync_with_drive_incremental_existing_and_deleted(mock_settings, mock_ch
         # Check refresh_ref_docs was called with new docs
         mock_index_instance.refresh_ref_docs.assert_called_once_with(
             [mock_doc],
-            update_kwargs={"delete_kwargs": {"delete_from_docstore": True}},
         )
 
         # Check that 'old-doc-id' was deleted because it is no longer in current_doc_ids
