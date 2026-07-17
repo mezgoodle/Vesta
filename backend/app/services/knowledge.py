@@ -8,8 +8,10 @@ from llama_cloud_services import LlamaParse
 from llama_index.core import StorageContext, VectorStoreIndex
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.core.postprocessor import SimilarityPostprocessor
+import google.auth
+from google.auth.transport.requests import Request
 from llama_index.llms.gemini import Gemini
-from llama_index.readers.google import GoogleDriveReader
+from llama_index.readers.google import GoogleDriveReader as LlamaGoogleDriveReader
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from pydantic import Field
 
@@ -23,6 +25,40 @@ _SA_CREDENTIALS_FILE = os.path.join(
 )
 _CHROMA_COLLECTION_NAME = "vesta_knowledge"
 _EMBEDDING_MODEL = "gemini-embedding-001"
+
+
+class GoogleDriveReader(LlamaGoogleDriveReader):
+    """
+    Subclass of LlamaIndex GoogleDriveReader that supports fallback to
+    Application Default Credentials (ADC) when no explicit key/config is provided.
+    """
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        service_account_key_path = kwargs.get("service_account_key_path", "service_account_key.json")
+        credentials_path = kwargs.get("credentials_path", "credentials.json")
+        token_path = kwargs.get("token_path", "token.json")
+
+        has_creds = (
+            kwargs.get("client_config") is not None
+            or kwargs.get("service_account_key") is not None
+            or kwargs.get("authorized_user_info") is not None
+            or (service_account_key_path and os.path.isfile(service_account_key_path))
+            or (credentials_path and os.path.isfile(credentials_path))
+            or (token_path and os.path.isfile(token_path))
+        )
+        if not has_creds:
+            kwargs["client_config"] = {"dummy": "config"}
+
+        super().__init__(*args, **kwargs)
+
+    def _get_credentials(self) -> Any:
+        if self.client_config == {"dummy": "config"}:
+            from llama_index.readers.google.drive.base import SCOPES
+            creds, _ = google.auth.default(scopes=SCOPES)
+            if not creds.valid:
+                creds.refresh(Request())
+            return creds
+        
+        return super()._get_credentials()
 
 
 # ------------------------------------------------------------------ #
