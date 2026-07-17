@@ -2,11 +2,11 @@ import logging
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import SessionDep, verify_cron_secret
+from app.api.deps import SessionDep, verify_cron_secret, KnowledgeServiceDep
 from app.core.config import settings
 from app.models.device import SmartDevice
 from app.models.user import User
@@ -194,4 +194,19 @@ async def post_check_power_status(db: SessionDep) -> dict[str, Any]:
         "status": "success",
         "checked_devices_count": len(checked_devices),
         "devices": checked_devices,
+    }
+
+
+@router.post("/sync-knowledge", response_model=dict[str, Any])
+async def post_sync_knowledge(
+    knowledge_service: KnowledgeServiceDep,
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
+    """
+    Endpoint called to sync knowledge base with Google Drive in the background.
+    """
+    background_tasks.add_task(knowledge_service.sync_with_drive)
+    return {
+        "status": "success",
+        "message": "Knowledge base sync started in background",
     }

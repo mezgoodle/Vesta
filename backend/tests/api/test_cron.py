@@ -66,6 +66,11 @@ async def test_cron_endpoints_require_cron_secret(client: AsyncClient) -> None:
     assert response.status_code == 403
     assert response.json()["detail"] == "Forbidden: Invalid cron secret"
 
+    # Test sync knowledge endpoint fails without secret
+    response = await client.post(f"{settings.API_V1_STR}/cron/sync-knowledge")
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Forbidden: Invalid cron secret"
+
     # Test morning digest endpoint fails with wrong secret
     response = await client.post(
         f"{settings.API_V1_STR}/cron/morning-digest",
@@ -534,4 +539,29 @@ async def test_check_power_status_partial_failure(
 
     # Verify home service client was closed
     mock_home_service.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_sync_knowledge_success(client: AsyncClient) -> None:
+    from app.services.knowledge import knowledge_service
+    from app.main import app
+
+    mock_kb = MagicMock()
+    mock_kb.sync_with_drive = MagicMock()
+
+    app.dependency_overrides[knowledge_service] = lambda: mock_kb
+
+    try:
+        response = await client.post(
+            f"{settings.API_V1_STR}/cron/sync-knowledge",
+            headers={"X-Cron-Secret": settings.CRON_SECRET_KEY},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert "sync started" in data["message"].lower()
+        mock_kb.sync_with_drive.assert_called_once()
+    finally:
+        if knowledge_service in app.dependency_overrides:
+            del app.dependency_overrides[knowledge_service]
 
