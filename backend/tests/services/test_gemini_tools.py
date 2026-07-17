@@ -194,7 +194,8 @@ class TestConsultKnowledgeBase:
             "app.services.gemini_tools.KnowledgeService"
         ) as MockKB:
             mock_kb = MockKB.return_value
-            mock_kb.query.return_value = "The recipe calls for 2 cups flour."
+            from unittest.mock import AsyncMock
+            mock_kb.query = AsyncMock(return_value="The recipe calls for 2 cups flour.")
 
             result = await kb_tool(query="flour recipe")
             assert "flour" in result
@@ -208,7 +209,8 @@ class TestConsultKnowledgeBase:
             "app.services.gemini_tools.KnowledgeService"
         ) as MockKB:
             mock_kb = MockKB.return_value
-            mock_kb.query.side_effect = Exception("Chroma down")
+            from unittest.mock import AsyncMock
+            mock_kb.query = AsyncMock(side_effect=Exception("Chroma down"))
 
             result = await kb_tool(query="test")
             assert "couldn't search" in result

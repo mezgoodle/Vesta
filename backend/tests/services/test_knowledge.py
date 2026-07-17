@@ -1,30 +1,27 @@
-from unittest.mock import ANY, MagicMock, patch
-
+import io
 import pytest
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 from app.services.knowledge import KnowledgeService
-
-# ------------------------------------------------------------------ #
-# Shared fixtures                                                       #
-# ------------------------------------------------------------------ #
 
 
 @pytest.fixture
 def mock_settings():
     with patch("app.services.knowledge.settings") as m:
-        m.LLAMA_PARSE_API_KEY = "test-llama-key"
         m.GOOGLE_DRIVE_FOLDER_ID = "test-folder-id"
         m.GOOGLE_API_KEY = "test-google-key"
         m.GOOGLE_MODEL_NAME = "test-google-model"
+        m.GOOGLE_APPLICATION_CREDENTIALS = ""  # Explicitly empty to avoid reading real credentials
         m.CHROMA_DB_PATH = "/tmp/test_chroma"
         m.RAG_SIMILARITY_TOP_K = 5
         m.RAG_SIMILARITY_CUTOFF = 0.55
+        m.RAG_CHUNK_SIZE = 1000
+        m.RAG_CHUNK_OVERLAP = 200
         yield m
 
 
 @pytest.fixture
 def mock_chroma_client():
-    """Patch chromadb.PersistentClient so no filesystem activity occurs."""
     with patch("app.services.knowledge.chromadb.PersistentClient") as mock_cls:
         mock_client = MagicMock()
         mock_collection = MagicMock()
@@ -33,146 +30,144 @@ def mock_chroma_client():
         yield mock_cls, mock_collection
 
 
-# ------------------------------------------------------------------ #
-# sync_with_drive                                                       #
-# ------------------------------------------------------------------ #
+@pytest.fixture
+def mock_genai_client():
+    with patch("app.services.knowledge.genai.Client") as MockClient:
+        mock_instance = MagicMock()
+        MockClient.return_value = mock_instance
+
+        # Mock sync embed_content
+        mock_emb = MagicMock()
+        mock_emb.values = [0.1, 0.2]
+        mock_instance.models.embed_content.return_value.embeddings = [mock_emb]
+
+        # Mock async aembed_query as an AsyncMock
+        mock_emb_async = MagicMock()
+        mock_emb_async.values = [0.1, 0.2]
+        mock_res_embed = MagicMock()
+        mock_res_embed.embeddings = [mock_emb_async]
+        mock_instance.aio.models.embed_content = AsyncMock(return_value=mock_res_embed)
+
+        # Mock async generate_content as an AsyncMock
+        mock_res_gen = MagicMock()
+        mock_res_gen.text = "Mock synthesized answer"
+        mock_instance.aio.models.generate_content = AsyncMock(return_value=mock_res_gen)
+
+        yield mock_instance
 
 
-def test_sync_with_drive_success(mock_settings, mock_chroma_client):
-    """Full happy-path: documents are loaded, embedded, and the index is built."""
-    _, mock_collection = mock_chroma_client
-
-    mock_doc = MagicMock()
-    mock_doc.doc_id = "test-doc-id"
-
+@pytest.fixture
+def mock_drive_api():
     with (
-        patch("app.services.knowledge.LlamaParse") as MockParser,
-        patch("app.services.knowledge.GoogleDriveReader") as MockReader,
-        patch("app.services.knowledge.GoogleGenaiEmbedding"),
-        patch("app.services.knowledge.ChromaVectorStore"),
-        patch("app.services.knowledge.StorageContext") as MockStorageContext,
-        patch("app.services.knowledge.VectorStoreIndex") as MockIndex,
-        patch("app.services.knowledge.os.path.exists", return_value=False),
+        patch("app.services.knowledge.build") as mock_build,
+        patch("app.services.knowledge.MediaIoBaseDownload") as MockDownload,
+        patch("app.services.knowledge.google.auth.default") as mock_adc,
     ):
-        MockReader.return_value.load_data.return_value = [mock_doc]
+        mock_adc.return_value = (MagicMock(), "project-id")
+        
+        mock_service = MagicMock()
+        mock_build.return_value = mock_service
 
-        mock_storage_ctx = MagicMock()
-        mock_storage_ctx.docstore.get_all_ref_doc_info.return_value = {}
-        MockStorageContext.from_defaults.return_value = mock_storage_ctx
-
-        mock_index_instance = MagicMock()
-        MockIndex.from_vector_store.return_value = mock_index_instance
-
-        svc = KnowledgeService()
-        svc.sync_with_drive()
-
-        # Reader must be called with the correct folder
-        MockReader.assert_called_once()
-        MockReader.return_value.load_data.assert_called_once_with(
-            folder_id="test-folder-id"
-        )
-
-        # Index must be initialized from vector store
-        MockIndex.from_vector_store.assert_called_once()
-
-        # refresh_ref_docs must be called with the documents
-        mock_index_instance.refresh_ref_docs.assert_called_once_with(
-            [mock_doc],
-        )
-
-        # Storage context must be persisted
-        mock_storage_ctx.persist.assert_called_once_with(persist_dir="/tmp/test_chroma")
-
-        # LlamaParse must be configured as a file extractor
-        MockParser.assert_called_once_with(
-            api_key="test-llama-key", result_type="markdown"
-        )
-
-
-def test_sync_with_drive_incremental_existing_and_deleted(mock_settings, mock_chroma_client):
-    """Happy-path when docstore exists, loading existing context and cleaning up deleted docs."""
-    _, mock_collection = mock_chroma_client
-
-    mock_doc = MagicMock()
-    mock_doc.doc_id = "new-doc-id"
-
-    with (
-        patch("app.services.knowledge.LlamaParse"),
-        patch("app.services.knowledge.GoogleDriveReader") as MockReader,
-        patch("app.services.knowledge.GoogleGenaiEmbedding"),
-        patch("app.services.knowledge.ChromaVectorStore"),
-        patch("app.services.knowledge.StorageContext") as MockStorageContext,
-        patch("app.services.knowledge.VectorStoreIndex") as MockIndex,
-        patch("app.services.knowledge.os.path.exists", return_value=True),
-    ):
-        MockReader.return_value.load_data.return_value = [mock_doc]
-
-        mock_storage_ctx = MagicMock()
-        # Simulated existing docstore containing 'old-doc-id'
-        mock_storage_ctx.docstore.get_all_ref_doc_info.return_value = {
-            "old-doc-id": MagicMock()
+        mock_files_list = mock_service.files.return_value.list
+        mock_files_list.return_value.execute.return_value = {
+            "files": [
+                {"id": "file1", "name": "doc1.pdf", "mimeType": "application/pdf"},
+                {"id": "file2", "name": "doc2.txt", "mimeType": "text/plain"},
+            ]
         }
-        MockStorageContext.from_defaults.return_value = mock_storage_ctx
 
-        mock_index_instance = MagicMock()
-        MockIndex.from_vector_store.return_value = mock_index_instance
+        # Handle the download file chunk process writing content
+        def mock_download_init(fh, request):
+            fh.write(b"Mock content for file")
+            mock_downloader = MagicMock()
+            mock_downloader.next_chunk.return_value = (None, True)
+            return mock_downloader
 
+        MockDownload.side_effect = mock_download_init
+
+        yield mock_service
+
+
+# ------------------------------------------------------------------ #
+# sync_with_drive                                                    #
+# ------------------------------------------------------------------ #
+
+
+def test_sync_with_drive_success(
+    mock_settings, mock_chroma_client, mock_genai_client, mock_drive_api
+):
+    """Happy-path: documents are loaded, parsed, chunked, embedded, and saved."""
+    _, mock_collection = mock_chroma_client
+
+    with patch(
+        "app.services.knowledge.pymupdf4llm.to_markdown",
+        return_value="# Header\nThis is a pdf content",
+    ) as mock_pdf_parse:
         svc = KnowledgeService()
         svc.sync_with_drive()
 
-        # Check StorageContext was initialized with persist_dir
-        MockStorageContext.from_defaults.assert_called_once_with(
-            vector_store=ANY,
-            persist_dir="/tmp/test_chroma"
+        # Check drive API listed files
+        mock_drive_api.files.return_value.list.assert_called_once()
+        
+        # Check pdf parsing was called
+        mock_pdf_parse.assert_called_once()
+
+        # Check embeddings were generated
+        mock_genai_client.models.embed_content.assert_called()
+
+        # Verify upsert was called with chunks
+        mock_collection.upsert.assert_called_once_with(
+            ids=ANY,
+            embeddings=ANY,
+            metadatas=ANY,
+            documents=ANY,
         )
 
-        # Check from_vector_store was called
-        MockIndex.from_vector_store.assert_called_once()
 
-        # Check refresh_ref_docs was called with new docs
-        mock_index_instance.refresh_ref_docs.assert_called_once_with(
-            [mock_doc],
-        )
+def test_sync_with_drive_no_documents(
+    mock_settings, mock_chroma_client, mock_genai_client, mock_drive_api
+):
+    """When Google Drive returns no files, the index is not updated."""
+    _, mock_collection = mock_chroma_client
 
-        # Check that 'old-doc-id' was deleted because it is no longer in current_doc_ids
-        mock_index_instance.delete_ref_doc.assert_called_once_with(
-            "old-doc-id", delete_from_docstore=True
-        )
+    mock_drive_api.files.return_value.list.return_value.execute.return_value = {
+        "files": []
+    }
 
-        # Check persist was called
-        mock_storage_ctx.persist.assert_called_once_with(persist_dir="/tmp/test_chroma")
+    svc = KnowledgeService()
+    svc.sync_with_drive()
+
+    mock_collection.upsert.assert_not_called()
 
 
-def test_sync_with_drive_no_documents(mock_settings, mock_chroma_client):
-    """When Google Drive returns no docs, the index is NOT rebuilt."""
-    with (
-        patch("app.services.knowledge.LlamaParse"),
-        patch("app.services.knowledge.GoogleDriveReader") as MockReader,
-        patch("app.services.knowledge.GoogleGenaiEmbedding"),
-        patch("app.services.knowledge.VectorStoreIndex") as MockIndex,
+def test_sync_incremental_deletes_removed_files(
+    mock_settings, mock_chroma_client, mock_genai_client, mock_drive_api
+):
+    """Verify that chunks belonging to files no longer in Drive are cleaned up."""
+    _, mock_collection = mock_chroma_client
+
+    # Mock ChromaDB returning an existing chunk belonging to "deleted_file"
+    mock_collection.get.return_value = {
+        "ids": ["old-chunk-id"],
+        "metadatas": [{"file_id": "deleted_file", "file_name": "old.txt"}],
+    }
+
+    with patch(
+        "app.services.knowledge.pymupdf4llm.to_markdown",
+        return_value="# Header\nMock content",
     ):
-        MockReader.return_value.load_data.return_value = []
-
         svc = KnowledgeService()
         svc.sync_with_drive()
 
-        MockIndex.from_vector_store.assert_not_called()
+        # Verify deleted file chunk was removed
+        mock_collection.delete.assert_called_once_with(ids=["old-chunk-id"])
 
 
-def test_sync_with_drive_missing_llama_key(mock_chroma_client):
-    """Missing LLAMA_PARSE_API_KEY raises ValueError immediately."""
-    with patch("app.services.knowledge.settings") as m:
-        m.LLAMA_PARSE_API_KEY = ""
-        m.GOOGLE_DRIVE_FOLDER_ID = "some-folder"
-        svc = KnowledgeService()
-        with pytest.raises(ValueError, match="LLAMA_PARSE_API_KEY"):
-            svc.sync_with_drive()
-
-
-def test_sync_with_drive_missing_folder_id(mock_chroma_client):
+def test_sync_with_drive_missing_folder_id(
+    mock_chroma_client, mock_genai_client, mock_drive_api
+):
     """Missing GOOGLE_DRIVE_FOLDER_ID raises ValueError immediately."""
     with patch("app.services.knowledge.settings") as m:
-        m.LLAMA_PARSE_API_KEY = "some-key"
         m.GOOGLE_DRIVE_FOLDER_ID = ""
         svc = KnowledgeService()
         with pytest.raises(ValueError, match="GOOGLE_DRIVE_FOLDER_ID"):
@@ -180,82 +175,94 @@ def test_sync_with_drive_missing_folder_id(mock_chroma_client):
 
 
 # ------------------------------------------------------------------ #
-# query                                                                #
-# ------------------------------------------------------------------ #
-
-
-def test_query_success(mock_settings, mock_chroma_client):
-    """query() loads the index from ChromaDB and returns a string response."""
-    with (
-        patch("app.services.knowledge.GoogleGenaiEmbedding"),
-        patch("app.services.knowledge.Gemini"),
-        patch("app.services.knowledge.ChromaVectorStore"),
-        patch("app.services.knowledge.VectorStoreIndex") as MockIndex,
-    ):
-        mock_engine = MagicMock()
-        mock_response = MagicMock()
-        mock_response.__str__ = lambda self: "The answer."
-        mock_response.source_nodes = []
-        mock_engine.query.return_value = mock_response
-        MockIndex.from_vector_store.return_value.as_query_engine.return_value = (
-            mock_engine
-        )
-
-        result = KnowledgeService().query("What is the recipe for bread?")
-
-        mock_engine.query.assert_called_once_with("What is the recipe for bread?")
-        assert result == "The answer."
-
-
-def test_query_propagates_exception(mock_settings, mock_chroma_client):
-    """query() re-raises unexpected exceptions so callers can handle them."""
-    with (
-        patch("app.services.knowledge.GoogleGenaiEmbedding"),
-        patch("app.services.knowledge.Gemini"),
-        patch("app.services.knowledge.ChromaVectorStore"),
-        patch("app.services.knowledge.VectorStoreIndex") as MockIndex,
-    ):
-        MockIndex.from_vector_store.side_effect = RuntimeError("DB gone")
-
-        with pytest.raises(RuntimeError, match="DB gone"):
-            KnowledgeService().query("anything")
-
-
-# ------------------------------------------------------------------ #
-# LLMService tool integration                                          #
+# query                                                              #
 # ------------------------------------------------------------------ #
 
 
 @pytest.mark.asyncio
-async def test_llm_service_includes_knowledge_tool():
-    """consult_knowledge_base must be registered as a Gemini tool."""
-    with (
-        patch("app.services.llm.genai.Client") as MockClient,
-        patch("app.services.llm.settings") as mock_llm_settings,
-    ):
-        mock_llm_settings.GOOGLE_API_KEY = "key"
-        mock_llm_settings.GOOGLE_MODEL_NAME = "gemini-test"
-        mock_llm_settings.SYSTEM_INSTRUCTION = "You are Vesta."
+async def test_query_success(
+    mock_settings, mock_chroma_client, mock_genai_client
+):
+    """query() loads chunks, filters by cutoff, and calls Gemini for response."""
+    _, mock_collection = mock_chroma_client
 
-        mock_client_instance = MagicMock()
-        mock_client_instance.aio.models.generate_content = MagicMock(
-            return_value=MagicMock(text="ok", usage_metadata=None)
-        )
-        MockClient.return_value = mock_client_instance
-        mock_client_instance.aio.models.generate_content.__name__ = "generate_content"
+    # Mock ChromaDB query results: distance 0.1 -> similarity 0.9 (above 0.55 cutoff)
+    mock_collection.query.return_value = {
+        "documents": [["Relevant document snippet"]],
+        "metadatas": [[{"file_name": "doc1.txt"}]],
+        "distances": [[0.1]],
+    }
 
-        from unittest.mock import AsyncMock
+    result = await KnowledgeService().query("What is Vesta?")
 
-        mock_client_instance.aio.models.generate_content = AsyncMock(
-            return_value=MagicMock(text="ok", usage_metadata=None)
-        )
+    assert result == "Mock synthesized answer"
+    mock_collection.query.assert_called_once()
+    # Check that generation client was called
+    mock_genai_client.aio.models.generate_content.assert_called_once()
 
-        from app.services.llm import LLMService
 
-        svc = LLMService()
-        db = AsyncMock()
-        await svc.chat("Tell me about my documents.", [], 1, db)
+@pytest.mark.asyncio
+async def test_query_cutoff_filters_results(
+    mock_settings, mock_chroma_client, mock_genai_client
+):
+    """Chunks with similarity below cutoff are filtered out."""
+    _, mock_collection = mock_chroma_client
 
-        call_kwargs = mock_client_instance.aio.models.generate_content.call_args.kwargs
-        tool_names = [t.__name__ for t in call_kwargs["config"].tools]
-        assert "consult_knowledge_base" in tool_names
+    # Mock ChromaDB query results: distance 0.6 -> similarity 0.4 (below 0.55 cutoff)
+    mock_collection.query.return_value = {
+        "documents": [["Irrelevant document snippet"]],
+        "metadatas": [[{"file_name": "doc1.txt"}]],
+        "distances": [[0.6]],
+    }
+
+    result = await KnowledgeService().query("What is Vesta?")
+
+    assert "I couldn't find any relevant information" in result
+    mock_genai_client.aio.models.generate_content.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_query_propagates_exception(
+    mock_settings, mock_chroma_client, mock_genai_client
+):
+    """query() propagates exceptions."""
+    _, mock_collection = mock_chroma_client
+    mock_collection.query.side_effect = RuntimeError("DB error")
+
+    with pytest.raises(RuntimeError, match="DB error"):
+        await KnowledgeService().query("anything")
+
+
+# ------------------------------------------------------------------ #
+# Chunking Unit Tests                                                #
+# ------------------------------------------------------------------ #
+
+
+def test_chunk_markdown_splits_by_headers():
+    svc = KnowledgeService()
+    text = (
+        "# Title\nIntroductory text here.\n"
+        "## Section 1\nSome content for section 1.\n"
+        "### Subsection 1.1\nContent for subsection."
+    )
+    chunks = svc._chunk_markdown(text, "file1", "test.md")
+
+    assert len(chunks) == 3
+    assert chunks[0]["metadata"]["header"] == "# Title"
+    assert chunks[1]["metadata"]["header"] == "## Section 1"
+    assert chunks[2]["metadata"]["header"] == "### Subsection 1.1"
+
+
+def test_chunk_markdown_respects_max_size():
+    with patch("app.services.knowledge.settings") as mock_set:
+        mock_set.RAG_CHUNK_SIZE = 50
+        mock_set.RAG_CHUNK_OVERLAP = 10
+
+        svc = KnowledgeService()
+        text = "# Header\n" + "a" * 120
+        chunks = svc._chunk_markdown(text, "file1", "test.md")
+
+        assert len(chunks) > 1
+        for chunk in chunks:
+            assert len(chunk["text"]) <= 50 + len(" (cont.)")
+            assert chunk["text"].startswith("# Header (cont.)") or chunk["text"].startswith("# Header")

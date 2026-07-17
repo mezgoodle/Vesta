@@ -21,12 +21,6 @@ dependencies = [
     "google-api-python-client",
     "google-auth-oauthlib",
     "chromadb",
-    "llama-index-core",
-    "llama-index-llms-gemini",
-    "llama-index-embeddings-gemini",
-    "llama-index-vector-stores-chroma",
-    "llama-index-readers-google",
-    "llama-cloud-services",
     # Auth & Security
     "authlib",
     "pyjwt",
@@ -41,6 +35,8 @@ dependencies = [
     "google-cloud-texttospeech>=2.36.0",
     "asyncpg>=0.31.0",
     "beautifulsoup4>=4.15.0",
+    "pymupdf4llm>=1.28.0",
+    "jinja2>=3.1.6",
 ]
 
 [dependency-groups]

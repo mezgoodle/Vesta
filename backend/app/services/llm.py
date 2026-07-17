@@ -167,7 +167,7 @@ class LLMService:
             """
             try:
                 knowledge_service = KnowledgeService()
-                return await asyncio.to_thread(knowledge_service.query, query)
+                return await knowledge_service.query(query)
             except Exception:
                 logger.error("Knowledge base query error")
                 return (
