@@ -1,4 +1,3 @@
-import io
 import pytest
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
@@ -11,7 +10,9 @@ def mock_settings():
         m.GOOGLE_DRIVE_FOLDER_ID = "test-folder-id"
         m.GOOGLE_API_KEY = "test-google-key"
         m.GOOGLE_MODEL_NAME = "test-google-model"
-        m.GOOGLE_APPLICATION_CREDENTIALS = ""  # Explicitly empty to avoid reading real credentials
+        m.GOOGLE_APPLICATION_CREDENTIALS = (
+            ""  # Explicitly empty to avoid reading real credentials
+        )
         m.CHROMA_DB_PATH = "/tmp/test_chroma"
         m.RAG_SIMILARITY_TOP_K = 5
         m.RAG_SIMILARITY_CUTOFF = 0.55
@@ -64,7 +65,7 @@ def mock_drive_api():
         patch("app.services.knowledge.google.auth.default") as mock_adc,
     ):
         mock_adc.return_value = (MagicMock(), "project-id")
-        
+
         mock_service = MagicMock()
         mock_build.return_value = mock_service
 
@@ -108,7 +109,7 @@ def test_sync_with_drive_success(
 
         # Check drive API listed files
         mock_drive_api.files.return_value.list.assert_called_once()
-        
+
         # Check pdf parsing was called
         mock_pdf_parse.assert_called_once()
 
@@ -180,9 +181,7 @@ def test_sync_with_drive_missing_folder_id(
 
 
 @pytest.mark.asyncio
-async def test_query_success(
-    mock_settings, mock_chroma_client, mock_genai_client
-):
+async def test_query_success(mock_settings, mock_chroma_client, mock_genai_client):
     """query() loads chunks, filters by cutoff, and calls Gemini for response."""
     _, mock_collection = mock_chroma_client
 
@@ -265,4 +264,6 @@ def test_chunk_markdown_respects_max_size():
         assert len(chunks) > 1
         for chunk in chunks:
             assert len(chunk["text"]) <= 50 + len(" (cont.)")
-            assert chunk["text"].startswith("# Header (cont.)") or chunk["text"].startswith("# Header")
+            assert chunk["text"].startswith("# Header (cont.)") or chunk[
+                "text"
+            ].startswith("# Header")

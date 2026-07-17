@@ -47,7 +47,7 @@ class Settings(BaseSettings):
         "- <b>bold</b> (use <b> instead of Markdown **)\n"
         "- <i>italic</i> (use <i> instead of Markdown *)\n"
         "- <code>code</code> (use <code> instead of backticks `)\n"
-        "- <a href=\"URL\">link text</a> (use <a> instead of [text](url))\n"
+        '- <a href="URL">link text</a> (use <a> instead of [text](url))\n'
         "CRITICAL: Never output Markdown formatting (such as **, *, `). Always translate them to equivalent HTML tags. "
         "Malformed or unclosed tags will break the message delivery, so ensure all HTML tags are closed correctly."
     )

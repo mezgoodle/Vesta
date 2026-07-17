@@ -14,7 +14,6 @@ Why a factory?
     functions to the agent constructors.
 """
 
-import asyncio
 import datetime
 import logging
 from typing import Callable

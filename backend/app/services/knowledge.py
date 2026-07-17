@@ -49,9 +49,9 @@ class KnowledgeService:
         """
         service = self._build_drive_service()
         query = f"'{settings.GOOGLE_DRIVE_FOLDER_ID}' in parents and trashed = false"
-        results = service.files().list(
-            q=query, fields="files(id, name, mimeType)"
-        ).execute()
+        results = (
+            service.files().list(q=query, fields="files(id, name, mimeType)").execute()
+        )
         files = results.get("files", [])
 
         downloaded = []
@@ -158,9 +158,7 @@ class KnowledgeService:
         for header, content in raw_sections:
             combined_text = f"{header}\n\n{content}".strip()
             if len(combined_text) <= chunk_size:
-                chunk_id = hashlib.sha256(
-                    f"{file_id}_{chunk_idx}".encode()
-                ).hexdigest()
+                chunk_id = hashlib.sha256(f"{file_id}_{chunk_idx}".encode()).hexdigest()
                 chunks.append(
                     {
                         "id": chunk_id,
