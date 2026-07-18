@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import io
 import logging
@@ -389,14 +390,16 @@ class KnowledgeService:
         try:
             query_embedding = await self._aembed_query(text)
 
-            chroma_client = chromadb.PersistentClient(path=settings.CHROMA_DB_PATH)
-            collection = self._get_configured_collection(chroma_client)
+            def _run_chroma_query() -> dict[str, Any]:
+                chroma_client = chromadb.PersistentClient(path=settings.CHROMA_DB_PATH)
+                collection = self._get_configured_collection(chroma_client)
+                return collection.query(
+                    query_embeddings=[query_embedding],
+                    n_results=settings.RAG_SIMILARITY_TOP_K,
+                    include=["documents", "metadatas", "distances"],
+                )
 
-            results = collection.query(
-                query_embeddings=[query_embedding],
-                n_results=settings.RAG_SIMILARITY_TOP_K,
-                include=["documents", "metadatas", "distances"],
-            )
+            results = await asyncio.to_thread(_run_chroma_query)
 
             relevant_docs = []
             distances = results.get("distances", [[]])[0]
