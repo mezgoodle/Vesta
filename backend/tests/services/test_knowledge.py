@@ -26,6 +26,7 @@ def mock_chroma_client():
     with patch("app.services.knowledge.chromadb.PersistentClient") as mock_cls:
         mock_client = MagicMock()
         mock_collection = MagicMock()
+        mock_collection.metadata = {"hnsw:space": "cosine"}
         mock_client.get_or_create_collection.return_value = mock_collection
         mock_cls.return_value = mock_client
         yield mock_cls, mock_collection
@@ -128,8 +129,8 @@ def test_sync_with_drive_success(
 def test_sync_with_drive_no_documents(
     mock_settings, mock_chroma_client, mock_genai_client, mock_drive_api
 ):
-    """When Google Drive returns no files, the index is not updated."""
-    _, mock_collection = mock_chroma_client
+    """When Google Drive returns no files, the collection is cleared/recreated."""
+    mock_persistent_client, mock_collection = mock_chroma_client
 
     mock_drive_api.files.return_value.list.return_value.execute.return_value = {
         "files": []
@@ -139,6 +140,9 @@ def test_sync_with_drive_no_documents(
     svc.sync_with_drive()
 
     mock_collection.upsert.assert_not_called()
+    mock_persistent_client.return_value.delete_collection.assert_called_once_with(
+        "vesta_knowledge"
+    )
 
 
 def test_sync_incremental_deletes_removed_files(
@@ -161,7 +165,10 @@ def test_sync_incremental_deletes_removed_files(
         svc.sync_with_drive()
 
         # Verify deleted file chunk was removed
-        mock_collection.delete.assert_called_once_with(ids=["old-chunk-id"])
+        mock_collection.delete.assert_any_call(ids=["old-chunk-id"])
+        # Verify stale chunks of active files were cleared before upsert
+        mock_collection.delete.assert_any_call(where={"file_id": "file1"})
+        mock_collection.delete.assert_any_call(where={"file_id": "file2"})
 
 
 def test_sync_with_drive_missing_folder_id(
@@ -263,7 +270,7 @@ def test_chunk_markdown_respects_max_size():
 
         assert len(chunks) > 1
         for chunk in chunks:
-            assert len(chunk["text"]) <= 50 + len(" (cont.)")
+            assert len(chunk["text"]) <= 50
             assert chunk["text"].startswith("# Header (cont.)") or chunk[
                 "text"
             ].startswith("# Header")

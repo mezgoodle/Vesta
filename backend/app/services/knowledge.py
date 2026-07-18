@@ -43,19 +43,38 @@ class KnowledgeService:
                 creds.refresh(Request())
         return build("drive", "v3", credentials=creds)
 
-    def _download_drive_files(self) -> list[tuple[str, str, bytes]]:
+    def _list_drive_files(self, service: Any) -> list[dict[str, Any]]:
+        """List all files in the configured Drive folder, handling API pagination."""
+        query = f"'{settings.GOOGLE_DRIVE_FOLDER_ID}' in parents and trashed = false"
+        files = []
+        page_token = None
+        while True:
+            results = (
+                service.files()
+                .list(
+                    q=query,
+                    fields="nextPageToken, files(id, name, mimeType)",
+                    pageToken=page_token,
+                )
+                .execute()
+            )
+            files.extend(results.get("files", []))
+            page_token = results.get("nextPageToken")
+            if not page_token:
+                break
+        return files
+
+    def _download_drive_files(
+        self,
+    ) -> tuple[list[dict[str, Any]], list[tuple[str, str, bytes]]]:
         """Download all files from the configured Drive folder.
-        Returns a list of tuples: (file_id, file_name, file_bytes).
+        Returns a tuple: (all_drive_files_list, list_of_downloaded_file_tuples).
         """
         service = self._build_drive_service()
-        query = f"'{settings.GOOGLE_DRIVE_FOLDER_ID}' in parents and trashed = false"
-        results = (
-            service.files().list(q=query, fields="files(id, name, mimeType)").execute()
-        )
-        files = results.get("files", [])
+        all_files = self._list_drive_files(service)
 
         downloaded = []
-        for file in files:
+        for file in all_files:
             file_id = file["id"]
             file_name = file["name"]
             mime_type = file["mimeType"]
@@ -102,7 +121,7 @@ class KnowledgeService:
                     exc_info=True,
                 )
 
-        return downloaded
+        return all_files, downloaded
 
     def _parse_file(self, file_name: str, file_bytes: bytes) -> str:
         """Parse file content to Markdown string.
@@ -172,12 +191,25 @@ class KnowledgeService:
                 )
                 chunk_idx += 1
             else:
-                # Sub-split the content with overlap
+                # Sub-split the content with overlap, accounting for header prefix length
                 start = 0
                 while start < len(content):
-                    end = start + chunk_size - len(header) - 2
+                    prefix = f"{header} (cont.)\n\n"
+                    # If prefix is too long, truncate it to guarantee capacity
+                    if len(prefix) > chunk_size // 2:
+                        truncated_header = header[: chunk_size // 2 - 15] + "..."
+                        prefix = f"{truncated_header} (cont.)\n\n"
+
+                    content_capacity = chunk_size - len(prefix)
+                    step = content_capacity - chunk_overlap
+
+                    # Ensure loop moves forward
+                    if step <= 0:
+                        step = max(1, content_capacity // 2)
+
+                    end = start + content_capacity
                     sub_content = content[start:end]
-                    sub_text = f"{header} (cont.)\n\n{sub_content}".strip()
+                    sub_text = f"{prefix}{sub_content}".strip()
 
                     chunk_id = hashlib.sha256(
                         f"{file_id}_{chunk_idx}".encode()
@@ -195,7 +227,7 @@ class KnowledgeService:
                     )
                     chunk_idx += 1
 
-                    start += chunk_size - chunk_overlap
+                    start += step
                     if end >= len(content):
                         break
 
@@ -222,6 +254,26 @@ class KnowledgeService:
         )
         return response.embeddings[0].values
 
+    def _get_configured_collection(self, chroma_client: Any) -> Any:
+        """Get or create collection with cosine similarity space configuration."""
+        collection = chroma_client.get_or_create_collection(
+            _CHROMA_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+        )
+        # Migrate existing collection if space config is not cosine
+        metadata = collection.metadata or {}
+        if metadata.get("hnsw:space") != "cosine":
+            logger.warning(
+                "ChromaDB collection distance metric mismatch. Recreating with cosine metric."
+            )
+            try:
+                chroma_client.delete_collection(_CHROMA_COLLECTION_NAME)
+            except Exception:
+                pass
+            collection = chroma_client.get_or_create_collection(
+                _CHROMA_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+            )
+        return collection
+
     def sync_with_drive(self) -> None:
         """Sync files from Drive, chunk, embed, and store in ChromaDB."""
         if not settings.GOOGLE_DRIVE_FOLDER_ID:
@@ -237,10 +289,18 @@ class KnowledgeService:
             },
         )
 
-        files = self._download_drive_files()
-        if not files:
+        all_files, files = self._download_drive_files()
+        chroma_client = chromadb.PersistentClient(path=settings.CHROMA_DB_PATH)
+
+        # Clear collection if the Drive inventory is empty
+        drive_file_ids = {
+            f["id"]
+            for f in all_files
+            if f["mimeType"] != "application/vnd.google-apps.folder"
+        }
+        if not drive_file_ids:
             logger.warning(
-                "No documents found in Drive folder – index not updated.",
+                "No documents found in Drive folder – clearing index.",
                 extra={
                     "json_fields": {
                         "event": "knowledge_sync_empty",
@@ -248,6 +308,11 @@ class KnowledgeService:
                     }
                 },
             )
+            try:
+                chroma_client.delete_collection(_CHROMA_COLLECTION_NAME)
+            except Exception:
+                pass
+            self._get_configured_collection(chroma_client)
             return
 
         all_chunks = []
@@ -279,11 +344,14 @@ class KnowledgeService:
         chunk_texts = [c["text"] for c in all_chunks]
         chunk_embeddings = self._embed_texts(chunk_texts)
 
-        chroma_client = chromadb.PersistentClient(path=settings.CHROMA_DB_PATH)
-        collection = chroma_client.get_or_create_collection(_CHROMA_COLLECTION_NAME)
+        collection = self._get_configured_collection(chroma_client)
 
         chunk_ids = [c["id"] for c in all_chunks]
         chunk_metadatas = [c["metadata"] for c in all_chunks]
+
+        # Delete prior chunks of the files we are updating to avoid stale chunks
+        for file_id in downloaded_file_ids:
+            collection.delete(where={"file_id": file_id})
 
         # Direct upsert into ChromaDB
         collection.upsert(
@@ -293,14 +361,14 @@ class KnowledgeService:
             documents=chunk_texts,
         )
 
-        # Cleanup removed files
+        # Cleanup fully removed files
         existing = collection.get(include=["metadatas"])
         if existing and existing["ids"]:
             to_delete = []
             for idx, meta in enumerate(existing["metadatas"]):
                 if meta and "file_id" in meta:
                     file_id = meta["file_id"]
-                    if file_id not in downloaded_file_ids:
+                    if file_id not in drive_file_ids:
                         to_delete.append(existing["ids"][idx])
             if to_delete:
                 logger.info(f"Removing deleted documents from index: {to_delete}")
@@ -322,7 +390,7 @@ class KnowledgeService:
             query_embedding = await self._aembed_query(text)
 
             chroma_client = chromadb.PersistentClient(path=settings.CHROMA_DB_PATH)
-            collection = chroma_client.get_or_create_collection(_CHROMA_COLLECTION_NAME)
+            collection = self._get_configured_collection(chroma_client)
 
             results = collection.query(
                 query_embeddings=[query_embedding],
