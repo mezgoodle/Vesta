@@ -176,8 +176,6 @@ class TestConsultKnowledgeBase:
 
         with patch("app.services.gemini_tools.KnowledgeService") as MockKB:
             mock_kb = MockKB.return_value
-            from unittest.mock import AsyncMock
-
             mock_kb.query = AsyncMock(return_value="The recipe calls for 2 cups flour.")
 
             result = await kb_tool(query="flour recipe")
@@ -190,8 +188,6 @@ class TestConsultKnowledgeBase:
 
         with patch("app.services.gemini_tools.KnowledgeService") as MockKB:
             mock_kb = MockKB.return_value
-            from unittest.mock import AsyncMock
-
             mock_kb.query = AsyncMock(side_effect=Exception("Chroma down"))
 
             result = await kb_tool(query="test")

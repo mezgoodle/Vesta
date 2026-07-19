@@ -166,9 +166,8 @@ def test_sync_incremental_deletes_removed_files(
 
         # Verify deleted file chunk was removed
         mock_collection.delete.assert_any_call(ids=["old-chunk-id"])
-        # Verify stale chunks of active files were cleared before upsert
-        mock_collection.delete.assert_any_call(where={"file_id": "file1"})
-        mock_collection.delete.assert_any_call(where={"file_id": "file2"})
+        # Verify obsolete/shrunk chunks of active files were cleared
+        mock_collection.delete.assert_any_call(ids=["old-chunk-id", "old-chunk-id"])
 
 
 def test_sync_with_drive_missing_folder_id(

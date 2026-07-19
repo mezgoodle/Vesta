@@ -268,7 +268,7 @@ class KnowledgeService:
             )
             try:
                 chroma_client.delete_collection(_CHROMA_COLLECTION_NAME)
-            except Exception:
+            except ValueError:
                 pass
             collection = chroma_client.get_or_create_collection(
                 _CHROMA_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
@@ -311,7 +311,7 @@ class KnowledgeService:
             )
             try:
                 chroma_client.delete_collection(_CHROMA_COLLECTION_NAME)
-            except Exception:
+            except ValueError:
                 pass
             self._get_configured_collection(chroma_client)
             return
@@ -350,9 +350,13 @@ class KnowledgeService:
         chunk_ids = [c["id"] for c in all_chunks]
         chunk_metadatas = [c["metadata"] for c in all_chunks]
 
-        # Delete prior chunks of the files we are updating to avoid stale chunks
-        for file_id in downloaded_file_ids:
-            collection.delete(where={"file_id": file_id})
+        # Track existing chunk IDs for the files we are updating, to clean up obsoletes after upsert
+        files_with_chunks = {c["metadata"]["file_id"] for c in all_chunks}
+        old_ids_to_delete = []
+        for file_id in files_with_chunks:
+            existing_chunks = collection.get(where={"file_id": file_id})
+            if existing_chunks and existing_chunks["ids"]:
+                old_ids_to_delete.extend(existing_chunks["ids"])
 
         # Direct upsert into ChromaDB
         collection.upsert(
@@ -361,6 +365,15 @@ class KnowledgeService:
             metadatas=chunk_metadatas,
             documents=chunk_texts,
         )
+
+        # Delete only the old chunks that were NOT part of the new chunk_ids
+        new_chunk_ids_set = set(chunk_ids)
+        obsolete_ids = [
+            oid for oid in old_ids_to_delete if oid not in new_chunk_ids_set
+        ]
+        if obsolete_ids:
+            logger.info(f"Removing obsolete/shrunk chunks from index: {obsolete_ids}")
+            collection.delete(ids=obsolete_ids)
 
         # Cleanup fully removed files
         existing = collection.get(include=["metadatas"])
