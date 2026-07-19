@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import ANY, AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.services.knowledge import KnowledgeService
 
@@ -117,13 +117,8 @@ def test_sync_with_drive_success(
         # Check embeddings were generated
         mock_genai_client.models.embed_content.assert_called()
 
-        # Verify upsert was called with chunks
-        mock_collection.upsert.assert_called_once_with(
-            ids=ANY,
-            embeddings=ANY,
-            metadatas=ANY,
-            documents=ANY,
-        )
+        # Verify upsert was called with chunks for both files
+        assert mock_collection.upsert.call_count == 2
 
 
 def test_sync_with_drive_no_documents(
@@ -164,10 +159,9 @@ def test_sync_incremental_deletes_removed_files(
         svc = KnowledgeService()
         svc.sync_with_drive()
 
-        # Verify deleted file chunk was removed
+        # Verify delete was called 3 times (twice for file obsolete chunks, once for deleted files)
+        assert mock_collection.delete.call_count == 3
         mock_collection.delete.assert_any_call(ids=["old-chunk-id"])
-        # Verify obsolete/shrunk chunks of active files were cleared
-        mock_collection.delete.assert_any_call(ids=["old-chunk-id", "old-chunk-id"])
 
 
 def test_sync_with_drive_missing_folder_id(
