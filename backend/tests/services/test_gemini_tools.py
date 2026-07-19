@@ -27,9 +27,7 @@ class TestGetWeatherInfo:
         tool_groups, _ = tools
         weather_tool = tool_groups["weather"][0]  # get_weather_info
 
-        with patch(
-            "app.services.gemini_tools.OpenMeteoService"
-        ) as MockOpenMeteo:
+        with patch("app.services.gemini_tools.OpenMeteoService") as MockOpenMeteo:
             mock_service = AsyncMock()
             MockOpenMeteo.return_value = mock_service
 
@@ -60,9 +58,7 @@ class TestGetWeatherInfo:
         tool_groups, _ = tools
         weather_tool = tool_groups["weather"][0]
 
-        with patch(
-            "app.services.gemini_tools.OpenMeteoService"
-        ) as MockOpenMeteo:
+        with patch("app.services.gemini_tools.OpenMeteoService") as MockOpenMeteo:
             mock_service = AsyncMock()
             MockOpenMeteo.return_value = mock_service
             mock_service.get_weather.side_effect = Exception("API down")
@@ -82,9 +78,7 @@ class TestGetCalendarEvents:
         tool_groups, db = tools
         calendar_tool = tool_groups["calendar"][0]  # get_calendar_events
 
-        with patch(
-            "app.services.gemini_tools.GoogleCalendarService"
-        ) as MockCal:
+        with patch("app.services.gemini_tools.GoogleCalendarService") as MockCal:
             mock_cal = MockCal.return_value
             mock_cal.get_upcoming_events = AsyncMock()
 
@@ -100,18 +94,14 @@ class TestGetCalendarEvents:
 
             assert "Team Meeting" in result
             assert "Room A" in result
-            mock_cal.get_upcoming_events.assert_called_with(
-                user_id=42, db=db, days=7
-            )
+            mock_cal.get_upcoming_events.assert_called_with(user_id=42, db=db, days=7)
 
     @pytest.mark.asyncio
     async def test_no_events(self, tools):
         tool_groups, _ = tools
         calendar_tool = tool_groups["calendar"][0]
 
-        with patch(
-            "app.services.gemini_tools.GoogleCalendarService"
-        ) as MockCal:
+        with patch("app.services.gemini_tools.GoogleCalendarService") as MockCal:
             mock_cal = MockCal.return_value
             mock_cal.get_upcoming_events = AsyncMock(return_value=[])
 
@@ -123,9 +113,7 @@ class TestGetCalendarEvents:
         tool_groups, _ = tools
         calendar_tool = tool_groups["calendar"][0]
 
-        with patch(
-            "app.services.gemini_tools.GoogleCalendarService"
-        ) as MockCal:
+        with patch("app.services.gemini_tools.GoogleCalendarService") as MockCal:
             mock_cal = MockCal.return_value
             mock_cal.get_upcoming_events = AsyncMock(
                 side_effect=Exception("OAuth error")
@@ -141,9 +129,7 @@ class TestScheduleEventTool:
         tool_groups, db = tools
         schedule_tool = tool_groups["calendar"][1]  # schedule_event_tool
 
-        with patch(
-            "app.services.gemini_tools.GoogleCalendarService"
-        ) as MockCal:
+        with patch("app.services.gemini_tools.GoogleCalendarService") as MockCal:
             mock_cal = MockCal.return_value
             mock_cal.create_event = AsyncMock()
             mock_cal.create_event.return_value = {
@@ -173,9 +159,7 @@ class TestScheduleEventTool:
         tool_groups, _ = tools
         schedule_tool = tool_groups["calendar"][1]
 
-        result = await schedule_tool(
-            summary="Test", start_time_iso="not-a-date"
-        )
+        result = await schedule_tool(summary="Test", start_time_iso="not-a-date")
         assert "Invalid datetime format" in result
 
 
@@ -190,11 +174,9 @@ class TestConsultKnowledgeBase:
         tool_groups, _ = tools
         kb_tool = tool_groups["knowledge"][0]
 
-        with patch(
-            "app.services.gemini_tools.KnowledgeService"
-        ) as MockKB:
+        with patch("app.services.gemini_tools.KnowledgeService") as MockKB:
             mock_kb = MockKB.return_value
-            mock_kb.query.return_value = "The recipe calls for 2 cups flour."
+            mock_kb.query = AsyncMock(return_value="The recipe calls for 2 cups flour.")
 
             result = await kb_tool(query="flour recipe")
             assert "flour" in result
@@ -204,11 +186,9 @@ class TestConsultKnowledgeBase:
         tool_groups, _ = tools
         kb_tool = tool_groups["knowledge"][0]
 
-        with patch(
-            "app.services.gemini_tools.KnowledgeService"
-        ) as MockKB:
+        with patch("app.services.gemini_tools.KnowledgeService") as MockKB:
             mock_kb = MockKB.return_value
-            mock_kb.query.side_effect = Exception("Chroma down")
+            mock_kb.query = AsyncMock(side_effect=Exception("Chroma down"))
 
             result = await kb_tool(query="test")
             assert "couldn't search" in result

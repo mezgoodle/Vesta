@@ -14,7 +14,6 @@ Why a factory?
     functions to the agent constructors.
 """
 
-import asyncio
 import datetime
 import logging
 from typing import Callable
@@ -316,7 +315,7 @@ def create_tools(
         """
         try:
             knowledge_service = KnowledgeService()
-            return await asyncio.to_thread(knowledge_service.query, query)
+            return await knowledge_service.query(query)
         except Exception:
             logger.exception("Knowledge base query error")
             return (
