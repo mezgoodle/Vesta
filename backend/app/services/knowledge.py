@@ -252,11 +252,7 @@ class KnowledgeService:
                             if time.time() > deadline:
                                 raise TimeoutError("Upload operation timed out")
                             time.sleep(3)
-                            operation = genai_client.operations.get(
-                                operation.name
-                                if hasattr(operation, "name")
-                                else operation
-                            )
+                            operation = genai_client.operations.get(operation=operation)
 
                         if getattr(operation, "error", None):
                             raise Exception(
