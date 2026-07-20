@@ -68,7 +68,7 @@ class KnowledgeService:
 
     def _download_single_file(
         self, service: Any, file_id: str, file_name: str, mime_type: str
-    ) -> bytes | None:
+    ) -> tuple[bytes, str] | None:
         """Download a single file's bytes from Google Drive."""
         try:
             # If it's a Google Doc, export it as PDF
@@ -98,10 +98,10 @@ class KnowledgeService:
             downloader = MediaIoBaseDownload(fh, request)
             done = False
             while not done:
-                _, done = downloader.next_chunk()
+                _, done = downloader.next_chunk(num_retries=3)
 
             logger.info(f"Downloaded {file_name} ({file_id}) from Google Drive")
-            return fh.getvalue()
+            return fh.getvalue(), file_name
         except Exception as e:
             logger.error(
                 f"Failed to download file {file_name} ({file_id}): {e}",
@@ -319,15 +319,16 @@ class KnowledgeService:
                 continue
 
             try:
-                # 1. Download file bytes
-                file_bytes = self._download_single_file(
+                # 1. Download file bytes and get effective file name (e.g. appended with .pdf for Workspace docs)
+                download_res = self._download_single_file(
                     service, file_id, file_name, mime_type
                 )
-                if not file_bytes:
+                if not download_res:
                     continue
+                file_bytes, effective_file_name = download_res
 
                 # 2. Parse file
-                markdown_content = self._parse_file(file_name, file_bytes)
+                markdown_content = self._parse_file(effective_file_name, file_bytes)
                 # Free file bytes immediately
                 del file_bytes
                 gc.collect()
@@ -336,7 +337,9 @@ class KnowledgeService:
                     continue
 
                 # 3. Chunk markdown content
-                chunks = self._chunk_markdown(markdown_content, file_id, file_name)
+                chunks = self._chunk_markdown(
+                    markdown_content, file_id, effective_file_name
+                )
                 del markdown_content
                 gc.collect()
 
@@ -372,7 +375,7 @@ class KnowledgeService:
                 ]
                 if obsolete_ids:
                     logger.info(
-                        f"Removing obsolete chunks for file {file_name}: {obsolete_ids}"
+                        f"Removing obsolete chunks for file {effective_file_name}: {obsolete_ids}"
                     )
                     collection.delete(ids=obsolete_ids)
 
@@ -380,10 +383,17 @@ class KnowledgeService:
                 chunks_count += len(chunks)
 
                 # Clear local references and force GC after processing this file
-                del chunks, chunk_texts, chunk_embeddings, old_ids_to_delete
+                del (
+                    chunks,
+                    chunk_texts,
+                    chunk_embeddings,
+                    chunk_ids,
+                    chunk_metadatas,
+                    old_ids_to_delete,
+                )
                 gc.collect()
 
-                logger.info(f"Successfully processed and indexed {file_name}")
+                logger.info(f"Successfully processed and indexed {effective_file_name}")
 
             except Exception as e:
                 logger.error(

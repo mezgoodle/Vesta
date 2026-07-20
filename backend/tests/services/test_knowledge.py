@@ -175,6 +175,21 @@ def test_sync_with_drive_missing_folder_id(
             svc.sync_with_drive()
 
 
+def test_download_single_file_google_workspace_doc(mock_settings, mock_drive_api):
+    """Google Workspace document exports return PDF extension in effective filename."""
+    svc = KnowledgeService()
+    res = svc._download_single_file(
+        mock_drive_api,
+        file_id="gdoc1",
+        file_name="MyGoogleDoc",
+        mime_type="application/vnd.google-apps.document",
+    )
+    assert res is not None
+    file_bytes, effective_name = res
+    assert effective_name == "MyGoogleDoc.pdf"
+    assert file_bytes == b"Mock content for file"
+
+
 # ------------------------------------------------------------------ #
 # query                                                              #
 # ------------------------------------------------------------------ #
