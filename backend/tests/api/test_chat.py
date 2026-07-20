@@ -493,6 +493,7 @@ async def test_process_chat_message_background_task(
 
     # We patch BackgroundTasks.add_task to verify it's called
     from unittest.mock import patch
+
     with patch("fastapi.BackgroundTasks.add_task") as mock_add_task:
         response = await client.post(
             f"{settings.API_V1_STR}/chat/process",

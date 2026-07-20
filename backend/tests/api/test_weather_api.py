@@ -29,7 +29,10 @@ async def test_get_current_weather_success(
         current_conditions="Sunny",
         daily_forecasts=[
             DailyForecast(
-                date="2026-04-14", max_temp=20.0, min_temp=10.0, precipitation_prob_max=0
+                date="2026-04-14",
+                max_temp=20.0,
+                min_temp=10.0,
+                precipitation_prob_max=0,
             )
         ],
     )

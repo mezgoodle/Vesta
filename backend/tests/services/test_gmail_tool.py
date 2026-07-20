@@ -27,12 +27,12 @@ async def test_check_emails_tool_success(tools):
             subject="Urgent Meeting",
             date="Today",
             snippet="We need to meet...",
-            body="Full meeting details here."
+            body="Full meeting details here.",
         )
         mock_svc.get_emails.return_value = [email]
 
         result = await email_tool(query="is:unread", max_results=5)
-        
+
         assert "boss@work.com" in result
         assert "Urgent Meeting" in result
         assert "Full meeting details here" in result

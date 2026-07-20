@@ -63,9 +63,7 @@ async def send_daily_digests(db: AsyncSession) -> int:
                     city=user.city_name or "Kyiv", days=1
                 )
             except Exception as e:
-                logger.warning(
-                    f"Failed to fetch weather for user {user.id}: {e}"
-                )
+                logger.warning(f"Failed to fetch weather for user {user.id}: {e}")
 
             emails = None
             try:

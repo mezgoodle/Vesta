@@ -20,7 +20,9 @@ def mock_llm_service():
 
 @pytest.fixture
 def mock_calendar_service():
-    with patch("app.api.v1.endpoints.cron.google_calendar_service_instance") as mock_service:
+    with patch(
+        "app.api.v1.endpoints.cron.google_calendar_service_instance"
+    ) as mock_service:
         yield mock_service
 
 
@@ -122,9 +124,7 @@ async def test_morning_digest_success(
     forecast.min_temp = 15.0
     forecast.precipitation_prob_max = 10
     mock_weather.daily_forecasts = [forecast]
-    mock_weather_service.get_weather = AsyncMock(
-        return_value=mock_weather
-    )
+    mock_weather_service.get_weather = AsyncMock(return_value=mock_weather)
 
     # Mock LLM service
     mock_llm_service.chat.return_value = "Good morning! FastAPI Standup is at 09:00."
@@ -146,9 +146,7 @@ async def test_morning_digest_success(
     assert data["sent_digests_count"] == 1
 
     # Verify calendar call
-    mock_calendar_service.get_today_events.assert_called_once_with(
-        user.id, db_session
-    )
+    mock_calendar_service.get_today_events.assert_called_once_with(user.id, db_session)
 
     # Verify LLM call
     mock_llm_service.chat.assert_called_once()
@@ -199,9 +197,7 @@ async def test_morning_digest_no_events(
     forecast.min_temp = 15.0
     forecast.precipitation_prob_max = 10
     mock_weather.daily_forecasts = [forecast]
-    mock_weather_service.get_weather = AsyncMock(
-        return_value=mock_weather
-    )
+    mock_weather_service.get_weather = AsyncMock(return_value=mock_weather)
 
     # Mock LLM service
     mock_llm_service.chat.return_value = "Good morning! No events today."
@@ -223,13 +219,11 @@ async def test_morning_digest_no_events(
     assert data["sent_digests_count"] == 1
 
     # Verify calendar call
-    mock_calendar_service.get_today_events.assert_called_once_with(
-        user.id, db_session
-    )
+    mock_calendar_service.get_today_events.assert_called_once_with(user.id, db_session)
 
     # Verify LLM call
     mock_llm_service.chat.assert_called_once()
-    
+
     # Verify the prompt contained the "no events" info
     args = mock_llm_service.chat.call_args[0]
     prompt = args[0]
@@ -267,6 +261,7 @@ async def test_morning_digest_with_emails(
 
     # Mock gmail service with unread emails
     from app.schemas.gmail import EmailMessage
+
     email = EmailMessage(
         id="msg123",
         sender="Boss <boss@example.com>",
@@ -293,12 +288,12 @@ async def test_morning_digest_with_emails(
     forecast.min_temp = 15.0
     forecast.precipitation_prob_max = 10
     mock_weather.daily_forecasts = [forecast]
-    mock_weather_service.get_weather = AsyncMock(
-        return_value=mock_weather
-    )
+    mock_weather_service.get_weather = AsyncMock(return_value=mock_weather)
 
     # Mock LLM service
-    mock_llm_service.chat.return_value = "Good morning! You have 1 unread email from Boss."
+    mock_llm_service.chat.return_value = (
+        "Good morning! You have 1 unread email from Boss."
+    )
 
     # Mock Telegram API response
     mock_response = MagicMock()
@@ -317,9 +312,7 @@ async def test_morning_digest_with_emails(
     assert data["sent_digests_count"] == 1
 
     # Verify calendar call
-    mock_calendar_service.get_today_events.assert_called_once_with(
-        user.id, db_session
-    )
+    mock_calendar_service.get_today_events.assert_called_once_with(user.id, db_session)
 
     # Verify gmail call
     mock_gmail_service.get_emails.assert_called_once_with(
@@ -328,7 +321,7 @@ async def test_morning_digest_with_emails(
 
     # Verify LLM call
     mock_llm_service.chat.assert_called_once()
-    
+
     # Verify the prompt contained the email info
     args = mock_llm_service.chat.call_args[0]
     prompt = args[0]
@@ -371,7 +364,9 @@ async def test_morning_digest_weather_failure(
     )
 
     # Mock LLM service
-    mock_llm_service.chat.return_value = "Good morning! Weather is unavailable but you have a good day."
+    mock_llm_service.chat.return_value = (
+        "Good morning! Weather is unavailable but you have a good day."
+    )
 
     # Mock Telegram API response
     mock_response = MagicMock()
@@ -396,7 +391,7 @@ async def test_morning_digest_weather_failure(
 
     # Verify LLM call
     mock_llm_service.chat.assert_called_once()
-    
+
     # Verify the prompt contained the fallback weather message
     args = mock_llm_service.chat.call_args[0]
     prompt = args[0]
@@ -457,7 +452,7 @@ async def test_check_power_status_success(
     data = response.json()
     assert data["status"] == "success"
     assert data["checked_devices_count"] == 2
-    
+
     devices = data["devices"]
     assert len(devices) == 2
     assert devices[0]["name"] == "Living Room Light"
@@ -525,7 +520,7 @@ async def test_check_power_status_partial_failure(
     data = response.json()
     assert data["status"] == "success"
     assert data["checked_devices_count"] == 2
-    
+
     devices = data["devices"]
     assert len(devices) == 2
     # Failed device returns state "unknown" and status "offline"
@@ -564,4 +559,3 @@ async def test_sync_knowledge_success(client: AsyncClient) -> None:
     finally:
         if knowledge_service in app.dependency_overrides:
             del app.dependency_overrides[knowledge_service]
-

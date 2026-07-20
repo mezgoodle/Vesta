@@ -28,7 +28,9 @@ class User(Base):
     )
     hashed_password: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     google_refresh_token: Mapped[str | None] = mapped_column(String, nullable=True)
-    google_token_status: Mapped[str | None] = mapped_column(String, nullable=True, default=None)
+    google_token_status: Mapped[str | None] = mapped_column(
+        String, nullable=True, default=None
+    )
     is_daily_summary_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
 
