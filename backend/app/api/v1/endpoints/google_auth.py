@@ -128,6 +128,7 @@ async def google_callback(
         # Unexpected error during token exchange
         import logging
         import traceback
+
         logging.getLogger("uvicorn.error").error(
             f"Unexpected error during google_callback: {e}\n{traceback.format_exc()}"
         )

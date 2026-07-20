@@ -14,7 +14,9 @@ def mock_tts_client():
     """Mock the TextToSpeechClient and service account credentials."""
     with (
         patch("app.services.google_tts.texttospeech.TextToSpeechClient") as mock_cls,
-        patch("app.services.google_tts.service_account.Credentials.from_service_account_file"),
+        patch(
+            "app.services.google_tts.service_account.Credentials.from_service_account_file"
+        ),
     ):
         mock_client = MagicMock()
         mock_cls.return_value = mock_client

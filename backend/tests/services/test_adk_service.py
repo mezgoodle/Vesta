@@ -34,9 +34,7 @@ def _make_runner_mock(events_to_yield):
     mock_session.id = "test-session-id"
     mock_session.events = []
     mock_runner.session_service = AsyncMock()
-    mock_runner.session_service.create_session = AsyncMock(
-        return_value=mock_session
-    )
+    mock_runner.session_service.create_session = AsyncMock(return_value=mock_session)
     mock_runner.session_service.append_event = AsyncMock()
 
     async def mock_run_async(**kwargs):
@@ -79,7 +77,10 @@ class TestProcessChat:
             patch("app.services.adk_service.create_tools") as mock_create_tools,
             patch("app.services.adk_service.create_weather_agent"),
             patch("app.services.adk_service.create_root_agent") as mock_create_root,
-            patch("app.services.adk_service.build_personalized_prompt", new_callable=AsyncMock),
+            patch(
+                "app.services.adk_service.build_personalized_prompt",
+                new_callable=AsyncMock,
+            ),
             patch("app.services.adk_service.InMemoryRunner", return_value=mock_runner),
         ):
             mock_create_tools.return_value = {
@@ -119,7 +120,10 @@ class TestProcessChat:
             patch("app.services.adk_service.create_tools") as mock_ct,
             patch("app.services.adk_service.create_weather_agent"),
             patch("app.services.adk_service.create_root_agent") as mock_create_root,
-            patch("app.services.adk_service.build_personalized_prompt", new_callable=AsyncMock),
+            patch(
+                "app.services.adk_service.build_personalized_prompt",
+                new_callable=AsyncMock,
+            ),
             patch("app.services.adk_service.InMemoryRunner", return_value=mock_runner),
         ):
             mock_ct.return_value = {
@@ -176,12 +180,20 @@ class TestProcessChat:
             patch("app.services.adk_service.create_tools") as mock_ct,
             patch("app.services.adk_service.create_weather_agent"),
             patch("app.services.adk_service.create_root_agent") as mock_create_root,
-            patch("app.services.adk_service.build_personalized_prompt", new_callable=AsyncMock),
+            patch(
+                "app.services.adk_service.build_personalized_prompt",
+                new_callable=AsyncMock,
+            ),
             patch("app.services.adk_service.InMemoryRunner", return_value=mock_runner),
             patch.object(adk_svc, "_log_function_call") as mock_log_fc,
             patch.object(adk_svc, "_log_agent_delegation") as mock_log_del,
         ):
-            mock_ct.return_value = {"weather": [], "calendar": [], "email": [], "knowledge": []}
+            mock_ct.return_value = {
+                "weather": [],
+                "calendar": [],
+                "email": [],
+                "knowledge": [],
+            }
 
             # Provide sub_agents so delegation check works
             mock_weather = MagicMock()

@@ -8,8 +8,12 @@ class EmailMessage(BaseModel):
     sender: str = Field(..., description="The sender's name and/or email address")
     subject: str = Field(..., description="The subject line of the email")
     date: str = Field(..., description="The date/time the email was received")
-    snippet: str = Field(..., description="A short snippet/preview of the email content")
-    body: str = Field(..., description="The parsed and truncated body text of the email")
+    snippet: str = Field(
+        ..., description="A short snippet/preview of the email content"
+    )
+    body: str = Field(
+        ..., description="The parsed and truncated body text of the email"
+    )
 
 
 class EmailMessageList(BaseModel):

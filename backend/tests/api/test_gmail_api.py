@@ -131,7 +131,9 @@ async def test_get_emails_unauthorized(
     )
 
     mock_service = AsyncMock()
-    mock_service.get_emails.side_effect = ValueError("User has not authorized Google access.")
+    mock_service.get_emails.side_effect = ValueError(
+        "User has not authorized Google access."
+    )
 
     async def override_gmail_service():
         return mock_service
@@ -199,7 +201,7 @@ async def test_get_emails_http_error_generic(
     resp = MagicMock()
     resp.status = 502
     resp.reason = "Bad Gateway"
-    
+
     mock_service = AsyncMock()
     mock_service.get_emails.side_effect = HttpError(resp=resp, content=b"Bad Gateway")
 
@@ -236,9 +238,11 @@ async def test_get_email_by_id_http_error_404(
     resp = MagicMock()
     resp.status = 404
     resp.reason = "Not Found"
-    
+
     mock_service = AsyncMock()
-    mock_service.get_email_by_id.side_effect = HttpError(resp=resp, content=b"Not Found")
+    mock_service.get_email_by_id.side_effect = HttpError(
+        resp=resp, content=b"Not Found"
+    )
 
     async def override_gmail_service():
         return mock_service

@@ -1,4 +1,3 @@
-import asyncio
 import io
 import logging
 import os
@@ -69,7 +68,11 @@ class KnowledgeService:
         try:
             # If it's a Google Doc, export it as PDF
             if mime_type.startswith("application/vnd.google-apps."):
-                if "document" in mime_type or "spreadsheet" in mime_type or "presentation" in mime_type:
+                if (
+                    "document" in mime_type
+                    or "spreadsheet" in mime_type
+                    or "presentation" in mime_type
+                ):
                     export_mime = "application/pdf"
                     file_name = file_name + ".pdf"
                 else:
@@ -98,11 +101,13 @@ class KnowledgeService:
             )
             return None
 
-    def _parse_time(self, time_str: str) -> datetime:
-        """Parse ISO 8601 time string to UTC datetime."""
-        if not time_str:
+    def _parse_time(self, time_val: Any) -> datetime:
+        """Parse ISO 8601 time string to UTC datetime, or return if already datetime."""
+        if isinstance(time_val, datetime):
+            return time_val
+        if not time_val:
             return datetime.min.replace(tzinfo=timezone.utc)
-        time_str = time_str.replace("Z", "+00:00")
+        time_str = str(time_val).replace("Z", "+00:00")
         try:
             return datetime.fromisoformat(time_str)
         except ValueError:
@@ -110,15 +115,28 @@ class KnowledgeService:
 
     def _get_or_create_store(self, client: genai.Client) -> Any:
         """Get the File Search Store by name, or create it if not found."""
-        store_display_name = getattr(settings, "FILE_SEARCH_STORE_DISPLAY_NAME", "vesta-knowledge-base")
+        if hasattr(self, "_store_name") and self._store_name:
+            # Create a mock object or just return if we already have it.
+            # But wait, we need an object with a .name property.
+            class StoreMock:
+                name = self._store_name
+
+            return StoreMock()
+
+        store_display_name = getattr(
+            settings, "FILE_SEARCH_STORE_DISPLAY_NAME", "vesta-knowledge-base"
+        )
         for store in client.file_search_stores.list():
             if store.display_name == store_display_name:
+                self._store_name = store.name
                 return store
-        
+
         logger.info(f"Creating new File Search Store: {store_display_name}")
-        return client.file_search_stores.create(
+        new_store = client.file_search_stores.create(
             config={"display_name": store_display_name}
         )
+        self._store_name = new_store.name
+        return new_store
 
     def sync_with_drive(self) -> None:
         """
@@ -151,13 +169,14 @@ class KnowledgeService:
             # Get Drive files
             drive_files = self._list_drive_files(drive_service)
             drive_files_dict = {
-                f["id"]: f for f in drive_files
+                f["id"]: f
+                for f in drive_files
                 if f["mimeType"] != "application/vnd.google-apps.folder"
             }
 
             # Get Gemini files
             gemini_files = list(genai_client.files.list())
-            
+
             # Match Gemini files to Drive files via display_name format "filename [drive_id]"
             pattern = re.compile(r"^(.*) \[(.*)\]$")
             gemini_files_by_drive_id = {}
@@ -172,7 +191,9 @@ class KnowledgeService:
             # 1. Delete files from Gemini that are no longer on Drive
             for drive_id, g_file in gemini_files_by_drive_id.items():
                 if drive_id not in drive_files_dict:
-                    logger.info(f"Deleting removed file from Gemini: {g_file.display_name}")
+                    logger.info(
+                        f"Deleting removed file from Gemini: {g_file.display_name}"
+                    )
                     genai_client.files.delete(name=g_file.name)
 
             # 2. Upload new or modified files
@@ -181,14 +202,14 @@ class KnowledgeService:
                 file_name = d_file["name"]
                 mime_type = d_file["mimeType"]
                 d_mod_time = self._parse_time(d_file.get("modifiedTime", ""))
-                
+
                 g_file = gemini_files_by_drive_id.get(file_id)
                 needs_upload = False
 
                 if not g_file:
                     needs_upload = True
                 else:
-                    g_update_time = self._parse_time(getattr(g_file, 'update_time', ""))
+                    g_update_time = self._parse_time(getattr(g_file, "update_time", ""))
                     # Add a small buffer since Gemini update time might differ slightly
                     if d_mod_time > g_update_time:
                         logger.info(f"File modified on Drive, updating: {file_name}")
@@ -203,36 +224,54 @@ class KnowledgeService:
                     if not download_res:
                         continue
                     file_bytes, effective_file_name = download_res
-                    
+
                     # Create temp file and upload
                     ext = os.path.splitext(effective_file_name)[1]
                     with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
                         tmp.write(file_bytes)
                         tmp_path = tmp.name
-                    
+
                     try:
-                        logger.info(f"Uploading {effective_file_name} to File Search Store...")
-                        display_name = f"{effective_file_name} [{file_id}]"
-                        
-                        # Upload directly to the store
-                        operation = genai_client.file_search_stores.upload_to_file_search_store(
-                            file=tmp_path,
-                            file_search_store_name=store.name,
-                            config={"display_name": display_name}
+                        logger.info(
+                            f"Uploading {effective_file_name} to File Search Store..."
                         )
-                        
+                        display_name = f"{effective_file_name} [{file_id}]"
+
+                        # Upload directly to the store
+                        operation = (
+                            genai_client.file_search_stores.upload_to_file_search_store(
+                                file=tmp_path,
+                                file_search_store_name=store.name,
+                                config={"display_name": display_name},
+                            )
+                        )
+
                         # Poll until complete
-                        while not getattr(operation, 'done', True):
+                        deadline = time.time() + 300  # 5 minutes
+                        while not getattr(operation, "done", True):
+                            if time.time() > deadline:
+                                raise TimeoutError("Upload operation timed out")
                             time.sleep(3)
-                            try:
-                                operation = genai_client.operations.get(operation.name if hasattr(operation, 'name') else operation)
-                            except Exception:
-                                break
-                        
+                            operation = genai_client.operations.get(
+                                operation.name
+                                if hasattr(operation, "name")
+                                else operation
+                            )
+
+                        if getattr(operation, "error", None):
+                            raise Exception(
+                                f"Upload operation failed: {operation.error}"
+                            )
+
                         uploaded_count += 1
-                        logger.info(f"Successfully processed and indexed {effective_file_name}")
+                        logger.info(
+                            f"Successfully processed and indexed {effective_file_name}"
+                        )
                     except Exception as e:
-                        logger.error(f"Failed to upload {effective_file_name}: {e}", exc_info=True)
+                        logger.error(
+                            f"Failed to upload {effective_file_name}: {e}",
+                            exc_info=True,
+                        )
                     finally:
                         try:
                             os.unlink(tmp_path)
@@ -247,8 +286,10 @@ class KnowledgeService:
         except Exception as e:
             logger.error(
                 "Drive sync failed",
-                extra={"json_fields": {"event": "knowledge_sync_error", "error": str(e)}},
-                exc_info=True
+                extra={
+                    "json_fields": {"event": "knowledge_sync_error", "error": str(e)}
+                },
+                exc_info=True,
             )
 
     async def query(self, text: str) -> str:
@@ -287,8 +328,14 @@ class KnowledgeService:
                 model=settings.GOOGLE_MODEL_NAME,
                 contents=prompt,
                 config=types.GenerateContentConfig(
-                    tools=[{"file_search": {"file_search_store_names": [store.name]}}]
-                )
+                    tools=[
+                        types.Tool(
+                            file_search=types.FileSearch(
+                                file_search_store_names=[store.name]
+                            )
+                        )
+                    ]
+                ),
             )
 
             return response.text or "I couldn't find any relevant information."
@@ -302,7 +349,7 @@ class KnowledgeService:
                         "error": str(e),
                     }
                 },
-                exc_info=True
+                exc_info=True,
             )
             return "I couldn't search the knowledge base right now."
 

@@ -13,7 +13,7 @@ def meteo_service():
         mock_instance.get = AsyncMock()
         mock_instance.aclose = AsyncMock()
         mock_client_cls.return_value = mock_instance
-        
+
         service = OpenMeteoService()
         return service
 

@@ -1,8 +1,6 @@
-import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from google.genai import types
 
 from app.core.config import settings
 from app.services.knowledge import KnowledgeService
@@ -102,12 +100,12 @@ def test_sync_with_drive_incremental(
     knowledge_service, mock_settings, mock_genai_client, mock_drive_service
 ):
     """Test incremental sync logic (upload new, skip old, delete removed)."""
-    with patch(
-        "app.services.knowledge.KnowledgeService._list_drive_files"
-    ) as mock_list, patch(
-        "app.services.knowledge.KnowledgeService._download_single_file"
-    ) as mock_download:
-
+    with (
+        patch("app.services.knowledge.KnowledgeService._list_drive_files") as mock_list,
+        patch(
+            "app.services.knowledge.KnowledgeService._download_single_file"
+        ) as mock_download,
+    ):
         mock_list.return_value = [
             {
                 "id": "drive_id_1",
@@ -144,7 +142,6 @@ def test_sync_with_drive_delete_removed(
     with patch(
         "app.services.knowledge.KnowledgeService._list_drive_files"
     ) as mock_list:
-
         # Drive is empty, but Gemini has drive_id_1
         mock_list.return_value = []
 
@@ -159,12 +156,12 @@ def test_sync_with_drive_update_modified(
     knowledge_service, mock_settings, mock_genai_client, mock_drive_service
 ):
     """Test sync updates files if Drive modifiedTime is newer."""
-    with patch(
-        "app.services.knowledge.KnowledgeService._list_drive_files"
-    ) as mock_list, patch(
-        "app.services.knowledge.KnowledgeService._download_single_file"
-    ) as mock_download:
-
+    with (
+        patch("app.services.knowledge.KnowledgeService._list_drive_files") as mock_list,
+        patch(
+            "app.services.knowledge.KnowledgeService._download_single_file"
+        ) as mock_download,
+    ):
         mock_list.return_value = [
             {
                 "id": "drive_id_1",
@@ -179,6 +176,6 @@ def test_sync_with_drive_update_modified(
 
         # Should delete the old one
         mock_genai_client.files.delete.assert_called_once_with(name="files/file1")
-        
+
         # Should upload the new one
         mock_genai_client.file_search_stores.upload_to_file_search_store.assert_called_once()

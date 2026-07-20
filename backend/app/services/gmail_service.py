@@ -67,7 +67,9 @@ class GmailService:
         except Exception as e:
             raise ValueError(f"Failed to build Gmail service: {str(e)}") from e
 
-    def _extract_body_parts(self, payload: dict[str, Any]) -> tuple[str | None, str | None]:
+    def _extract_body_parts(
+        self, payload: dict[str, Any]
+    ) -> tuple[str | None, str | None]:
         """
         Recursively extract plain text and HTML parts from the message payload.
 
@@ -254,7 +256,11 @@ class GmailService:
                         "scope" in message
                         or "insufficient" in message
                         or any(
-                            r in ("ACCESS_TOKEN_SCOPE_INSUFFICIENT", "insufficientPermissions")
+                            r
+                            in (
+                                "ACCESS_TOKEN_SCOPE_INSUFFICIENT",
+                                "insufficientPermissions",
+                            )
                             for r in reasons
                         )
                     )
@@ -317,7 +323,9 @@ class GmailService:
             logger.error("Google Gmail API HttpError for message %s: %s", message_id, e)
             raise
         except Exception as e:
-            logger.error("Failed executing sync Gmail get for message %s: %s", message_id, e)
+            logger.error(
+                "Failed executing sync Gmail get for message %s: %s", message_id, e
+            )
             raise
 
     async def get_email_by_id(
@@ -331,9 +339,7 @@ class GmailService:
         """
         service = await self._get_gmail_client(user_id, db)
         try:
-            return await asyncio.to_thread(
-                self._get_email_sync, service, message_id
-            )
+            return await asyncio.to_thread(self._get_email_sync, service, message_id)
         except RefreshError as e:
             await self._handle_auth_error(user_id, db, e)
             raise RefreshError(
@@ -353,7 +359,11 @@ class GmailService:
                         "scope" in message
                         or "insufficient" in message
                         or any(
-                            r in ("ACCESS_TOKEN_SCOPE_INSUFFICIENT", "insufficientPermissions")
+                            r
+                            in (
+                                "ACCESS_TOKEN_SCOPE_INSUFFICIENT",
+                                "insufficientPermissions",
+                            )
                             for r in reasons
                         )
                     )
@@ -387,14 +397,21 @@ class GmailService:
                         "scope" in message
                         or "insufficient" in message
                         or any(
-                            r in ("ACCESS_TOKEN_SCOPE_INSUFFICIENT", "insufficientPermissions")
+                            r
+                            in (
+                                "ACCESS_TOKEN_SCOPE_INSUFFICIENT",
+                                "insufficientPermissions",
+                            )
                             for r in reasons
                         )
                     )
                     if is_scope_error:
                         status_val = "revoked"
                 except Exception:
-                    if any(phrase in str(exception).lower() for phrase in ("scope", "insufficient", "permission")):
+                    if any(
+                        phrase in str(exception).lower()
+                        for phrase in ("scope", "insufficient", "permission")
+                    ):
                         status_val = "revoked"
             elif exception.resp.status == 401:
                 status_val = "expired"
@@ -408,7 +425,9 @@ class GmailService:
                     )
             except Exception as e:
                 await db.rollback()
-                logger.error("Failed to update google_token_status for user %s: %s", user_id, e)
+                logger.error(
+                    "Failed to update google_token_status for user %s: %s", user_id, e
+                )
 
 
 gmail_service_instance = GmailService()

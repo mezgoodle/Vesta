@@ -86,14 +86,14 @@ async def test_chat_extract_and_run_weather_tool(llm_service, mock_genai_client)
         mock_weather_data.city_name = "London"
         mock_weather_data.current_temp = 20.0
         mock_weather_data.current_conditions = "Sunny"
-        
+
         forecast = MagicMock()
         forecast.date = "2025-01-01"
         forecast.max_temp = 25.0
         forecast.min_temp = 15.0
         forecast.precipitation_prob_max = 10
         mock_weather_data.daily_forecasts = [forecast]
-        
+
         mock_meteo_service.get_weather.return_value = mock_weather_data
 
         # Run the tool
@@ -103,9 +103,7 @@ async def test_chat_extract_and_run_weather_tool(llm_service, mock_genai_client)
         assert "20.0" in result
         assert "25.0" in result
 
-        mock_meteo_service.get_weather.assert_called_with(
-            city="London", days=7
-        )
+        mock_meteo_service.get_weather.assert_called_with(city="London", days=7)
         mock_meteo_service.close.assert_called_once()
 
 

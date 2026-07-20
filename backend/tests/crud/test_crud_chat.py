@@ -106,6 +106,7 @@ async def test_get_sessions_recent_by_user_id(db_session: AsyncSession) -> None:
     ]
 
     import asyncio
+
     for session in sessions:
         await crud_session.create(db_session, obj_in=session)
         # Add a tiny delay to ensure distinct creation timestamps
