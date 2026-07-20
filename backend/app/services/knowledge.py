@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import hashlib
 import io
 import logging
@@ -65,64 +66,48 @@ class KnowledgeService:
                 break
         return files
 
-    def _download_drive_files(
-        self,
-    ) -> tuple[list[dict[str, Any]], list[tuple[str, str, bytes]]]:
-        """Download all files from the configured Drive folder.
-        Returns a tuple: (all_drive_files_list, list_of_downloaded_file_tuples).
-        """
-        service = self._build_drive_service()
-        all_files = self._list_drive_files(service)
-
-        downloaded = []
-        for file in all_files:
-            file_id = file["id"]
-            file_name = file["name"]
-            mime_type = file["mimeType"]
-
-            # Skip folders
-            if mime_type == "application/vnd.google-apps.folder":
-                continue
-
-            try:
-                # If it's a Google Doc, export it as PDF
-                if mime_type.startswith("application/vnd.google-apps."):
-                    if "document" in mime_type:
-                        export_mime = "application/pdf"
-                        file_name = file_name + ".pdf"
-                    elif "spreadsheet" in mime_type:
-                        export_mime = "application/pdf"
-                        file_name = file_name + ".pdf"
-                    elif "presentation" in mime_type:
-                        export_mime = "application/pdf"
-                        file_name = file_name + ".pdf"
-                    else:
-                        logger.warning(
-                            f"Unsupported Google Workspace mime type: {mime_type}"
-                        )
-                        continue
-
-                    request = service.files().export_media(
-                        fileId=file_id, mimeType=export_mime
-                    )
+    def _download_single_file(
+        self, service: Any, file_id: str, file_name: str, mime_type: str
+    ) -> tuple[bytes, str] | None:
+        """Download a single file's bytes from Google Drive."""
+        try:
+            # If it's a Google Doc, export it as PDF
+            if mime_type.startswith("application/vnd.google-apps."):
+                if "document" in mime_type:
+                    export_mime = "application/pdf"
+                    file_name = file_name + ".pdf"
+                elif "spreadsheet" in mime_type:
+                    export_mime = "application/pdf"
+                    file_name = file_name + ".pdf"
+                elif "presentation" in mime_type:
+                    export_mime = "application/pdf"
+                    file_name = file_name + ".pdf"
                 else:
-                    request = service.files().get_media(fileId=file_id)
+                    logger.warning(
+                        f"Unsupported Google Workspace mime type: {mime_type}"
+                    )
+                    return None
 
-                fh = io.BytesIO()
-                downloader = MediaIoBaseDownload(fh, request)
-                done = False
-                while not done:
-                    _, done = downloader.next_chunk()
-
-                downloaded.append((file_id, file_name, fh.getvalue()))
-                logger.info(f"Downloaded {file_name} ({file_id}) from Google Drive")
-            except Exception as e:
-                logger.error(
-                    f"Failed to download file {file_name} ({file_id}): {e}",
-                    exc_info=True,
+                request = service.files().export_media(
+                    fileId=file_id, mimeType=export_mime
                 )
+            else:
+                request = service.files().get_media(fileId=file_id)
 
-        return all_files, downloaded
+            fh = io.BytesIO()
+            downloader = MediaIoBaseDownload(fh, request)
+            done = False
+            while not done:
+                _, done = downloader.next_chunk(num_retries=3)
+
+            logger.info(f"Downloaded {file_name} ({file_id}) from Google Drive")
+            return fh.getvalue(), file_name
+        except Exception as e:
+            logger.error(
+                f"Failed to download file {file_name} ({file_id}): {e}",
+                exc_info=True,
+            )
+            return None
 
     def _parse_file(self, file_name: str, file_bytes: bytes) -> str:
         """Parse file content to Markdown string.
@@ -276,7 +261,9 @@ class KnowledgeService:
         return collection
 
     def sync_with_drive(self) -> None:
-        """Sync files from Drive, chunk, embed, and store in ChromaDB."""
+        """Sync files from Drive, chunk, embed, and store in ChromaDB incrementally.
+        Maintains a very low memory footprint suitable for restricted environments.
+        """
         if not settings.GOOGLE_DRIVE_FOLDER_ID:
             raise ValueError("GOOGLE_DRIVE_FOLDER_ID is not set.")
 
@@ -290,7 +277,8 @@ class KnowledgeService:
             },
         )
 
-        all_files, files = self._download_drive_files()
+        service = self._build_drive_service()
+        all_files = self._list_drive_files(service)
         chroma_client = chromadb.PersistentClient(path=settings.CHROMA_DB_PATH)
 
         # Clear collection if the Drive inventory is empty
@@ -316,64 +304,103 @@ class KnowledgeService:
             self._get_configured_collection(chroma_client)
             return
 
-        all_chunks = []
-        downloaded_file_ids = set()
-        for file_id, file_name, file_bytes in files:
-            downloaded_file_ids.add(file_id)
-            markdown_content = self._parse_file(file_name, file_bytes)
-            if not markdown_content.strip():
-                continue
-            chunks = self._chunk_markdown(markdown_content, file_id, file_name)
-            all_chunks.extend(chunks)
-
-        if not all_chunks:
-            logger.warning("No text chunks generated from downloaded files.")
-            return
-
-        logger.info(
-            f"Drive documents loaded and chunked: {len(files)} files, "
-            f"{len(all_chunks)} chunks total.",
-            extra={
-                "json_fields": {
-                    "event": "knowledge_docs_loaded",
-                    "files_count": len(files),
-                    "chunks_count": len(all_chunks),
-                }
-            },
-        )
-
-        chunk_texts = [c["text"] for c in all_chunks]
-        chunk_embeddings = self._embed_texts(chunk_texts)
-
         collection = self._get_configured_collection(chroma_client)
+        downloaded_count = 0
+        chunks_count = 0
 
-        chunk_ids = [c["id"] for c in all_chunks]
-        chunk_metadatas = [c["metadata"] for c in all_chunks]
+        # Process each file one by one to keep memory footprint minimal
+        for file in all_files:
+            file_id = file["id"]
+            file_name = file["name"]
+            mime_type = file["mimeType"]
 
-        # Track existing chunk IDs for the files we are updating, to clean up obsoletes after upsert
-        files_with_chunks = {c["metadata"]["file_id"] for c in all_chunks}
-        old_ids_to_delete = []
-        for file_id in files_with_chunks:
-            existing_chunks = collection.get(where={"file_id": file_id})
-            if existing_chunks and existing_chunks["ids"]:
-                old_ids_to_delete.extend(existing_chunks["ids"])
+            # Skip folders
+            if mime_type == "application/vnd.google-apps.folder":
+                continue
 
-        # Direct upsert into ChromaDB
-        collection.upsert(
-            ids=chunk_ids,
-            embeddings=chunk_embeddings,
-            metadatas=chunk_metadatas,
-            documents=chunk_texts,
-        )
+            try:
+                # 1. Download file bytes and get effective file name (e.g. appended with .pdf for Workspace docs)
+                download_res = self._download_single_file(
+                    service, file_id, file_name, mime_type
+                )
+                if not download_res:
+                    continue
+                file_bytes, effective_file_name = download_res
+                del download_res
 
-        # Delete only the old chunks that were NOT part of the new chunk_ids
-        new_chunk_ids_set = set(chunk_ids)
-        obsolete_ids = [
-            oid for oid in old_ids_to_delete if oid not in new_chunk_ids_set
-        ]
-        if obsolete_ids:
-            logger.info(f"Removing obsolete/shrunk chunks from index: {obsolete_ids}")
-            collection.delete(ids=obsolete_ids)
+                # 2. Parse file
+                markdown_content = self._parse_file(effective_file_name, file_bytes)
+                # Free file bytes immediately
+                del file_bytes
+                gc.collect()
+
+                if not markdown_content.strip():
+                    continue
+
+                # 3. Chunk markdown content
+                chunks = self._chunk_markdown(
+                    markdown_content, file_id, effective_file_name
+                )
+                del markdown_content
+                gc.collect()
+
+                if not chunks:
+                    continue
+
+                # 4. Embed chunks
+                chunk_texts = [c["text"] for c in chunks]
+                chunk_embeddings = self._embed_texts(chunk_texts)
+
+                # 5. Track existing chunk IDs for the file we are updating
+                existing_chunks = collection.get(where={"file_id": file_id})
+                old_ids_to_delete = (
+                    existing_chunks["ids"]
+                    if (existing_chunks and existing_chunks["ids"])
+                    else []
+                )
+
+                # 6. Upsert new chunks
+                chunk_ids = [c["id"] for c in chunks]
+                chunk_metadatas = [c["metadata"] for c in chunks]
+                collection.upsert(
+                    ids=chunk_ids,
+                    embeddings=chunk_embeddings,
+                    metadatas=chunk_metadatas,
+                    documents=chunk_texts,
+                )
+
+                # 7. Delete obsolete/shrunk chunks
+                new_chunk_ids_set = set(chunk_ids)
+                obsolete_ids = [
+                    oid for oid in old_ids_to_delete if oid not in new_chunk_ids_set
+                ]
+                if obsolete_ids:
+                    logger.info(
+                        f"Removing obsolete chunks for file {effective_file_name}: {obsolete_ids}"
+                    )
+                    collection.delete(ids=obsolete_ids)
+
+                downloaded_count += 1
+                chunks_count += len(chunks)
+
+                # Clear local references and force GC after processing this file
+                del (
+                    chunks,
+                    chunk_texts,
+                    chunk_embeddings,
+                    chunk_ids,
+                    chunk_metadatas,
+                    old_ids_to_delete,
+                )
+                gc.collect()
+
+                logger.info(f"Successfully processed and indexed {effective_file_name}")
+
+            except Exception as e:
+                logger.error(
+                    f"Failed to process file {file_name} ({file_id}): {e}",
+                    exc_info=True,
+                )
 
         # Cleanup fully removed files
         existing = collection.get(include=["metadatas"])
@@ -388,8 +415,11 @@ class KnowledgeService:
                 logger.info(f"Removing deleted documents from index: {to_delete}")
                 collection.delete(ids=to_delete)
 
+        gc.collect()
+
         logger.info(
-            "Drive sync complete – ChromaDB updated.",
+            f"Drive sync complete – ChromaDB updated. Processed {downloaded_count} files, "
+            f"generated {chunks_count} chunks.",
             extra={"json_fields": {"event": "knowledge_sync_done"}},
         )
 
