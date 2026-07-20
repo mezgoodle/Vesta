@@ -58,28 +58,7 @@ class Settings(BaseSettings):
 
     # RAG / Knowledge Base
     GOOGLE_DRIVE_FOLDER_ID: str = ""
-    CHROMA_DB_PATH: str = "./chroma_db"
-    RAG_SIMILARITY_TOP_K: int = 5
-    RAG_SIMILARITY_CUTOFF: float = 0.45
-    RAG_CHUNK_SIZE: int = 1000
-    RAG_CHUNK_OVERLAP: int = 200
-
-    @field_validator("RAG_CHUNK_SIZE")
-    @classmethod
-    def validate_chunk_size(cls, v: int) -> int:
-        if v <= 0:
-            raise ValueError("RAG_CHUNK_SIZE must be greater than 0")
-        return v
-
-    @model_validator(mode="after")
-    def validate_overlap(self) -> "Settings":
-        if self.RAG_CHUNK_OVERLAP < 0:
-            raise ValueError("RAG_CHUNK_OVERLAP must be non-negative")
-        if self.RAG_CHUNK_OVERLAP >= self.RAG_CHUNK_SIZE:
-            raise ValueError(
-                "RAG_CHUNK_OVERLAP must be strictly less than RAG_CHUNK_SIZE"
-            )
-        return self
+    FILE_SEARCH_STORE_DISPLAY_NAME: str = "vesta-knowledge-base"
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -1,32 +1,28 @@
 import asyncio
-import gc
-import hashlib
 import io
 import logging
 import os
 import re
 import tempfile
+import time
+from datetime import datetime, timezone
 from typing import Any
 
-import chromadb
 import google.auth
 from google.auth.transport.requests import Request
 from google.oauth2 import service_account
 from google import genai
+from google.genai import types
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
-import pymupdf4llm
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-_CHROMA_COLLECTION_NAME = "vesta_knowledge"
-_EMBEDDING_MODEL = "gemini-embedding-001"
-
 
 class KnowledgeService:
-    """Service for managing the local RAG knowledge base using direct API calls."""
+    """Service for managing the RAG knowledge base using Gemini File Search API."""
 
     def _build_drive_service(self) -> Any:
         """Build Google Drive API service using ADC or service account key."""
@@ -46,7 +42,7 @@ class KnowledgeService:
         return build("drive", "v3", credentials=creds)
 
     def _list_drive_files(self, service: Any) -> list[dict[str, Any]]:
-        """List all files in the configured Drive folder, handling API pagination."""
+        """List all files in the configured Drive folder."""
         query = f"'{settings.GOOGLE_DRIVE_FOLDER_ID}' in parents and trashed = false"
         files = []
         page_token = None
@@ -55,7 +51,7 @@ class KnowledgeService:
                 service.files()
                 .list(
                     q=query,
-                    fields="nextPageToken, files(id, name, mimeType)",
+                    fields="nextPageToken, files(id, name, mimeType, modifiedTime)",
                     pageToken=page_token,
                 )
                 .execute()
@@ -73,13 +69,7 @@ class KnowledgeService:
         try:
             # If it's a Google Doc, export it as PDF
             if mime_type.startswith("application/vnd.google-apps."):
-                if "document" in mime_type:
-                    export_mime = "application/pdf"
-                    file_name = file_name + ".pdf"
-                elif "spreadsheet" in mime_type:
-                    export_mime = "application/pdf"
-                    file_name = file_name + ".pdf"
-                elif "presentation" in mime_type:
+                if "document" in mime_type or "spreadsheet" in mime_type or "presentation" in mime_type:
                     export_mime = "application/pdf"
                     file_name = file_name + ".pdf"
                 else:
@@ -87,7 +77,6 @@ class KnowledgeService:
                         f"Unsupported Google Workspace mime type: {mime_type}"
                     )
                     return None
-
                 request = service.files().export_media(
                     fileId=file_id, mimeType=export_mime
                 )
@@ -109,163 +98,39 @@ class KnowledgeService:
             )
             return None
 
-    def _parse_file(self, file_name: str, file_bytes: bytes) -> str:
-        """Parse file content to Markdown string.
-        Uses pymupdf4llm for PDFs, and plain text decoding for txt/md.
-        """
+    def _parse_time(self, time_str: str) -> datetime:
+        """Parse ISO 8601 time string to UTC datetime."""
+        if not time_str:
+            return datetime.min.replace(tzinfo=timezone.utc)
+        time_str = time_str.replace("Z", "+00:00")
         try:
-            if file_name.lower().endswith(".pdf"):
-                with tempfile.NamedTemporaryFile(
-                    suffix=".pdf", delete=False
-                ) as temp_pdf:
-                    temp_pdf.write(file_bytes)
-                    temp_pdf_path = temp_pdf.name
-                try:
-                    md_text = pymupdf4llm.to_markdown(temp_pdf_path)
-                    return md_text or ""
-                finally:
-                    try:
-                        os.unlink(temp_pdf_path)
-                    except Exception:
-                        pass
-            else:
-                return file_bytes.decode("utf-8", errors="replace")
-        except Exception as e:
-            logger.error(f"Error parsing file {file_name}: {e}", exc_info=True)
-            return ""
+            return datetime.fromisoformat(time_str)
+        except ValueError:
+            return datetime.min.replace(tzinfo=timezone.utc)
 
-    def _chunk_markdown(
-        self, text: str, file_id: str, file_name: str
-    ) -> list[dict[str, Any]]:
-        """Split markdown text by headers.
-        If a section is larger than RAG_CHUNK_SIZE, sub-split it with overlap.
-        """
-        # Split by headers (e.g., #, ##, ###)
-        header_pattern = r"(^#+ .+)"
-        parts = re.split(header_pattern, text, flags=re.MULTILINE)
-
-        raw_sections = []
-        if parts:
-            first_part = parts[0].strip()
-            if first_part:
-                raw_sections.append(("Intro", first_part))
-
-            for i in range(1, len(parts), 2):
-                header = parts[i].strip()
-                content = parts[i + 1].strip() if i + 1 < len(parts) else ""
-                raw_sections.append((header, content))
-
-        chunks = []
-        chunk_idx = 0
-        chunk_size = settings.RAG_CHUNK_SIZE
-        chunk_overlap = settings.RAG_CHUNK_OVERLAP
-
-        for header, content in raw_sections:
-            combined_text = f"{header}\n\n{content}".strip()
-            if len(combined_text) <= chunk_size:
-                chunk_id = hashlib.sha256(f"{file_id}_{chunk_idx}".encode()).hexdigest()
-                chunks.append(
-                    {
-                        "id": chunk_id,
-                        "text": combined_text,
-                        "metadata": {
-                            "file_id": file_id,
-                            "file_name": file_name,
-                            "header": header,
-                        },
-                    }
-                )
-                chunk_idx += 1
-            else:
-                # Sub-split the content with overlap, accounting for header prefix length
-                start = 0
-                while start < len(content):
-                    prefix = f"{header} (cont.)\n\n"
-                    # If prefix is too long, truncate it to guarantee capacity
-                    if len(prefix) > chunk_size // 2:
-                        truncated_header = header[: chunk_size // 2 - 15] + "..."
-                        prefix = f"{truncated_header} (cont.)\n\n"
-
-                    content_capacity = chunk_size - len(prefix)
-                    step = content_capacity - chunk_overlap
-
-                    # Ensure loop moves forward
-                    if step <= 0:
-                        step = max(1, content_capacity // 2)
-
-                    end = start + content_capacity
-                    sub_content = content[start:end]
-                    sub_text = f"{prefix}{sub_content}".strip()
-
-                    chunk_id = hashlib.sha256(
-                        f"{file_id}_{chunk_idx}".encode()
-                    ).hexdigest()
-                    chunks.append(
-                        {
-                            "id": chunk_id,
-                            "text": sub_text,
-                            "metadata": {
-                                "file_id": file_id,
-                                "file_name": file_name,
-                                "header": header,
-                            },
-                        }
-                    )
-                    chunk_idx += 1
-
-                    start += step
-                    if end >= len(content):
-                        break
-
-        return chunks
-
-    def _embed_texts(self, texts: list[str]) -> list[list[float]]:
-        """Embed a list of texts using Gemini embedding model."""
-        client = genai.Client(api_key=settings.GOOGLE_API_KEY)
-        embeddings = []
-        for text in texts:
-            response = client.models.embed_content(
-                model=_EMBEDDING_MODEL,
-                contents=text,
-            )
-            embeddings.append(response.embeddings[0].values)
-        return embeddings
-
-    async def _aembed_query(self, text: str) -> list[float]:
-        """Async embed a single query text."""
-        client = genai.Client(api_key=settings.GOOGLE_API_KEY)
-        response = await client.aio.models.embed_content(
-            model=_EMBEDDING_MODEL,
-            contents=text,
+    def _get_or_create_store(self, client: genai.Client) -> Any:
+        """Get the File Search Store by name, or create it if not found."""
+        store_display_name = getattr(settings, "FILE_SEARCH_STORE_DISPLAY_NAME", "vesta-knowledge-base")
+        for store in client.file_search_stores.list():
+            if store.display_name == store_display_name:
+                return store
+        
+        logger.info(f"Creating new File Search Store: {store_display_name}")
+        return client.file_search_stores.create(
+            config={"display_name": store_display_name}
         )
-        return response.embeddings[0].values
-
-    def _get_configured_collection(self, chroma_client: Any) -> Any:
-        """Get or create collection with cosine similarity space configuration."""
-        collection = chroma_client.get_or_create_collection(
-            _CHROMA_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
-        )
-        # Migrate existing collection if space config is not cosine
-        metadata = collection.metadata or {}
-        if metadata.get("hnsw:space") != "cosine":
-            logger.warning(
-                "ChromaDB collection distance metric mismatch. Recreating with cosine metric."
-            )
-            try:
-                chroma_client.delete_collection(_CHROMA_COLLECTION_NAME)
-            except ValueError:
-                pass
-            collection = chroma_client.get_or_create_collection(
-                _CHROMA_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
-            )
-        return collection
 
     def sync_with_drive(self) -> None:
-        """Sync files from Drive, chunk, embed, and store in ChromaDB incrementally.
-        Maintains a very low memory footprint suitable for restricted environments.
+        """
+        Incrementally sync files from Drive to Gemini File Search Store.
+        This is typically called by a background cron job.
         """
         if not settings.GOOGLE_DRIVE_FOLDER_ID:
-            raise ValueError("GOOGLE_DRIVE_FOLDER_ID is not set.")
+            logger.error("GOOGLE_DRIVE_FOLDER_ID is not set.")
+            return
+        if not settings.GOOGLE_API_KEY:
+            logger.error("GOOGLE_API_KEY is not set.")
+            return
 
         logger.info(
             "Starting Drive sync",
@@ -277,224 +142,156 @@ class KnowledgeService:
             },
         )
 
-        service = self._build_drive_service()
-        all_files = self._list_drive_files(service)
-        chroma_client = chromadb.PersistentClient(path=settings.CHROMA_DB_PATH)
+        try:
+            drive_service = self._build_drive_service()
+            genai_client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 
-        # Clear collection if the Drive inventory is empty
-        drive_file_ids = {
-            f["id"]
-            for f in all_files
-            if f["mimeType"] != "application/vnd.google-apps.folder"
-        }
-        if not drive_file_ids:
-            logger.warning(
-                "No documents found in Drive folder – clearing index.",
-                extra={
-                    "json_fields": {
-                        "event": "knowledge_sync_empty",
-                        "folder_id": settings.GOOGLE_DRIVE_FOLDER_ID,
-                    }
-                },
-            )
-            try:
-                chroma_client.delete_collection(_CHROMA_COLLECTION_NAME)
-            except ValueError:
-                pass
-            self._get_configured_collection(chroma_client)
-            return
+            store = self._get_or_create_store(genai_client)
 
-        collection = self._get_configured_collection(chroma_client)
-        downloaded_count = 0
-        chunks_count = 0
+            # Get Drive files
+            drive_files = self._list_drive_files(drive_service)
+            drive_files_dict = {
+                f["id"]: f for f in drive_files
+                if f["mimeType"] != "application/vnd.google-apps.folder"
+            }
 
-        # Process each file one by one to keep memory footprint minimal
-        for file in all_files:
-            file_id = file["id"]
-            file_name = file["name"]
-            mime_type = file["mimeType"]
-
-            # Skip folders
-            if mime_type == "application/vnd.google-apps.folder":
-                continue
-
-            try:
-                # 1. Download file bytes and get effective file name (e.g. appended with .pdf for Workspace docs)
-                download_res = self._download_single_file(
-                    service, file_id, file_name, mime_type
-                )
-                if not download_res:
+            # Get Gemini files
+            gemini_files = list(genai_client.files.list())
+            
+            # Match Gemini files to Drive files via display_name format "filename [drive_id]"
+            pattern = re.compile(r"^(.*) \[(.*)\]$")
+            gemini_files_by_drive_id = {}
+            for g_file in gemini_files:
+                if not g_file.display_name:
                     continue
-                file_bytes, effective_file_name = download_res
-                del download_res
+                match = pattern.match(g_file.display_name)
+                if match:
+                    drive_id = match.group(2)
+                    gemini_files_by_drive_id[drive_id] = g_file
 
-                # 2. Parse file
-                markdown_content = self._parse_file(effective_file_name, file_bytes)
-                # Free file bytes immediately
-                del file_bytes
-                gc.collect()
+            # 1. Delete files from Gemini that are no longer on Drive
+            for drive_id, g_file in gemini_files_by_drive_id.items():
+                if drive_id not in drive_files_dict:
+                    logger.info(f"Deleting removed file from Gemini: {g_file.display_name}")
+                    genai_client.files.delete(name=g_file.name)
 
-                if not markdown_content.strip():
-                    continue
+            # 2. Upload new or modified files
+            uploaded_count = 0
+            for file_id, d_file in drive_files_dict.items():
+                file_name = d_file["name"]
+                mime_type = d_file["mimeType"]
+                d_mod_time = self._parse_time(d_file.get("modifiedTime", ""))
+                
+                g_file = gemini_files_by_drive_id.get(file_id)
+                needs_upload = False
 
-                # 3. Chunk markdown content
-                chunks = self._chunk_markdown(
-                    markdown_content, file_id, effective_file_name
-                )
-                del markdown_content
-                gc.collect()
+                if not g_file:
+                    needs_upload = True
+                else:
+                    g_update_time = self._parse_time(getattr(g_file, 'update_time', ""))
+                    # Add a small buffer since Gemini update time might differ slightly
+                    if d_mod_time > g_update_time:
+                        logger.info(f"File modified on Drive, updating: {file_name}")
+                        genai_client.files.delete(name=g_file.name)
+                        needs_upload = True
 
-                if not chunks:
-                    continue
-
-                # 4. Embed chunks
-                chunk_texts = [c["text"] for c in chunks]
-                chunk_embeddings = self._embed_texts(chunk_texts)
-
-                # 5. Track existing chunk IDs for the file we are updating
-                existing_chunks = collection.get(where={"file_id": file_id})
-                old_ids_to_delete = (
-                    existing_chunks["ids"]
-                    if (existing_chunks and existing_chunks["ids"])
-                    else []
-                )
-
-                # 6. Upsert new chunks
-                chunk_ids = [c["id"] for c in chunks]
-                chunk_metadatas = [c["metadata"] for c in chunks]
-                collection.upsert(
-                    ids=chunk_ids,
-                    embeddings=chunk_embeddings,
-                    metadatas=chunk_metadatas,
-                    documents=chunk_texts,
-                )
-
-                # 7. Delete obsolete/shrunk chunks
-                new_chunk_ids_set = set(chunk_ids)
-                obsolete_ids = [
-                    oid for oid in old_ids_to_delete if oid not in new_chunk_ids_set
-                ]
-                if obsolete_ids:
-                    logger.info(
-                        f"Removing obsolete chunks for file {effective_file_name}: {obsolete_ids}"
+                if needs_upload:
+                    logger.info(f"Downloading {file_name} from Drive...")
+                    download_res = self._download_single_file(
+                        drive_service, file_id, file_name, mime_type
                     )
-                    collection.delete(ids=obsolete_ids)
+                    if not download_res:
+                        continue
+                    file_bytes, effective_file_name = download_res
+                    
+                    # Create temp file and upload
+                    ext = os.path.splitext(effective_file_name)[1]
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+                        tmp.write(file_bytes)
+                        tmp_path = tmp.name
+                    
+                    try:
+                        logger.info(f"Uploading {effective_file_name} to File Search Store...")
+                        display_name = f"{effective_file_name} [{file_id}]"
+                        
+                        # Upload directly to the store
+                        operation = genai_client.file_search_stores.upload_to_file_search_store(
+                            file=tmp_path,
+                            file_search_store_name=store.name,
+                            config={"display_name": display_name}
+                        )
+                        
+                        # Poll until complete
+                        while not getattr(operation, 'done', True):
+                            time.sleep(3)
+                            try:
+                                operation = genai_client.operations.get(operation.name if hasattr(operation, 'name') else operation)
+                            except Exception:
+                                break
+                        
+                        uploaded_count += 1
+                        logger.info(f"Successfully processed and indexed {effective_file_name}")
+                    except Exception as e:
+                        logger.error(f"Failed to upload {effective_file_name}: {e}", exc_info=True)
+                    finally:
+                        try:
+                            os.unlink(tmp_path)
+                        except OSError:
+                            pass
 
-                downloaded_count += 1
-                chunks_count += len(chunks)
+            logger.info(
+                f"Drive sync complete. Uploaded/updated {uploaded_count} files.",
+                extra={"json_fields": {"event": "knowledge_sync_done"}},
+            )
 
-                # Clear local references and force GC after processing this file
-                del (
-                    chunks,
-                    chunk_texts,
-                    chunk_embeddings,
-                    chunk_ids,
-                    chunk_metadatas,
-                    old_ids_to_delete,
-                )
-                gc.collect()
-
-                logger.info(f"Successfully processed and indexed {effective_file_name}")
-
-            except Exception as e:
-                logger.error(
-                    f"Failed to process file {file_name} ({file_id}): {e}",
-                    exc_info=True,
-                )
-
-        # Cleanup fully removed files
-        existing = collection.get(include=["metadatas"])
-        if existing and existing["ids"]:
-            to_delete = []
-            for idx, meta in enumerate(existing["metadatas"]):
-                if meta and "file_id" in meta:
-                    file_id = meta["file_id"]
-                    if file_id not in drive_file_ids:
-                        to_delete.append(existing["ids"][idx])
-            if to_delete:
-                logger.info(f"Removing deleted documents from index: {to_delete}")
-                collection.delete(ids=to_delete)
-
-        gc.collect()
-
-        logger.info(
-            f"Drive sync complete – ChromaDB updated. Processed {downloaded_count} files, "
-            f"generated {chunks_count} chunks.",
-            extra={"json_fields": {"event": "knowledge_sync_done"}},
-        )
+        except Exception as e:
+            logger.error(
+                "Drive sync failed",
+                extra={"json_fields": {"event": "knowledge_sync_error", "error": str(e)}},
+                exc_info=True
+            )
 
     async def query(self, text: str) -> str:
-        """Query ChromaDB and synthesize an answer using Gemini."""
+        """Query the Gemini File Search API directly for an answer."""
         if not settings.GOOGLE_API_KEY:
             raise ValueError("GOOGLE_API_KEY is not set.")
         if not settings.GOOGLE_MODEL_NAME:
             raise ValueError("GOOGLE_MODEL_NAME is not set.")
 
         try:
-            query_embedding = await self._aembed_query(text)
-
-            def _run_chroma_query() -> dict[str, Any]:
-                chroma_client = chromadb.PersistentClient(path=settings.CHROMA_DB_PATH)
-                collection = self._get_configured_collection(chroma_client)
-                return collection.query(
-                    query_embeddings=[query_embedding],
-                    n_results=settings.RAG_SIMILARITY_TOP_K,
-                    include=["documents", "metadatas", "distances"],
-                )
-
-            results = await asyncio.to_thread(_run_chroma_query)
-
-            relevant_docs = []
-            distances = results.get("distances", [[]])[0]
-            documents = results.get("documents", [[]])[0]
-
-            passed_cutoff_count = 0
-            for idx, doc in enumerate(documents):
-                distance = distances[idx]
-                similarity = 1.0 - distance
-                if similarity >= settings.RAG_SIMILARITY_CUTOFF:
-                    relevant_docs.append(doc)
-                    passed_cutoff_count += 1
+            client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+            store = self._get_or_create_store(client)
 
             logger.debug(
-                "RAG retrieval",
+                "RAG retrieval via Gemini File Search",
                 extra={
                     "json_fields": {
                         "event": "rag_retrieval",
                         "query": text,
-                        "top_k": settings.RAG_SIMILARITY_TOP_K,
-                        "cutoff": settings.RAG_SIMILARITY_CUTOFF,
-                        "retrieved_count": len(documents),
-                        "passed_cutoff": passed_cutoff_count,
+                        "store_name": store.name,
                     }
                 },
             )
 
-            if not relevant_docs:
-                return (
-                    "I couldn't find any relevant information in your "
-                    "documents to answer this question."
-                )
-
-            context = "\n---\n".join(relevant_docs)
             prompt = (
                 "You are Vesta, a helpful assistant. Answer the user's question "
-                "using only the provided document snippets from their personal knowledge base.\n\n"
+                "using the attached knowledge base files. \n\n"
                 "Guidelines:\n"
-                "1. Base your answer strictly on the provided snippets.\n"
-                "2. If the snippets do not contain enough information to answer the question, "
-                "state that clearly.\n"
+                "1. Base your answer strictly on the provided documents.\n"
+                "2. If the documents do not contain enough information, state that clearly.\n"
                 "3. Be concise and precise.\n\n"
-                f"Document Snippets:\n{context}\n\n"
                 f"User Question: {text}\n"
             )
 
-            client = genai.Client(api_key=settings.GOOGLE_API_KEY)
             response = await client.aio.models.generate_content(
                 model=settings.GOOGLE_MODEL_NAME,
                 contents=prompt,
+                config=types.GenerateContentConfig(
+                    tools=[{"file_search": {"file_search_store_names": [store.name]}}]
+                )
             )
-            return response.text or ""
+
+            return response.text or "I couldn't find any relevant information."
 
         except Exception as e:
             logger.error(
@@ -505,8 +302,9 @@ class KnowledgeService:
                         "error": str(e),
                     }
                 },
+                exc_info=True
             )
-            raise
+            return "I couldn't search the knowledge base right now."
 
 
 knowledge_service_instance = KnowledgeService()
