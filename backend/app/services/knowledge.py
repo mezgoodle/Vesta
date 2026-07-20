@@ -326,6 +326,7 @@ class KnowledgeService:
                 if not download_res:
                     continue
                 file_bytes, effective_file_name = download_res
+                del download_res
 
                 # 2. Parse file
                 markdown_content = self._parse_file(effective_file_name, file_bytes)
