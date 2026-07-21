@@ -13,7 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.crud.crud_user import user as crud_user
-from app.schemas.calendar import CalendarEvent, CalendarEventCreate
+from app.schemas.calendar import (
+    CalendarEvent,
+    CalendarEventCreate,
+    CalendarEventUpdate,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -244,6 +248,7 @@ class GoogleCalendarService:
                 end_time = self._parse_datetime(end.get("dateTime"))
                 is_all_day = False
             calendar_event = CalendarEvent(
+                id=event.get("id"),
                 summary=summary,
                 start_time=start_time,
                 end_time=end_time,
@@ -359,6 +364,7 @@ class GoogleCalendarService:
             )
 
             return {
+                "id": created_event.get("id"),
                 "summary": created_event.get("summary"),
                 "start_time": self._parse_datetime(
                     created_event.get("start", {}).get("dateTime")
@@ -386,6 +392,138 @@ class GoogleCalendarService:
             ) from e
         except Exception as e:
             raise Exception(f"Failed to create calendar event: {str(e)}") from e
+
+    async def update_event(
+        self,
+        user_id: int,
+        event_id: str,
+        event_data: CalendarEventUpdate,
+        db: AsyncSession,
+    ) -> dict[str, Any]:
+        """
+        Update an existing calendar event (patch).
+
+        Args:
+            user_id: The ID of the user
+            event_id: Google Calendar event ID
+            event_data: Fields to update
+            db: Database session
+
+        Returns:
+            Dictionary containing updated event details including htmlLink
+        """
+        service = await self._get_calendar_service(user_id, db)
+        tz = pytz.timezone(self.timezone)
+
+        event_body: dict[str, Any] = {}
+        if event_data.summary is not None:
+            event_body["summary"] = event_data.summary
+        if event_data.description is not None:
+            event_body["description"] = event_data.description
+        if event_data.location is not None:
+            event_body["location"] = event_data.location
+
+        if event_data.start_time is not None:
+            st = event_data.start_time
+            if st.tzinfo is None:
+                st = tz.localize(st)
+            else:
+                st = st.astimezone(tz)
+            event_body["start"] = {
+                "dateTime": st.isoformat(),
+                "timeZone": self.timezone,
+            }
+
+        if event_data.end_time is not None:
+            et = event_data.end_time
+            if et.tzinfo is None:
+                et = tz.localize(et)
+            else:
+                et = et.astimezone(tz)
+            event_body["end"] = {
+                "dateTime": et.isoformat(),
+                "timeZone": self.timezone,
+            }
+
+        if not event_body:
+            raise ValueError("No fields provided for event update")
+
+        try:
+            updated_event = await asyncio.to_thread(
+                lambda: (
+                    service.events()
+                    .patch(calendarId="primary", eventId=event_id, body=event_body)
+                    .execute()
+                )
+            )
+
+            return {
+                "id": updated_event.get("id"),
+                "summary": updated_event.get("summary"),
+                "start_time": self._parse_datetime(
+                    updated_event.get("start", {}).get("dateTime")
+                ),
+                "end_time": self._parse_datetime(
+                    updated_event.get("end", {}).get("dateTime")
+                ),
+                "html_link": updated_event.get("htmlLink"),
+                "description": updated_event.get("description"),
+                "location": updated_event.get("location"),
+            }
+        except RefreshError as e:
+            await self._handle_auth_error(user_id, db, e)
+            raise RefreshError(
+                f"Failed to refresh access token for user {user_id}."
+            ) from e
+        except HttpError as e:
+            await self._handle_auth_error(user_id, db, e)
+            raise HttpError(
+                resp=e.resp,
+                content=e.content,
+                uri=e.uri,
+            ) from e
+        except Exception as e:
+            raise Exception(f"Failed to update calendar event: {str(e)}") from e
+
+    async def delete_event(
+        self, user_id: int, event_id: str, db: AsyncSession
+    ) -> bool:
+        """
+        Delete a calendar event by ID.
+
+        Args:
+            user_id: The ID of the user
+            event_id: Google Calendar event ID
+            db: Database session
+
+        Returns:
+            True if deletion was successful
+        """
+        service = await self._get_calendar_service(user_id, db)
+
+        try:
+            await asyncio.to_thread(
+                lambda: (
+                    service.events()
+                    .delete(calendarId="primary", eventId=event_id)
+                    .execute()
+                )
+            )
+            return True
+        except RefreshError as e:
+            await self._handle_auth_error(user_id, db, e)
+            raise RefreshError(
+                f"Failed to refresh access token for user {user_id}."
+            ) from e
+        except HttpError as e:
+            await self._handle_auth_error(user_id, db, e)
+            raise HttpError(
+                resp=e.resp,
+                content=e.content,
+                uri=e.uri,
+            ) from e
+        except Exception as e:
+            raise Exception(f"Failed to delete calendar event: {str(e)}") from e
 
     async def _handle_auth_error(
         self, user_id: int, db: AsyncSession, exception: Exception

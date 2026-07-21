@@ -163,6 +163,68 @@ class TestScheduleEventTool:
         assert "Invalid datetime format" in result
 
 
+class TestUpdateCalendarEventTool:
+    @pytest.mark.asyncio
+    async def test_success(self, tools):
+        tool_groups, db = tools
+        update_tool = tool_groups["calendar"][2]  # update_calendar_event_tool
+
+        with patch("app.services.gemini_tools.GoogleCalendarService") as MockCal:
+            mock_cal = MockCal.return_value
+            mock_cal.update_event = AsyncMock()
+            mock_cal.update_event.return_value = {"summary": "Updated Standup"}
+
+            result = await update_tool(
+                event_id="event123",
+                summary="Updated Standup",
+            )
+
+            assert "successfully updated" in result
+            assert "event123" in result
+            mock_cal.update_event.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_error(self, tools):
+        tool_groups, _ = tools
+        update_tool = tool_groups["calendar"][2]
+
+        with patch("app.services.gemini_tools.GoogleCalendarService") as MockCal:
+            mock_cal = MockCal.return_value
+            mock_cal.update_event = AsyncMock(side_effect=Exception("Not found"))
+
+            result = await update_tool(event_id="invalid_id", summary="New")
+            assert "Unable to update calendar event" in result
+
+
+class TestDeleteCalendarEventTool:
+    @pytest.mark.asyncio
+    async def test_success(self, tools):
+        tool_groups, db = tools
+        delete_tool = tool_groups["calendar"][3]  # delete_calendar_event_tool
+
+        with patch("app.services.gemini_tools.GoogleCalendarService") as MockCal:
+            mock_cal = MockCal.return_value
+            mock_cal.delete_event = AsyncMock(return_value=True)
+
+            result = await delete_tool(event_id="event123")
+            assert "successfully deleted" in result
+            mock_cal.delete_event.assert_called_once_with(
+                user_id=42, event_id="event123", db=db
+            )
+
+    @pytest.mark.asyncio
+    async def test_error(self, tools):
+        tool_groups, _ = tools
+        delete_tool = tool_groups["calendar"][3]
+
+        with patch("app.services.gemini_tools.GoogleCalendarService") as MockCal:
+            mock_cal = MockCal.return_value
+            mock_cal.delete_event = AsyncMock(side_effect=Exception("Delete failed"))
+
+            result = await delete_tool(event_id="invalid_id")
+            assert "Unable to delete calendar event" in result
+
+
 # ------------------------------------------------------------------ #
 # Knowledge base tool                                                 #
 # ------------------------------------------------------------------ #
