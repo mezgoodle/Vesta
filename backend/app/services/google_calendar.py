@@ -260,6 +260,11 @@ class GoogleCalendarService:
 
         return formatted_events
 
+    def _to_service_tz(self, dt: datetime) -> datetime:
+        """Ensure a datetime object is timezone-aware in the service's configured timezone."""
+        tz = pytz.timezone(self.timezone)
+        return tz.localize(dt) if dt.tzinfo is None else dt.astimezone(tz)
+
     def _parse_datetime(self, dt_string: str | None) -> datetime | None:
         """
         Parse ISO 8601 datetime string.
@@ -317,24 +322,8 @@ class GoogleCalendarService:
         if event_data.start_time is None or event_data.end_time is None:
             raise ValueError("start_time and end_time are required for creating events")
 
-        # Prepare timezone-aware datetimes
-        tz = pytz.timezone(self.timezone)
-
-        # Ensure start_time is timezone-aware
-        if event_data.start_time.tzinfo is None:
-            # If naive, assume it's in Europe/Kiev timezone
-            start_time = tz.localize(event_data.start_time)
-        else:
-            # If already timezone-aware, convert to Europe/Kiev
-            start_time = event_data.start_time.astimezone(tz)
-
-        # Ensure end_time is timezone-aware
-        if event_data.end_time.tzinfo is None:
-            # If naive, assume it's in Europe/Kiev timezone
-            end_time = tz.localize(event_data.end_time)
-        else:
-            # If already timezone-aware, convert to Europe/Kiev
-            end_time = event_data.end_time.astimezone(tz)
+        start_time = self._to_service_tz(event_data.start_time)
+        end_time = self._to_service_tz(event_data.end_time)
 
         # Construct event body for Google Calendar API
         event_body = {
@@ -423,27 +412,32 @@ class GoogleCalendarService:
         if event_data.location is not None:
             event_body["location"] = event_data.location
 
-        if event_data.start_time is not None:
-            st = event_data.start_time
-            if st.tzinfo is None:
-                st = tz.localize(st)
-            else:
-                st = st.astimezone(tz)
+        if event_data.start_time is not None and event_data.end_time is not None:
+            st = self._to_service_tz(event_data.start_time)
+            et = self._to_service_tz(event_data.end_time)
+            if et <= st:
+                raise ValueError("end_time must be after start_time")
             event_body["start"] = {
                 "dateTime": st.isoformat(),
                 "timeZone": self.timezone,
             }
-
-        if event_data.end_time is not None:
-            et = event_data.end_time
-            if et.tzinfo is None:
-                et = tz.localize(et)
-            else:
-                et = et.astimezone(tz)
             event_body["end"] = {
                 "dateTime": et.isoformat(),
                 "timeZone": self.timezone,
             }
+        else:
+            if event_data.start_time is not None:
+                st = self._to_service_tz(event_data.start_time)
+                event_body["start"] = {
+                    "dateTime": st.isoformat(),
+                    "timeZone": self.timezone,
+                }
+            if event_data.end_time is not None:
+                et = self._to_service_tz(event_data.end_time)
+                event_body["end"] = {
+                    "dateTime": et.isoformat(),
+                    "timeZone": self.timezone,
+                }
 
         if not event_body:
             raise ValueError("No fields provided for event update")

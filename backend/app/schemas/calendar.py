@@ -3,16 +3,20 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
-class CalendarEvent(BaseModel):
-    id: str | None = Field(None, description="Google Calendar event ID")
-    summary: str = Field(..., description="Event title")
+class _CalendarEventBase(BaseModel):
+    summary: str | None = Field(None, description="Event title")
     start_time: datetime | None = Field(
         None, description="Start datetime for timed events"
     )
     end_time: datetime | None = Field(None, description="End datetime for timed events")
-    is_all_day: bool = Field(False, description="Whether it's an all-day event")
     description: str | None = Field(None, description="Event description")
     location: str | None = Field(None, description="Event location")
+
+
+class CalendarEvent(_CalendarEventBase):
+    id: str | None = Field(None, description="Google Calendar event ID")
+    summary: str = Field(..., description="Event title")
+    is_all_day: bool = Field(False, description="Whether it's an all-day event")
 
 
 class CalendarEventList(BaseModel):
@@ -25,27 +29,17 @@ class EventsRangeRequest(BaseModel):
     end: datetime = Field(..., description="End datetime (ISO 8601)")
 
 
-class CalendarEventCreate(BaseModel):
+class CalendarEventCreate(_CalendarEventBase):
     """Schema for creating a new calendar event."""
 
     summary: str = Field(..., description="Event title")
-    start_time: datetime | None = Field(
-        None, description="Start datetime for timed events"
-    )
-    end_time: datetime | None = Field(None, description="End datetime for timed events")
     is_all_day: bool = Field(False, description="Whether it's an all-day event")
-    description: str | None = Field(None, description="Event description")
-    location: str | None = Field(None, description="Event location")
 
 
-class CalendarEventUpdate(BaseModel):
+class CalendarEventUpdate(_CalendarEventBase):
     """Schema for updating an existing calendar event (all fields optional)."""
 
-    summary: str | None = Field(None, description="Updated event title")
-    start_time: datetime | None = Field(None, description="Updated start datetime")
-    end_time: datetime | None = Field(None, description="Updated end datetime")
-    description: str | None = Field(None, description="Updated event description")
-    location: str | None = Field(None, description="Updated event location")
+    pass
 
 
 class CalendarEventResponse(CalendarEvent):

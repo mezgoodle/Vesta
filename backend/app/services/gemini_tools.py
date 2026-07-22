@@ -106,8 +106,9 @@ def create_tools(
 
         Returns:
             A formatted string listing upcoming calendar events with their titles,
-            start times, end times, and locations (if available). Returns a message
-            if no events are found.
+            event IDs [ID: ...], start times, end times, and locations (if available).
+            Use the returned event ID when calling update_calendar_event_tool or
+            delete_calendar_event_tool. Returns a message if no events are found.
         """
         try:
             days = max(1, min(days, 30))

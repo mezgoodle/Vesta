@@ -55,8 +55,8 @@ def create_knowledge_agent(
             "1. Personal notes, recipes, reports, meeting notes, research papers, or any topic in their document library. "
             "2. Instructions, manuals, or configuration/setup guides for appliances and equipment (e.g., boiler, washing machine, heating system, printer). "
             "3. Personal documents, files, rules, agreements, or assets stored on Google Drive. "
-            "4. Troubleshooting queries containing terms like 'how to configure', 'how to set up', 'why is it not working', 'error', 'find in documents', or 'what is written in the instructions'. "
-            "Do not attempt to answer these queries directly; delegate them to search the knowledge base."
+            "4. Troubleshooting or document queries containing phrases like 'find in documents', 'search my files', or 'what is written in the manual' for personal files or saved guides. "
+            "Do NOT delegate generic technical questions or uncontextualized errors unless explicit document, manual, or saved file context is present."
         ),
         instruction=instruction,
         tools=tools,
