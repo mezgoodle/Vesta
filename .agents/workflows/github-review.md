@@ -21,11 +21,13 @@ description: Review github pull request
   - Apply the suggested changes (create a new commit or file update) if you think it's useful.
 
 
-### Step 4: Verification & Report
+### Step 4: Resolving Review Threads & Verification
 - Run lint and test scripts to ensure the changes didn't break anything.
 - If checks pass:
-  - Submit a final summary comment to the user:
-    - List of applied changes.
-    - List of ignored comments (and why).
+  - Resolve the corresponding review threads on GitHub via `gh api graphql`:
+    ```bash
+    gh api graphql -F threadId="<THREAD_NODE_ID>" -f query='mutation($threadId: ID!) { resolveReviewThread(input: {threadId: $threadId}) { thread { id isResolved } } }'
+    ```
+  - Provide a concise summary to the user of resolved review threads and committed changes.
 - If checks fail:
   - Roll back (if possible) or alert the user with the error log.
