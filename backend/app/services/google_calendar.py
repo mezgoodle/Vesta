@@ -402,7 +402,6 @@ class GoogleCalendarService:
             Dictionary containing updated event details including htmlLink
         """
         service = await self._get_calendar_service(user_id, db)
-        tz = pytz.timezone(self.timezone)
 
         event_body: dict[str, Any] = {}
         if event_data.summary is not None:
@@ -479,9 +478,7 @@ class GoogleCalendarService:
         except Exception as e:
             raise Exception(f"Failed to update calendar event: {str(e)}") from e
 
-    async def delete_event(
-        self, user_id: int, event_id: str, db: AsyncSession
-    ) -> bool:
+    async def delete_event(self, user_id: int, event_id: str, db: AsyncSession) -> bool:
         """
         Delete a calendar event by ID.
 
