@@ -267,8 +267,10 @@ def create_tools(
                 try:
                     start_time = datetime.datetime.fromisoformat(start_time_iso)
                     if duration_minutes > 0:
-                        end_time = start_time + datetime.timedelta(minutes=duration_minutes)
-                except ValueError as e:
+                        end_time = start_time + datetime.timedelta(
+                            minutes=duration_minutes
+                        )
+                except ValueError:
                     return f"Invalid datetime format: {start_time_iso}. Please use ISO 8601."
 
             event_data = CalendarEventUpdate(
@@ -288,7 +290,9 @@ def create_tools(
             )
             return f"✅ Event '{updated_event.get('summary')}' [ID: {event_id}] successfully updated!"
         except Exception as e:
-            logger.exception("Failed to update calendar event %s for user %s", event_id, user_id)
+            logger.exception(
+                "Failed to update calendar event %s for user %s", event_id, user_id
+            )
             return f"Unable to update calendar event [ID: {event_id}]: {str(e)}"
 
     async def delete_calendar_event_tool(event_id: str) -> str:
@@ -313,7 +317,9 @@ def create_tools(
             )
             return f"✅ Calendar event [ID: {event_id}] successfully deleted!"
         except Exception as e:
-            logger.exception("Failed to delete calendar event %s for user %s", event_id, user_id)
+            logger.exception(
+                "Failed to delete calendar event %s for user %s", event_id, user_id
+            )
             return f"Unable to delete calendar event [ID: {event_id}]: {str(e)}"
 
     # ------------------------------------------------------------------ #
