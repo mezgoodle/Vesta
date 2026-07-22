@@ -1,4 +1,5 @@
 import base64
+
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -92,7 +93,9 @@ async def _process_llm_request(
     await message.answer(llm_response)
 
     session_title = session_title or response.get("session_title")
+    session_id = session_id or response.get("session_id")
     await state.update_data(session_title=session_title)
+    await state.update_data(session_id=session_id)
     await state.set_state(ChatMessage.message)
     return await message.answer(
         "Continue typing to chat, or /chats to switch sessions, /reset to end."

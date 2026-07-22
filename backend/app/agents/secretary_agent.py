@@ -19,10 +19,12 @@ def create_secretary_agent(
         "Your responsibilities:\n"
         "1. Retrieve upcoming calendar events using the get_calendar_events tool.\n"
         "2. Schedule new calendar events using the schedule_event_tool.\n"
-        "3. Search, retrieve, and read the user's email messages using the check_emails tool.\n"
-        "4. Extract key points, identify important dates, amounts, and calls to action (Action Items) in the email messages.\n"
-        "5. Provide concise, structured, and helpful summaries of user emails.\n"
-        "6. For requests about 'today' or 'my day', call get_calendar_events(days=1).\n"
+        "3. Update or reschedule existing events using update_calendar_event_tool (if you don't have the event ID, call get_calendar_events first; if multiple events match, ask the user for clarification before modifying).\n"
+        "4. Cancel or delete calendar events using delete_calendar_event_tool (if you don't have the event ID, call get_calendar_events first; if multiple events match, ask the user for clarification before deleting).\n"
+        "5. Search, retrieve, and read the user's email messages using the check_emails tool.\n"
+        "6. Extract key points, identify important dates, amounts, and calls to action (Action Items) in the email messages.\n"
+        "7. Provide concise, structured, and helpful summaries of user emails.\n"
+        "8. For requests about 'today' or 'my day', call get_calendar_events(days=1).\n"
         "Always respond in a friendly, professional, and concise manner.\n\n"
         f"{settings.TELEGRAM_HTML_GUIDELINES}"
     )
@@ -38,9 +40,9 @@ def create_secretary_agent(
         name="SecretaryAgent",
         model=model,
         description=(
-            "Handles scheduling, calendar management, and searching/reading user emails or inbox. "
+            "Handles scheduling, calendar management (view, create, update, delete events), and searching/reading user emails or inbox. "
             "Delegate to this agent when the user asks about their schedule, wants to see upcoming "
-            "events, create a calendar event, check their email/inbox, or search for messages."
+            "events, create, edit, reschedule, or cancel a calendar event, check their email/inbox, or search for messages."
         ),
         instruction=instruction,
         tools=tools,

@@ -486,3 +486,84 @@ async def test_empty_events_list(
     data = response.json()
     assert data["count"] == 0
     assert len(data["events"]) == 0
+
+
+@pytest.mark.asyncio
+async def test_update_calendar_event_endpoint(
+    client: AsyncClient, db_session: AsyncSession, auth_user: dict
+) -> None:
+    """Test successful PATCH update of a calendar event."""
+    user = auth_user["user"]
+    headers = auth_user["headers"]
+
+    await crud_user.update(
+        db_session, db_obj=user, obj_in={"google_refresh_token": "test_refresh_token"}
+    )
+
+    mock_service = AsyncMock()
+    mock_service.update_event.return_value = {
+        "id": "event123",
+        "summary": "Updated Meeting Title",
+        "start_time": datetime(2026, 1, 26, 10, 0, 0, tzinfo=timezone.utc),
+        "end_time": datetime(2026, 1, 26, 11, 0, 0, tzinfo=timezone.utc),
+        "html_link": "http://cal.link/event123",
+        "description": "New description",
+        "location": None,
+    }
+
+    async def override_calendar_service():
+        return mock_service
+
+    app.dependency_overrides[google_calendar_service] = override_calendar_service
+
+    try:
+        response = await client.patch(
+            f"{settings.API_V1_STR}/calendar/events/event123",
+            json={"summary": "Updated Meeting Title", "description": "New description"},
+            params={"user_id": user.id},
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == "event123"
+        assert data["summary"] == "Updated Meeting Title"
+        assert data["description"] == "New description"
+        mock_service.update_event.assert_called_once()
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_delete_calendar_event_endpoint(
+    client: AsyncClient, db_session: AsyncSession, auth_user: dict
+) -> None:
+    """Test successful DELETE of a calendar event."""
+    user = auth_user["user"]
+    headers = auth_user["headers"]
+
+    await crud_user.update(
+        db_session, db_obj=user, obj_in={"google_refresh_token": "test_refresh_token"}
+    )
+
+    mock_service = AsyncMock()
+    mock_service.delete_event.return_value = True
+
+    async def override_calendar_service():
+        return mock_service
+
+    app.dependency_overrides[google_calendar_service] = override_calendar_service
+
+    try:
+        response = await client.delete(
+            f"{settings.API_V1_STR}/calendar/events/event123",
+            params={"user_id": user.id},
+            headers=headers,
+        )
+
+        assert response.status_code == 204
+        mock_service.delete_event.assert_called_once()
+        assert mock_service.delete_event.call_args.args[0] == user.id
+        assert mock_service.delete_event.call_args.args[1] == "event123"
+    finally:
+        app.dependency_overrides.clear()

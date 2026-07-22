@@ -22,7 +22,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud.crud_facts import user_fact as crud_user_fact
-from app.schemas.calendar import CalendarEventCreate
+from app.schemas.calendar import CalendarEventCreate, CalendarEventUpdate
 from app.schemas.user_facts import FactCreate
 from app.services.gmail_service import GmailService
 from app.services.google_calendar import GoogleCalendarService
@@ -106,8 +106,9 @@ def create_tools(
 
         Returns:
             A formatted string listing upcoming calendar events with their titles,
-            start times, end times, and locations (if available). Returns a message
-            if no events are found.
+            event IDs [ID: ...], start times, end times, and locations (if available).
+            Use the returned event ID when calling update_calendar_event_tool or
+            delete_calendar_event_tool. Returns a message if no events are found.
         """
         try:
             days = max(1, min(days, 30))
@@ -128,7 +129,8 @@ def create_tools(
                 else:
                     start = "All day"
 
-                result += f"{i}. {event.summary} - {start}"
+                event_id_str = f" [ID: {event.id}]" if event.id else ""
+                result += f"{i}. {event.summary}{event_id_str} - {start}"
 
                 if event.location:
                     result += f" at {event.location}"
@@ -232,6 +234,94 @@ def create_tools(
         except Exception:
             logger.exception("Failed to create calendar event for user %s", user_id)
             return "Unable to create calendar event. Please try again later."
+
+    async def update_calendar_event_tool(
+        event_id: str,
+        summary: str = "",
+        start_time_iso: str = "",
+        duration_minutes: int = 0,
+        description: str = "",
+        location: str = "",
+    ) -> str:
+        """
+        Update an existing event in the user's Google Calendar.
+
+        Use this function when the user wants to reschedule, rename, or update details
+        of an existing calendar event. Always obtain the event_id first by calling
+        get_calendar_events.
+
+        Args:
+            event_id: The unique Google Calendar event ID.
+            summary: Optional new title for the event.
+            start_time_iso: Optional new start date and time in ISO 8601 format (YYYY-MM-DDTHH:MM:SS).
+            duration_minutes: Optional duration of event in minutes if start_time_iso is provided.
+            description: Optional new description.
+            location: Optional new location.
+
+        Returns:
+            A success message or an error message.
+        """
+        try:
+            start_time = None
+            end_time = None
+            if start_time_iso:
+                try:
+                    start_time = datetime.datetime.fromisoformat(start_time_iso)
+                    if duration_minutes > 0:
+                        end_time = start_time + datetime.timedelta(
+                            minutes=duration_minutes
+                        )
+                except ValueError:
+                    return f"Invalid datetime format: {start_time_iso}. Please use ISO 8601."
+
+            event_data = CalendarEventUpdate(
+                summary=summary if summary else None,
+                start_time=start_time,
+                end_time=end_time,
+                description=description if description else None,
+                location=location if location else None,
+            )
+
+            calendar_service = GoogleCalendarService()
+            updated_event = await calendar_service.update_event(
+                user_id=user_id,
+                event_id=event_id,
+                event_data=event_data,
+                db=db,
+            )
+            return f"✅ Event '{updated_event.get('summary')}' [ID: {event_id}] successfully updated!"
+        except Exception as e:
+            logger.exception(
+                "Failed to update calendar event %s for user %s", event_id, user_id
+            )
+            return f"Unable to update calendar event [ID: {event_id}]: {str(e)}"
+
+    async def delete_calendar_event_tool(event_id: str) -> str:
+        """
+        Delete an existing event from the user's Google Calendar.
+
+        Use this function when the user wants to cancel, remove, or delete an event
+        from their calendar. Always obtain the event_id first by calling get_calendar_events.
+
+        Args:
+            event_id: The unique Google Calendar event ID to delete.
+
+        Returns:
+            A success message or an error message.
+        """
+        try:
+            calendar_service = GoogleCalendarService()
+            await calendar_service.delete_event(
+                user_id=user_id,
+                event_id=event_id,
+                db=db,
+            )
+            return f"✅ Calendar event [ID: {event_id}] successfully deleted!"
+        except Exception as e:
+            logger.exception(
+                "Failed to delete calendar event %s for user %s", event_id, user_id
+            )
+            return f"Unable to delete calendar event [ID: {event_id}]: {str(e)}"
 
     # ------------------------------------------------------------------ #
     # Email tools                                                        #
@@ -384,7 +474,12 @@ def create_tools(
 
     return {
         "weather": [get_weather_info],
-        "calendar": [get_calendar_events, schedule_event_tool],
+        "calendar": [
+            get_calendar_events,
+            schedule_event_tool,
+            update_calendar_event_tool,
+            delete_calendar_event_tool,
+        ],
         "email": [check_emails],
         "knowledge": [consult_knowledge_base],
         "memory": [remember_user_fact, delete_user_fact],

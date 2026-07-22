@@ -9,6 +9,7 @@ from app.schemas.calendar import (
     CalendarEventCreate,
     CalendarEventList,
     CalendarEventResponse,
+    CalendarEventUpdate,
 )
 
 router = APIRouter()
@@ -237,4 +238,88 @@ async def create_calendar_event(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Google API error: {str(e)}",
+        ) from e
+
+
+@router.patch("/events/{event_id}", response_model=CalendarEventResponse)
+async def update_calendar_event(
+    event_id: str,
+    event_data: CalendarEventUpdate,
+    db: SessionDep,
+    calendar_service: CalendarServiceDep,
+    user_id: TargetUserId,
+) -> CalendarEventResponse:
+    """
+    Update an existing calendar event for the authenticated user.
+    """
+    try:
+        updated_event = await calendar_service.update_event(
+            user_id, event_id, event_data, db
+        )
+        return CalendarEventResponse(**updated_event)
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if "not authorized" in error_msg or "no refresh token" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=str(e),
+            ) from e
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+    except RefreshError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Google Calendar access expired. Please re-authorize.",
+        ) from e
+    except HttpError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Google Calendar API error: {str(e)}",
+        ) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        ) from e
+
+
+@router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_calendar_event(
+    event_id: str,
+    db: SessionDep,
+    calendar_service: CalendarServiceDep,
+    user_id: TargetUserId,
+) -> None:
+    """
+    Delete a calendar event for the authenticated user.
+    """
+    try:
+        await calendar_service.delete_event(user_id, event_id, db)
+    except ValueError as e:
+        error_msg = str(e).lower()
+        if "not authorized" in error_msg or "no refresh token" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=str(e),
+            ) from e
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+    except RefreshError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Google Calendar access expired. Please re-authorize.",
+        ) from e
+    except HttpError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Google Calendar API error: {str(e)}",
+        ) from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
         ) from e

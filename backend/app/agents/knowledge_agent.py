@@ -50,11 +50,13 @@ def create_knowledge_agent(
         name="KnowledgeAgent",
         model=model,
         description=(
-            "Answers questions using the user's personal knowledge base and "
-            "uploaded documents. Delegate to this agent when the user asks about "
-            "personal notes, uploaded files, recipes, manuals, reports, meeting "
-            "notes, research papers, or any topic that might be in their "
-            "document library."
+            "Answers questions using the user's personal knowledge base and uploaded documents. "
+            "You MUST delegate to this agent if the user asks about: "
+            "1. Personal notes, recipes, reports, meeting notes, research papers, or any topic in their document library. "
+            "2. Instructions, manuals, or configuration/setup guides for appliances and equipment (e.g., boiler, washing machine, heating system, printer). "
+            "3. Personal documents, files, rules, agreements, or assets stored on Google Drive. "
+            "4. Troubleshooting or document queries containing phrases like 'find in documents', 'search my files', or 'what is written in the manual' for personal files or saved guides. "
+            "Do NOT delegate generic technical questions or uncontextualized errors unless explicit document, manual, or saved file context is present."
         ),
         instruction=instruction,
         tools=tools,

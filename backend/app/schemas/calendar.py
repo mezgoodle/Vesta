@@ -3,15 +3,20 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
-class CalendarEvent(BaseModel):
-    summary: str = Field(..., description="Event title")
+class _CalendarEventBase(BaseModel):
+    summary: str | None = Field(None, description="Event title")
     start_time: datetime | None = Field(
         None, description="Start datetime for timed events"
     )
     end_time: datetime | None = Field(None, description="End datetime for timed events")
-    is_all_day: bool = Field(False, description="Whether it's an all-day event")
     description: str | None = Field(None, description="Event description")
     location: str | None = Field(None, description="Event location")
+
+
+class CalendarEvent(_CalendarEventBase):
+    id: str | None = Field(None, description="Google Calendar event ID")
+    summary: str = Field(..., description="Event title")
+    is_all_day: bool = Field(False, description="Whether it's an all-day event")
 
 
 class CalendarEventList(BaseModel):
@@ -24,12 +29,15 @@ class EventsRangeRequest(BaseModel):
     end: datetime = Field(..., description="End datetime (ISO 8601)")
 
 
-class CalendarEventCreate(CalendarEvent):
-    """Schema for creating a new calendar event.
+class CalendarEventCreate(_CalendarEventBase):
+    """Schema for creating a new calendar event."""
 
-    Extends CalendarEvent without modifications. Duration can be calculated
-    in the service layer if needed.
-    """
+    summary: str = Field(..., description="Event title")
+    is_all_day: bool = Field(False, description="Whether it's an all-day event")
+
+
+class CalendarEventUpdate(_CalendarEventBase):
+    """Schema for updating an existing calendar event (all fields optional)."""
 
     pass
 
