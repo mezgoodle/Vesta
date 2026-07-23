@@ -528,7 +528,7 @@ def create_tools(
             due_dt: datetime.datetime | None = None
             if due:
                 try:
-                    due_dt = datetime.datetime.fromisoformat(due)
+                    due_dt = datetime.datetime.fromisoformat(due.replace("Z", "+00:00"))
                 except ValueError:
                     return f"Invalid due date format '{due}'. Please use ISO format like YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS."
 

@@ -177,3 +177,39 @@ async def test_delete_task_endpoint(
         assert "successfully deleted" in data["message"]
     finally:
         app.dependency_overrides.pop(google_tasks_service, None)
+
+
+@pytest.mark.asyncio
+async def test_update_task_endpoint(
+    client: AsyncClient, db_session: AsyncSession, auth_user: dict
+) -> None:
+    user = auth_user["user"]
+    headers = auth_user["headers"]
+
+    await crud_user.update(
+        db_session, db_obj=user, obj_in={"google_refresh_token": "valid_token"}
+    )
+
+    mock_service = AsyncMock()
+    mock_service.update_task.return_value = TaskItem(
+        id="task_1", title="Updated Title", notes="Updated notes", status="needsAction"
+    )
+
+    async def override_tasks_service():
+        return mock_service
+
+    app.dependency_overrides[google_tasks_service] = override_tasks_service
+
+    try:
+        response = await client.patch(
+            f"{settings.API_V1_STR}/tasks/task_1",
+            json={"title": "Updated Title", "notes": "Updated notes"},
+            headers=headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == "task_1"
+        assert data["title"] == "Updated Title"
+        assert data["notes"] == "Updated notes"
+    finally:
+        app.dependency_overrides.pop(google_tasks_service, None)

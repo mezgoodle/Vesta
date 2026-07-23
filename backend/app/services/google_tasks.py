@@ -119,12 +119,14 @@ class GoogleTasksService:
                 f"Failed to refresh token for user {user_id}: {e}",
                 extra={"json_fields": {"user_id": user_id, "error": str(e)}},
             )
+            await self.handle_google_error(user_id, e, db)
             raise ValueError("Google authorization expired. Please re-authenticate.") from e
         except HttpError as e:
             logger.error(
                 f"Google API HTTP error listing task lists for user {user_id}: {e}",
                 extra={"json_fields": {"user_id": user_id, "error": str(e)}},
             )
+            await self.handle_google_error(user_id, e, db)
             raise Exception(f"Google API Error: {e.reason}") from e
 
     async def get_tasks(
@@ -177,12 +179,14 @@ class GoogleTasksService:
                 f"Failed to refresh token for user {user_id}: {e}",
                 extra={"json_fields": {"user_id": user_id, "error": str(e)}},
             )
+            await self.handle_google_error(user_id, e, db)
             raise ValueError("Google authorization expired. Please re-authenticate.") from e
         except HttpError as e:
             logger.error(
                 f"Google API HTTP error listing tasks for user {user_id}: {e}",
                 extra={"json_fields": {"user_id": user_id, "error": str(e)}},
             )
+            await self.handle_google_error(user_id, e, db)
             raise Exception(f"Google API Error: {e.reason}") from e
 
     async def create_task(
@@ -235,12 +239,14 @@ class GoogleTasksService:
                 f"Failed to refresh token for user {user_id}: {e}",
                 extra={"json_fields": {"user_id": user_id, "error": str(e)}},
             )
+            await self.handle_google_error(user_id, e, db)
             raise ValueError("Google authorization expired. Please re-authenticate.") from e
         except HttpError as e:
             logger.error(
                 f"Google API HTTP error creating task for user {user_id}: {e}",
                 extra={"json_fields": {"user_id": user_id, "error": str(e)}},
             )
+            await self.handle_google_error(user_id, e, db)
             raise Exception(f"Google API Error: {e.reason}") from e
 
     async def update_task(
@@ -299,12 +305,14 @@ class GoogleTasksService:
                 f"Failed to refresh token for user {user_id}: {e}",
                 extra={"json_fields": {"user_id": user_id, "error": str(e)}},
             )
+            await self.handle_google_error(user_id, e, db)
             raise ValueError("Google authorization expired. Please re-authenticate.") from e
         except HttpError as e:
             logger.error(
                 f"Google API HTTP error updating task {task_id} for user {user_id}: {e}",
                 extra={"json_fields": {"user_id": user_id, "error": str(e)}},
             )
+            await self.handle_google_error(user_id, e, db)
             raise Exception(f"Google API Error: {e.reason}") from e
 
     async def complete_task(
@@ -364,12 +372,14 @@ class GoogleTasksService:
                 f"Failed to refresh token for user {user_id}: {e}",
                 extra={"json_fields": {"user_id": user_id, "error": str(e)}},
             )
+            await self.handle_google_error(user_id, e, db)
             raise ValueError("Google authorization expired. Please re-authenticate.") from e
         except HttpError as e:
             logger.error(
                 f"Google API HTTP error deleting task {task_id} for user {user_id}: {e}",
                 extra={"json_fields": {"user_id": user_id, "error": str(e)}},
             )
+            await self.handle_google_error(user_id, e, db)
             raise Exception(f"Google API Error: {e.reason}") from e
 
 
@@ -388,7 +398,8 @@ class GoogleTasksService:
         if isinstance(exception, RefreshError):
             status_val = "expired"
         elif isinstance(exception, HttpError):
-            if exception.resp.status in (403, 401):
+            status_code = exception.resp.status
+            if status_code in (403, 401):
                 try:
                     error_content = json.loads(exception.content.decode("utf-8"))
                     error_obj = error_content.get("error", {})
@@ -409,14 +420,16 @@ class GoogleTasksService:
                     )
                     if is_scope_error:
                         status_val = "revoked"
+                    elif status_code == 401:
+                        status_val = "expired"
                 except Exception:
                     if any(
                         phrase in str(exception).lower()
                         for phrase in ("scope", "insufficient", "permission")
                     ):
                         status_val = "revoked"
-            elif exception.resp.status == 401:
-                status_val = "expired"
+                    elif status_code == 401:
+                        status_val = "expired"
 
         if status_val:
             try:

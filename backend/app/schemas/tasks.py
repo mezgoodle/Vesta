@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from pydantic import BaseModel, Field
 
 
@@ -8,7 +9,9 @@ class TaskItem(BaseModel):
     id: str = Field(..., description="Google Task ID")
     title: str = Field(..., description="Task title")
     notes: str | None = Field(None, description="Task notes or description")
-    status: str = Field("needsAction", description="Task status: 'needsAction' or 'completed'")
+    status: Literal["needsAction", "completed"] = Field(
+        "needsAction", description="Task status: 'needsAction' or 'completed'"
+    )
     due: datetime | None = Field(None, description="Due date/time for the task")
     completed: datetime | None = Field(None, description="Completion timestamp if completed")
     updated: datetime | None = Field(None, description="Last update timestamp")
@@ -37,7 +40,9 @@ class TaskUpdate(BaseModel):
     title: str | None = Field(None, description="Updated task title")
     notes: str | None = Field(None, description="Updated task notes")
     due: datetime | None = Field(None, description="Updated due date/time")
-    status: str | None = Field(None, description="Updated status: 'needsAction' or 'completed'")
+    status: Literal["needsAction", "completed"] | None = Field(
+        None, description="Updated status: 'needsAction' or 'completed'"
+    )
 
 
 class TasksResponse(BaseModel):

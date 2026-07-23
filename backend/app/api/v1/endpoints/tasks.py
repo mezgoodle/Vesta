@@ -1,4 +1,5 @@
 import logging
+from typing import NoReturn
 
 from fastapi import APIRouter, HTTPException, Query, status
 from google.auth.exceptions import RefreshError
@@ -11,7 +12,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _translate_tasks_exception(e: Exception, *, task_id: str | None = None) -> None:
+def _translate_tasks_exception(e: Exception, *, task_id: str | None = None) -> NoReturn:
     if isinstance(e, ValueError):
         error_msg = str(e).lower()
         if "not authorized" in error_msg or "no refresh token" in error_msg or "expired" in error_msg:
