@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.schemas.tasks import TaskItem, TaskList
 from app.services.google_tasks import GoogleTasksService, _format_due_datetime, _parse_datetime
 
 
