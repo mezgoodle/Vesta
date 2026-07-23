@@ -121,7 +121,7 @@ class ADKService:
                 current_time_str=current_time_str,
             )
             secretary = create_secretary_agent(
-                tools=tool_groups["calendar"] + tool_groups["email"],
+                tools=tool_groups["calendar"] + tool_groups["email"] + tool_groups.get("tasks", []),
                 model=self.model,
                 current_time_str=current_time_str,
             )
