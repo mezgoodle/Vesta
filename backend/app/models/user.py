@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, Boolean, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -16,17 +16,15 @@ class User(Base):
     __tablename__ = "users"
 
     telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True, index=True)
-    full_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    username: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    full_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    username: Mapped[str | None] = mapped_column(String, nullable=True)
     timezone: Mapped[str] = mapped_column(String, default="UTC")
     is_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
-    email: Mapped[Optional[str]] = mapped_column(
+    email: Mapped[str | None] = mapped_column(
         String, unique=True, index=True, nullable=True
     )
-    city_name: Mapped[Optional[str]] = mapped_column(
-        String, nullable=True, default=None
-    )
-    hashed_password: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    city_name: Mapped[str | None] = mapped_column(String, nullable=True, default=None)
+    hashed_password: Mapped[str | None] = mapped_column(String, nullable=True)
     google_refresh_token: Mapped[str | None] = mapped_column(String, nullable=True)
     google_token_status: Mapped[str | None] = mapped_column(
         String, nullable=True, default=None

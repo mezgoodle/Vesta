@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Any, Union
+from typing import Any
 
 import jwt
 from pwdlib import PasswordHash
@@ -18,7 +18,7 @@ def get_password_hash(password: str) -> str:
 
 
 def create_access_token(
-    subject: Union[str, Any], expires_delta: timedelta | None = None
+    subject: str | Any, expires_delta: timedelta | None = None
 ) -> str:
     """
     Create a JWT access token.

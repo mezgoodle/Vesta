@@ -1,5 +1,3 @@
-from typing import List
-
 from pydantic import BaseModel
 
 
@@ -14,4 +12,4 @@ class OpenMeteoResponse(BaseModel):
     city_name: str
     current_temp: float
     current_conditions: str | int
-    daily_forecasts: List[DailyForecast]
+    daily_forecasts: list[DailyForecast]

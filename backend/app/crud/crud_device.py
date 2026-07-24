@@ -1,8 +1,9 @@
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.crud.base import CRUDBase
 from app.models.device import SmartDevice
 from app.schemas.device import SmartDeviceCreate, SmartDeviceUpdate
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class CRUDSmartDevice(CRUDBase[SmartDevice, SmartDeviceCreate, SmartDeviceUpdate]):

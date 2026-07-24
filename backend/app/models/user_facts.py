@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -16,7 +16,7 @@ class UserFact(Base):
         ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
     )
     fact_content: Mapped[str] = mapped_column(Text, nullable=False)
-    category: Mapped[Optional[str]] = mapped_column(String, nullable=True, default=None)
+    category: Mapped[str | None] = mapped_column(String, nullable=True, default=None)
 
     # Placeholder for future Level 3 (Vector RAG) embedding column:
     # embedding: Mapped[Optional[Vector]] = mapped_column(Vector(384), nullable=True)

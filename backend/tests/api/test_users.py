@@ -7,15 +7,38 @@ from app.crud.crud_user import user as crud_user
 from app.schemas.user import UserCreate
 
 
+@pytest.fixture
+async def api_key_headers(db_session: AsyncSession):
+    user_in = UserCreate(
+        telegram_id=99999999,
+        full_name="System Superuser",
+        username="systemsuperuser",
+        email="system@example.com",
+        is_superuser=True,
+    )
+    await crud_user.create(db_session, obj_in=user_in)
+    return {"X-API-Key": settings.BACKEND_API_KEY}
+
+
 @pytest.mark.asyncio
-async def test_create_user_api(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_unauthenticated_user_access(client: AsyncClient) -> None:
+    response = await client.get(f"{settings.API_V1_STR}/users/")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_create_user_api(
+    client: AsyncClient, db_session: AsyncSession, api_key_headers
+) -> None:
     user_data = {
         "telegram_id": 101010101,
         "full_name": "API User",
         "username": "apiuser",
         "timezone": "UTC",
     }
-    response = await client.post(f"{settings.API_V1_STR}/users/", json=user_data)
+    response = await client.post(
+        f"{settings.API_V1_STR}/users/", json=user_data, headers=api_key_headers
+    )
     assert response.status_code == 201
     content = response.json()
     assert content["telegram_id"] == user_data["telegram_id"]
@@ -24,13 +47,17 @@ async def test_create_user_api(client: AsyncClient, db_session: AsyncSession) ->
 
 
 @pytest.mark.asyncio
-async def test_read_users_api(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_read_users_api(
+    client: AsyncClient, db_session: AsyncSession, api_key_headers
+) -> None:
     user_in = UserCreate(
         telegram_id=202020202, full_name="Read User", username="readuser"
     )
     await crud_user.create(db_session, obj_in=user_in)
 
-    response = await client.get(f"{settings.API_V1_STR}/users/")
+    response = await client.get(
+        f"{settings.API_V1_STR}/users/", headers=api_key_headers
+    )
     assert response.status_code == 200
     content = response.json()
     assert len(content) >= 1
@@ -38,7 +65,7 @@ async def test_read_users_api(client: AsyncClient, db_session: AsyncSession) -> 
 
 @pytest.mark.asyncio
 async def test_read_user_by_telegram_id_api(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient, db_session: AsyncSession, api_key_headers
 ) -> None:
     user_in = UserCreate(
         telegram_id=212121212,
@@ -48,7 +75,8 @@ async def test_read_user_by_telegram_id_api(
     user = await crud_user.create(db_session, obj_in=user_in)
 
     response = await client.get(
-        f"{settings.API_V1_STR}/users/telegram/{user.telegram_id}"
+        f"{settings.API_V1_STR}/users/telegram/{user.telegram_id}",
+        headers=api_key_headers,
     )
     assert response.status_code == 200
     content = response.json()
@@ -57,19 +85,23 @@ async def test_read_user_by_telegram_id_api(
 
 @pytest.mark.asyncio
 async def test_read_user_by_id_api(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient, db_session: AsyncSession, api_key_headers
 ) -> None:
     user_in = UserCreate(telegram_id=303030303, full_name="ID User", username="iduser")
     user = await crud_user.create(db_session, obj_in=user_in)
 
-    response = await client.get(f"{settings.API_V1_STR}/users/{user.id}")
+    response = await client.get(
+        f"{settings.API_V1_STR}/users/{user.id}", headers=api_key_headers
+    )
     assert response.status_code == 200
     content = response.json()
     assert content["telegram_id"] == user_in.telegram_id
 
 
 @pytest.mark.asyncio
-async def test_approve_user_api(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_approve_user_api(
+    client: AsyncClient, db_session: AsyncSession, api_key_headers
+) -> None:
     """Test approving a user via the approval endpoint."""
     user_in = UserCreate(
         telegram_id=404040404, full_name="Approval User", username="approvaluser"
@@ -82,6 +114,7 @@ async def test_approve_user_api(client: AsyncClient, db_session: AsyncSession) -
     response = await client.patch(
         f"{settings.API_V1_STR}/users/telegram/{user.telegram_id}/approval",
         json=approval_data,
+        headers=api_key_headers,
     )
     assert response.status_code == 200
     content = response.json()
@@ -90,7 +123,9 @@ async def test_approve_user_api(client: AsyncClient, db_session: AsyncSession) -
 
 
 @pytest.mark.asyncio
-async def test_reject_user_api(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_reject_user_api(
+    client: AsyncClient, db_session: AsyncSession, api_key_headers
+) -> None:
     """Test rejecting/blocking a user via the approval endpoint."""
     user_in = UserCreate(
         telegram_id=505050505, full_name="Reject User", username="rejectuser"
@@ -101,6 +136,7 @@ async def test_reject_user_api(client: AsyncClient, db_session: AsyncSession) ->
     response = await client.patch(
         f"{settings.API_V1_STR}/users/telegram/{user.telegram_id}/approval",
         json=approval_data,
+        headers=api_key_headers,
     )
     assert response.status_code == 200
     content = response.json()
@@ -109,13 +145,16 @@ async def test_reject_user_api(client: AsyncClient, db_session: AsyncSession) ->
 
 
 @pytest.mark.asyncio
-async def test_approve_nonexistent_user_api(client: AsyncClient) -> None:
+async def test_approve_nonexistent_user_api(
+    client: AsyncClient, api_key_headers
+) -> None:
     """Test that approving a non-existent user returns 404."""
     nonexistent_telegram_id = 999999999
     approval_data = {"is_allowed": True}
     response = await client.patch(
         f"{settings.API_V1_STR}/users/telegram/{nonexistent_telegram_id}/approval",
         json=approval_data,
+        headers=api_key_headers,
     )
     assert response.status_code == 404
     content = response.json()
@@ -124,7 +163,7 @@ async def test_approve_nonexistent_user_api(client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_create_user_defaults_to_not_allowed(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient, db_session: AsyncSession, api_key_headers
 ) -> None:
     """Test that newly created users have is_allowed=False by default."""
     user_data = {
@@ -133,7 +172,9 @@ async def test_create_user_defaults_to_not_allowed(
         "username": "defaultuser",
         "timezone": "UTC",
     }
-    response = await client.post(f"{settings.API_V1_STR}/users/", json=user_data)
+    response = await client.post(
+        f"{settings.API_V1_STR}/users/", json=user_data, headers=api_key_headers
+    )
     assert response.status_code == 201
     content = response.json()
     assert content["is_allowed"] is False
@@ -141,7 +182,7 @@ async def test_create_user_defaults_to_not_allowed(
 
 @pytest.mark.asyncio
 async def test_get_allowed_telegram_ids(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient, db_session: AsyncSession, api_key_headers
 ) -> None:
     """Test getting telegram_ids of all allowed users."""
     allowed_user_1 = UserCreate(
@@ -160,13 +201,17 @@ async def test_get_allowed_telegram_ids(
     await client.patch(
         f"{settings.API_V1_STR}/users/telegram/{user1.telegram_id}/approval",
         json={"is_allowed": True},
+        headers=api_key_headers,
     )
     await client.patch(
         f"{settings.API_V1_STR}/users/telegram/{user2.telegram_id}/approval",
         json={"is_allowed": True},
+        headers=api_key_headers,
     )
 
-    response = await client.get(f"{settings.API_V1_STR}/users/allowed/telegram-ids")
+    response = await client.get(
+        f"{settings.API_V1_STR}/users/allowed/telegram-ids", headers=api_key_headers
+    )
     assert response.status_code == 200
     telegram_ids = response.json()
     assert isinstance(telegram_ids, list)
@@ -181,14 +226,18 @@ async def test_get_allowed_telegram_ids(
 
 
 @pytest.mark.asyncio
-async def test_read_user_not_found(client: AsyncClient) -> None:
-    response = await client.get(f"{settings.API_V1_STR}/users/999")
+async def test_read_user_not_found(client: AsyncClient, api_key_headers) -> None:
+    response = await client.get(
+        f"{settings.API_V1_STR}/users/999", headers=api_key_headers
+    )
     assert response.status_code == 404
     assert response.json()["detail"] == "User not found"
 
 
 @pytest.mark.asyncio
-async def test_update_user_api(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_update_user_api(
+    client: AsyncClient, db_session: AsyncSession, api_key_headers
+) -> None:
     user_in = UserCreate(
         telegram_id=313131313, full_name="Update User", username="updateuser"
     )
@@ -196,7 +245,9 @@ async def test_update_user_api(client: AsyncClient, db_session: AsyncSession) ->
 
     update_data = {"full_name": "Updated User Name"}
     response = await client.patch(
-        f"{settings.API_V1_STR}/users/{user.id}", json=update_data
+        f"{settings.API_V1_STR}/users/{user.id}",
+        json=update_data,
+        headers=api_key_headers,
     )
     assert response.status_code == 200
     content = response.json()
@@ -204,35 +255,47 @@ async def test_update_user_api(client: AsyncClient, db_session: AsyncSession) ->
 
 
 @pytest.mark.asyncio
-async def test_update_user_not_found(client: AsyncClient) -> None:
+async def test_update_user_not_found(client: AsyncClient, api_key_headers) -> None:
     update_data = {"full_name": "Updated User Name"}
-    response = await client.patch(f"{settings.API_V1_STR}/users/999", json=update_data)
+    response = await client.patch(
+        f"{settings.API_V1_STR}/users/999", json=update_data, headers=api_key_headers
+    )
     assert response.status_code == 404
     assert response.json()["detail"] == "User not found"
 
 
 @pytest.mark.asyncio
-async def test_delete_user_api(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_delete_user_api(
+    client: AsyncClient, db_session: AsyncSession, api_key_headers
+) -> None:
     user_in = UserCreate(
         telegram_id=323232323, full_name="Delete User", username="deleteuser"
     )
     user = await crud_user.create(db_session, obj_in=user_in)
 
-    response = await client.delete(f"{settings.API_V1_STR}/users/{user.id}")
+    response = await client.delete(
+        f"{settings.API_V1_STR}/users/{user.id}", headers=api_key_headers
+    )
     assert response.status_code == 200
     content = response.json()
     assert content["id"] == user.id
 
 
 @pytest.mark.asyncio
-async def test_delete_user_not_found(client: AsyncClient) -> None:
-    response = await client.delete(f"{settings.API_V1_STR}/users/999")
+async def test_delete_user_not_found(client: AsyncClient, api_key_headers) -> None:
+    response = await client.delete(
+        f"{settings.API_V1_STR}/users/999", headers=api_key_headers
+    )
     assert response.status_code == 404
     assert response.json()["detail"] == "User not found"
 
 
 @pytest.mark.asyncio
-async def test_get_user_by_telegram_id_not_found(client: AsyncClient) -> None:
-    response = await client.get(f"{settings.API_V1_STR}/users/telegram/999999")
+async def test_get_user_by_telegram_id_not_found(
+    client: AsyncClient, api_key_headers
+) -> None:
+    response = await client.get(
+        f"{settings.API_V1_STR}/users/telegram/999999", headers=api_key_headers
+    )
     assert response.status_code == 404
     assert response.json()["detail"] == "User not found"

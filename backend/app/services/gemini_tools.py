@@ -16,7 +16,7 @@ Why a factory?
 
 import datetime
 import logging
-from typing import Callable
+from collections.abc import Callable
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,6 +26,7 @@ from app.schemas.calendar import CalendarEventCreate, CalendarEventUpdate
 from app.schemas.user_facts import FactCreate
 from app.services.gmail_service import GmailService
 from app.services.google_calendar import GoogleCalendarService
+from app.services.google_tasks import GoogleTasksService
 from app.services.knowledge import KnowledgeService
 from app.services.open_meteo_service import OpenMeteoService
 
@@ -472,6 +473,121 @@ def create_tools(
             logger.exception("Failed to delete user fact: %s", e)
             return f"Unable to delete fact [ID: {fact_id}]."
 
+    # ------------------------------------------------------------------ #
+    # Tasks tools                                                         #
+    # ------------------------------------------------------------------ #
+
+    async def get_tasks_tool(show_completed: bool = False) -> str:
+        """
+        Get the user's tasks / to-do list items from Google Tasks.
+
+        Use this function when the user asks about their tasks, to-do items, reminders, or pending action items.
+
+        Args:
+            show_completed: Whether to include completed tasks (default False).
+
+        Returns:
+            A formatted string list of tasks with their IDs, titles, due dates, and status.
+        """
+        try:
+            tasks_service = GoogleTasksService()
+            tasks = await tasks_service.get_tasks(
+                user_id=user_id, db=db, show_completed=show_completed
+            )
+            if not tasks:
+                return "No tasks found."
+
+            result = "Your Tasks:\n"
+            for t in tasks:
+                due_str = f", due: {t.due.strftime('%Y-%m-%d %H:%M')}" if t.due else ""
+                status_str = f" [{t.status}]"
+                notes_str = f"\n  Notes: {t.notes}" if t.notes else ""
+                result += f"- [ID: {t.id}]{status_str} {t.title}{due_str}{notes_str}\n"
+            return result.strip()
+        except Exception as e:
+            logger.exception("Tasks API error: %s", e)
+            return f"Unable to fetch tasks: {e}"
+
+    async def create_task_tool(
+        title: str, notes: str | None = None, due: str | None = None
+    ) -> str:
+        """
+        Create a new task / to-do item in Google Tasks.
+
+        Use this function when the user asks to add, create, or schedule a task, to-do item, or reminder.
+
+        Args:
+            title: The title or summary of the task.
+            notes: Optional detailed description or notes for the task.
+            due: Optional due datetime in ISO format (e.g., '2026-07-24' or '2026-07-24T15:00:00').
+
+        Returns:
+            A confirmation string with the created task details.
+        """
+        try:
+            due_dt: datetime.datetime | None = None
+            if due:
+                try:
+                    due_dt = datetime.datetime.fromisoformat(due.replace("Z", "+00:00"))
+                except ValueError:
+                    return f"Invalid due date format '{due}'. Please use ISO format like YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS."
+
+            tasks_service = GoogleTasksService()
+            task = await tasks_service.create_task(
+                user_id=user_id, db=db, title=title, notes=notes, due=due_dt
+            )
+            due_info = (
+                f", due: {task.due.strftime('%Y-%m-%d %H:%M')}" if task.due else ""
+            )
+            return (
+                f"Task created successfully: '{task.title}' [ID: {task.id}]{due_info}"
+            )
+        except Exception as e:
+            logger.exception("Failed to create task: %s", e)
+            return f"Unable to create task: {e}"
+
+    async def complete_task_tool(task_id: str) -> str:
+        """
+        Mark a task as completed in Google Tasks.
+
+        Use this function when the user wants to check off, finish, or complete a task by its ID.
+
+        Args:
+            task_id: The ID of the task to complete.
+
+        Returns:
+            A confirmation string.
+        """
+        try:
+            tasks_service = GoogleTasksService()
+            task = await tasks_service.complete_task(
+                user_id=user_id, db=db, task_id=task_id
+            )
+            return f"Task '{task.title}' [ID: {task.id}] marked as completed."
+        except Exception as e:
+            logger.exception("Failed to complete task %s: %s", task_id, e)
+            return f"Unable to complete task: {e}"
+
+    async def delete_task_tool(task_id: str) -> str:
+        """
+        Delete a task from Google Tasks.
+
+        Use this function when the user wants to remove, delete, or cancel a task by its ID.
+
+        Args:
+            task_id: The ID of the task to delete.
+
+        Returns:
+            A confirmation string.
+        """
+        try:
+            tasks_service = GoogleTasksService()
+            await tasks_service.delete_task(user_id=user_id, db=db, task_id=task_id)
+            return f"Task [ID: {task_id}] successfully deleted."
+        except Exception as e:
+            logger.exception("Failed to delete task %s: %s", task_id, e)
+            return f"Unable to delete task: {e}"
+
     return {
         "weather": [get_weather_info],
         "calendar": [
@@ -481,6 +597,12 @@ def create_tools(
             delete_calendar_event_tool,
         ],
         "email": [check_emails],
+        "tasks": [
+            get_tasks_tool,
+            create_task_tool,
+            complete_task_tool,
+            delete_task_tool,
+        ],
         "knowledge": [consult_knowledge_base],
         "memory": [remember_user_fact, delete_user_fact],
     }

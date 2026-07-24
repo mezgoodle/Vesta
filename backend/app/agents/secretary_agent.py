@@ -2,7 +2,7 @@
 Secretary sub-agent — handles scheduling, calendar, and email/inbox queries.
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 from google.adk.agents import LlmAgent
 
@@ -24,14 +24,17 @@ def create_secretary_agent(
         "5. Search, retrieve, and read the user's email messages using the check_emails tool.\n"
         "6. Extract key points, identify important dates, amounts, and calls to action (Action Items) in the email messages.\n"
         "7. Provide concise, structured, and helpful summaries of user emails.\n"
-        "8. For requests about 'today' or 'my day', call get_calendar_events(days=1).\n"
+        "8. Retrieve user tasks/to-do items using get_tasks_tool.\n"
+        "9. Create new tasks or to-do items using create_task_tool.\n"
+        "10. Mark tasks as completed using complete_task_tool, or delete tasks using delete_task_tool (if you don't have the task ID, call get_tasks_tool first).\n"
+        "11. For requests about 'today' or 'my day', call get_calendar_events(days=1) and get_tasks_tool().\n"
         "Always respond in a friendly, professional, and concise manner.\n\n"
         f"{settings.TELEGRAM_HTML_GUIDELINES}"
     )
     if current_time_str:
         instruction = (
             f"Current Date and Time: {current_time_str}.\n"
-            f"When scheduling or retrieving events/emails, use the 'Current Date' above as a reference "
+            f"When scheduling or retrieving events/tasks/emails, use the 'Current Date' above as a reference "
             f"to calculate relative dates like 'today', 'tomorrow', 'yesterday', or 'next Friday'.\n"
             f"{instruction}"
         )
@@ -40,9 +43,9 @@ def create_secretary_agent(
         name="SecretaryAgent",
         model=model,
         description=(
-            "Handles scheduling, calendar management (view, create, update, delete events), and searching/reading user emails or inbox. "
-            "Delegate to this agent when the user asks about their schedule, wants to see upcoming "
-            "events, create, edit, reschedule, or cancel a calendar event, check their email/inbox, or search for messages."
+            "Handles scheduling, calendar management (view, create, update, delete events), tasks/to-do list management (view, create, complete, delete tasks), and searching/reading user emails or inbox. "
+            "Delegate to this agent when the user asks about their schedule, tasks, to-do list, wants to see upcoming "
+            "events or tasks, create, edit, reschedule, or cancel a calendar event or task, check their email/inbox, or search for messages."
         ),
         instruction=instruction,
         tools=tools,
