@@ -8,9 +8,9 @@ from app.schemas.news import (
     NewsSubscriptionCreate,
     NewsSubscriptionUpdate,
 )
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(deps.get_current_user)])
 
 
 @router.get("/", response_model=list[NewsSubscription])

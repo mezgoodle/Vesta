@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from google.auth.exceptions import GoogleAuthError
 
-from app.api.deps import SessionDep
+from app.api.deps import CurrentUser, SessionDep
 from app.crud.crud_user import user as crud_user
 from app.services.google_auth import google_auth_service
 
@@ -22,6 +22,7 @@ templates = Jinja2Templates(directory=str(current_dir / "templates"))
 @router.get("/login")
 async def google_login(
     db: SessionDep,
+    current_user: CurrentUser,
     user_id: int = Query(..., description="User ID requesting authorization"),
 ) -> dict[str, str]:
     """

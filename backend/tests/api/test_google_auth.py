@@ -11,9 +11,31 @@ from app.crud.crud_user import user as crud_user
 from app.schemas.user import UserCreate
 
 
+@pytest.fixture
+async def api_key_headers(db_session: AsyncSession):
+    user_in = UserCreate(
+        telegram_id=99999999,
+        full_name="System Superuser",
+        username="systemsuperuser",
+        email="system@example.com",
+        is_superuser=True,
+    )
+    await crud_user.create(db_session, obj_in=user_in)
+    return {"X-API-Key": settings.BACKEND_API_KEY}
+
+
+@pytest.mark.asyncio
+async def test_unauthenticated_google_login(client: AsyncClient) -> None:
+    response = await client.get(
+        f"{settings.API_V1_STR}/google-auth/login",
+        params={"user_id": 1},
+    )
+    assert response.status_code == 401
+
+
 @pytest.mark.asyncio
 async def test_google_login_success(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient, db_session: AsyncSession, api_key_headers: dict
 ) -> None:
     """Test successful generation of Google OAuth authorization URL."""
     # Create a test user
@@ -36,6 +58,7 @@ async def test_google_login_success(
         response = await client.get(
             f"{settings.API_V1_STR}/google-auth/login",
             params={"user_id": user.id},
+            headers=api_key_headers,
         )
 
     assert response.status_code == 200
@@ -51,9 +74,13 @@ async def test_google_login_success(
 
 
 @pytest.mark.asyncio
-async def test_google_login_missing_user_id(client: AsyncClient) -> None:
+async def test_google_login_missing_user_id(
+    client: AsyncClient, api_key_headers: dict
+) -> None:
     """Test that login endpoint requires user_id parameter."""
-    response = await client.get(f"{settings.API_V1_STR}/google-auth/login")
+    response = await client.get(
+        f"{settings.API_V1_STR}/google-auth/login", headers=api_key_headers
+    )
 
     assert response.status_code == 422  # Validation error
     content = response.json()
