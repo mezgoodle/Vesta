@@ -40,6 +40,12 @@ async def google_login(
     Raises:
         HTTPException: 500 if OAuth credentials are not configured
     """
+    if not current_user.is_superuser and current_user.id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The user doesn't have enough privileges",
+        )
+
     user = await crud_user.get(db, id=user_id)
     if not user:
         raise HTTPException(

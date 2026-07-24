@@ -1,6 +1,6 @@
 import logging
 
-from aiogram import F, Router
+from aiogram import F, Router, html
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 from aiogram.utils.markdown import hbold
@@ -22,7 +22,7 @@ async def command_start_handler(
     user_id = message.from_user.id
 
     if user_cache.is_allowed(user_id):
-        return await message.answer(f"Hello, {hbold(message.from_user.full_name)}!")
+        return await message.answer(f"Hello, {hbold(html.quote(message.from_user.full_name))}!")
 
     await message.answer(
         "You are not allowed to use this bot. Permission request has been sent to the administrator."
@@ -40,12 +40,15 @@ async def command_start_handler(
         logger.warning(f"New user has no name, {full_name=},{username=}")
         return
 
+    full_name_escaped = html.quote(full_name)
+    username_escaped = html.quote(username)
+
     return await bot.send_message(
         chat_id=admin_id,
         text=f"👤 <b>New user!</b>\n"
-        f"Name: {full_name}\n"
+        f"Name: {full_name_escaped}\n"
         f"ID: {user_id}\n"
-        f"Username: @{username}",
+        f"Username: @{username_escaped}",
         reply_markup=permissions_markup(user_id=user_id, user=message.from_user),
     )
 
