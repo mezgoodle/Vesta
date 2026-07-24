@@ -2,7 +2,7 @@
 Secretary sub-agent — handles scheduling, calendar, and email/inbox queries.
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 from google.adk.agents import LlmAgent
 

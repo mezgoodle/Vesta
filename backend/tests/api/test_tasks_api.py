@@ -23,9 +23,7 @@ async def test_get_task_lists_endpoint(
     )
 
     mock_service = AsyncMock()
-    mock_service.get_task_lists.return_value = [
-        TaskList(id="list_1", title="My Tasks")
-    ]
+    mock_service.get_task_lists.return_value = [TaskList(id="list_1", title="My Tasks")]
 
     async def override_tasks_service():
         return mock_service

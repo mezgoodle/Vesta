@@ -22,7 +22,9 @@ async def command_start_handler(
     user_id = message.from_user.id
 
     if user_cache.is_allowed(user_id):
-        return await message.answer(f"Hello, {hbold(html.quote(message.from_user.full_name))}!")
+        return await message.answer(
+            f"Hello, {hbold(html.quote(message.from_user.full_name))}!"
+        )
 
     await message.answer(
         "You are not allowed to use this bot. Permission request has been sent to the administrator."

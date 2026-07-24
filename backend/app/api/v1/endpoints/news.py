@@ -1,5 +1,7 @@
 from typing import Any
 
+from fastapi import APIRouter, Depends, HTTPException
+
 from app.api import deps
 from app.crud.crud_news import news as crud_news
 from app.crud.crud_user import user as crud_user
@@ -8,7 +10,6 @@ from app.schemas.news import (
     NewsSubscriptionCreate,
     NewsSubscriptionUpdate,
 )
-from fastapi import APIRouter, Depends, HTTPException
 
 router = APIRouter(dependencies=[Depends(deps.get_current_user)])
 

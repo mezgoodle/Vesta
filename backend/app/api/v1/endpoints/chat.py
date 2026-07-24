@@ -3,7 +3,13 @@ from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
-from app.api.deps import ADKServiceDep, CurrentUser, SessionDep, TTSServiceDep, get_current_user
+from app.api.deps import (
+    ADKServiceDep,
+    CurrentUser,
+    SessionDep,
+    TTSServiceDep,
+    get_current_user,
+)
 from app.crud.crud_chat import chat as crud_chat
 from app.crud.crud_session import chat_session as crud_session
 from app.crud.crud_user import user as crud_user

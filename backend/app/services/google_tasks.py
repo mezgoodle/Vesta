@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from google.auth.exceptions import RefreshError
@@ -34,7 +34,7 @@ def _format_due_datetime(dt: datetime | None) -> str | None:
     if not dt:
         return None
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt.isoformat()
 
 
@@ -87,9 +87,7 @@ class GoogleTasksService:
         except Exception as e:
             raise ValueError(f"Failed to build Google Tasks service: {str(e)}") from e
 
-    async def get_task_lists(
-        self, user_id: int, db: AsyncSession
-    ) -> list[TaskList]:
+    async def get_task_lists(self, user_id: int, db: AsyncSession) -> list[TaskList]:
         """
         Get all task lists for the specified user.
 
@@ -120,7 +118,9 @@ class GoogleTasksService:
                 extra={"json_fields": {"user_id": user_id, "error": str(e)}},
             )
             await self.handle_google_error(user_id, e, db)
-            raise ValueError("Google authorization expired. Please re-authenticate.") from e
+            raise ValueError(
+                "Google authorization expired. Please re-authenticate."
+            ) from e
         except HttpError as e:
             logger.error(
                 f"Google API HTTP error listing task lists for user {user_id}: {e}",
@@ -180,7 +180,9 @@ class GoogleTasksService:
                 extra={"json_fields": {"user_id": user_id, "error": str(e)}},
             )
             await self.handle_google_error(user_id, e, db)
-            raise ValueError("Google authorization expired. Please re-authenticate.") from e
+            raise ValueError(
+                "Google authorization expired. Please re-authenticate."
+            ) from e
         except HttpError as e:
             logger.error(
                 f"Google API HTTP error listing tasks for user {user_id}: {e}",
@@ -240,7 +242,9 @@ class GoogleTasksService:
                 extra={"json_fields": {"user_id": user_id, "error": str(e)}},
             )
             await self.handle_google_error(user_id, e, db)
-            raise ValueError("Google authorization expired. Please re-authenticate.") from e
+            raise ValueError(
+                "Google authorization expired. Please re-authenticate."
+            ) from e
         except HttpError as e:
             logger.error(
                 f"Google API HTTP error creating task for user {user_id}: {e}",
@@ -289,7 +293,9 @@ class GoogleTasksService:
             body["status"] = status
 
         try:
-            request = client.tasks().patch(tasklist=tasklist_id, task=task_id, body=body)
+            request = client.tasks().patch(
+                tasklist=tasklist_id, task=task_id, body=body
+            )
             item = await asyncio.to_thread(request.execute)
             return TaskItem(
                 id=item["id"],
@@ -306,7 +312,9 @@ class GoogleTasksService:
                 extra={"json_fields": {"user_id": user_id, "error": str(e)}},
             )
             await self.handle_google_error(user_id, e, db)
-            raise ValueError("Google authorization expired. Please re-authenticate.") from e
+            raise ValueError(
+                "Google authorization expired. Please re-authenticate."
+            ) from e
         except HttpError as e:
             logger.error(
                 f"Google API HTTP error updating task {task_id} for user {user_id}: {e}",
@@ -373,7 +381,9 @@ class GoogleTasksService:
                 extra={"json_fields": {"user_id": user_id, "error": str(e)}},
             )
             await self.handle_google_error(user_id, e, db)
-            raise ValueError("Google authorization expired. Please re-authenticate.") from e
+            raise ValueError(
+                "Google authorization expired. Please re-authenticate."
+            ) from e
         except HttpError as e:
             logger.error(
                 f"Google API HTTP error deleting task {task_id} for user {user_id}: {e}",
@@ -381,7 +391,6 @@ class GoogleTasksService:
             )
             await self.handle_google_error(user_id, e, db)
             raise Exception(f"Google API Error: {e.reason}") from e
-
 
     async def handle_google_error(
         self, user_id: int, exception: Exception, db: AsyncSession
@@ -451,4 +460,3 @@ google_tasks_service_instance = GoogleTasksService()
 def google_tasks_service() -> GoogleTasksService:
     """Dependency provider for GoogleTasksService."""
     return google_tasks_service_instance
-

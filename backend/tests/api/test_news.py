@@ -1,11 +1,12 @@
 import pytest
-from app.core.config import settings
-from app.crud.crud_user import user as crud_user
-from app.crud.crud_news import news as crud_news
-from app.schemas.user import UserCreate
-from app.schemas.news import NewsSubscriptionCreate
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import settings
+from app.crud.crud_news import news as crud_news
+from app.crud.crud_user import user as crud_user
+from app.schemas.news import NewsSubscriptionCreate
+from app.schemas.user import UserCreate
 
 
 @pytest.fixture

@@ -1,10 +1,11 @@
 from typing import Any
 
+from fastapi import APIRouter, Depends, HTTPException
+
 from app.api import deps
 from app.crud.crud_device import device as crud_device
 from app.crud.crud_user import user as crud_user
 from app.schemas.device import SmartDevice, SmartDeviceCreate, SmartDeviceUpdate
-from fastapi import APIRouter, Depends, HTTPException
 
 router = APIRouter(dependencies=[Depends(deps.get_current_user)])
 

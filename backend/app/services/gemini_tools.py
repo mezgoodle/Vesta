@@ -16,7 +16,7 @@ Why a factory?
 
 import datetime
 import logging
-from typing import Callable
+from collections.abc import Callable
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -536,8 +536,12 @@ def create_tools(
             task = await tasks_service.create_task(
                 user_id=user_id, db=db, title=title, notes=notes, due=due_dt
             )
-            due_info = f", due: {task.due.strftime('%Y-%m-%d %H:%M')}" if task.due else ""
-            return f"Task created successfully: '{task.title}' [ID: {task.id}]{due_info}"
+            due_info = (
+                f", due: {task.due.strftime('%Y-%m-%d %H:%M')}" if task.due else ""
+            )
+            return (
+                f"Task created successfully: '{task.title}' [ID: {task.id}]{due_info}"
+            )
         except Exception as e:
             logger.exception("Failed to create task: %s", e)
             return f"Unable to create task: {e}"
@@ -578,9 +582,7 @@ def create_tools(
         """
         try:
             tasks_service = GoogleTasksService()
-            await tasks_service.delete_task(
-                user_id=user_id, db=db, task_id=task_id
-            )
+            await tasks_service.delete_task(user_id=user_id, db=db, task_id=task_id)
             return f"Task [ID: {task_id}] successfully deleted."
         except Exception as e:
             logger.exception("Failed to delete task %s: %s", task_id, e)

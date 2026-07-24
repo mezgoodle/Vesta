@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -13,7 +14,9 @@ class TaskItem(BaseModel):
         "needsAction", description="Task status: 'needsAction' or 'completed'"
     )
     due: datetime | None = Field(None, description="Due date/time for the task")
-    completed: datetime | None = Field(None, description="Completion timestamp if completed")
+    completed: datetime | None = Field(
+        None, description="Completion timestamp if completed"
+    )
     updated: datetime | None = Field(None, description="Last update timestamp")
 
 

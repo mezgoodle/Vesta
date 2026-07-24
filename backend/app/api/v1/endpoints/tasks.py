@@ -15,12 +15,19 @@ router = APIRouter()
 def _translate_tasks_exception(e: Exception, *, task_id: str | None = None) -> NoReturn:
     if isinstance(e, ValueError):
         error_msg = str(e).lower()
-        if "not authorized" in error_msg or "no refresh token" in error_msg or "expired" in error_msg:
+        if (
+            "not authorized" in error_msg
+            or "no refresh token" in error_msg
+            or "expired" in error_msg
+        ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=str(e),
             ) from e
-        if "failed to create credentials" in error_msg or "failed to build" in error_msg:
+        if (
+            "failed to create credentials" in error_msg
+            or "failed to build" in error_msg
+        ):
             logger.error("Google Tasks client construction failed: %s", e)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -77,7 +84,9 @@ async def get_tasks(
     tasks_service: TasksServiceDep,
     user_id: TargetUserId,
     tasklist_id: str = Query("@default", description="ID of the task list"),
-    show_completed: bool = Query(False, description="Whether to include completed tasks"),
+    show_completed: bool = Query(
+        False, description="Whether to include completed tasks"
+    ),
 ) -> TasksResponse:
     """Retrieve tasks from a Google Task list."""
     try:

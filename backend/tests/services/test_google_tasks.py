@@ -1,9 +1,13 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.google_tasks import GoogleTasksService, _format_due_datetime, _parse_datetime
+from app.services.google_tasks import (
+    GoogleTasksService,
+    _format_due_datetime,
+    _parse_datetime,
+)
 
 
 @pytest.fixture
@@ -22,7 +26,7 @@ def test_parse_datetime():
 
 def test_format_due_datetime():
     assert _format_due_datetime(None) is None
-    dt = datetime(2026, 7, 24, 15, 30, tzinfo=timezone.utc)
+    dt = datetime(2026, 7, 24, 15, 30, tzinfo=UTC)
     formatted = _format_due_datetime(dt)
     assert formatted is not None
     assert "2026-07-24T15:30:00" in formatted
@@ -141,7 +145,5 @@ async def test_delete_task(tasks_service: GoogleTasksService):
     mock_client.tasks().delete.return_value = mock_request
 
     with patch.object(tasks_service, "_get_tasks_client", return_value=mock_client):
-        res = await tasks_service.delete_task(
-            user_id=1, db=db_mock, task_id="task_1"
-        )
+        res = await tasks_service.delete_task(user_id=1, db=db_mock, task_id="task_1")
         assert res is True

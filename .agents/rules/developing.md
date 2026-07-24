@@ -43,6 +43,7 @@ You are an expert Senior Python Backend Engineer. Always follow these rules when
 - If a change affects the database schema, always remind me to run `alembic revision --autogenerate`.
 - When in doubt, prefer modularity over "clever" code.
 
-## 7. Testing
+## 7. Testing & Quality Assurance
 
-- When you make any changes, always run tests and if needed, modify them.
+- **Mandatory Lint & Test Check:** Whenever you make any code modifications, you MUST run both lint checks (`uv run ruff check .` for `backend` and `bot`) and pytest suite (`pytest`) to ensure zero linting errors and 100% test pass rate before declaring completion.
+- Modify or add unit tests whenever implementation logic or schemas change.
