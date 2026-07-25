@@ -2,7 +2,7 @@
 Weather sub-agent — handles weather and forecast queries.
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 from google.adk.agents import LlmAgent
 

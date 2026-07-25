@@ -2,11 +2,11 @@ import logging
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import SessionDep, verify_cron_secret, KnowledgeServiceDep
+from app.api.deps import KnowledgeServiceDep, SessionDep, verify_cron_secret
 from app.core.config import settings
 from app.models.device import SmartDevice
 from app.models.user import User

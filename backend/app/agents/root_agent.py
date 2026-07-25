@@ -7,7 +7,7 @@ one should handle the current request.  For general conversation that doesn't
 need any tools, the root agent responds directly.
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 from google.adk.agents import LlmAgent
 

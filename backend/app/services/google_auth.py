@@ -17,12 +17,13 @@ os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 class GoogleAuthService:
     """Service for handling Google OAuth2 authentication flow."""
 
-    # Scopes required for Google Calendar and user info
+    # Scopes required for Google Calendar, Gmail, Google Tasks, and user info
     SCOPES = [
         "openid",
         "https://www.googleapis.com/auth/calendar.readonly",
         "https://www.googleapis.com/auth/calendar.events.owned",
         "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/tasks",
         "https://www.googleapis.com/auth/userinfo.email",
         "https://www.googleapis.com/auth/userinfo.profile",
     ]

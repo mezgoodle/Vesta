@@ -1,12 +1,13 @@
-import pytest
-from httpx import AsyncClient
 from unittest.mock import AsyncMock
-from fastapi import HTTPException
 
+import pytest
+from fastapi import HTTPException
+from httpx import AsyncClient
+
+from app.api.deps import open_meteo_service
 from app.core.config import settings
 from app.main import app
-from app.api.deps import open_meteo_service
-from app.schemas.open_meteo import OpenMeteoResponse, DailyForecast
+from app.schemas.open_meteo import DailyForecast, OpenMeteoResponse
 
 
 @pytest.fixture

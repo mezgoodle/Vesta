@@ -5,7 +5,7 @@ This module provides a factory function that creates an ``LlmAgent`` with
 the RAG tool (``consult_knowledge_base``) already attached.
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 from google.adk.agents import LlmAgent
 

@@ -1,6 +1,6 @@
 """Tests for Calendar API endpoints."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -35,16 +35,16 @@ async def test_get_today_events_success(
     mock_service.get_today_events.return_value = [
         CalendarEvent(
             summary="Team Standup",
-            start_time=datetime(2026, 1, 26, 9, 0, 0, tzinfo=timezone.utc),
-            end_time=datetime(2026, 1, 26, 10, 0, 0, tzinfo=timezone.utc),
+            start_time=datetime(2026, 1, 26, 9, 0, 0, tzinfo=UTC),
+            end_time=datetime(2026, 1, 26, 10, 0, 0, tzinfo=UTC),
             is_all_day=False,
             description=None,
             location=None,
         ),
         CalendarEvent(
             summary="Client Meeting",
-            start_time=datetime(2026, 1, 26, 14, 0, 0, tzinfo=timezone.utc),
-            end_time=datetime(2026, 1, 26, 15, 30, 0, tzinfo=timezone.utc),
+            start_time=datetime(2026, 1, 26, 14, 0, 0, tzinfo=UTC),
+            end_time=datetime(2026, 1, 26, 15, 30, 0, tzinfo=UTC),
             is_all_day=False,
             description="Quarterly review",
             location="Conference Room A",
@@ -212,16 +212,16 @@ async def test_get_upcoming_events_success(
     mock_service.get_upcoming_events.return_value = [
         CalendarEvent(
             summary="Future Meeting 1",
-            start_time=datetime(2026, 1, 27, 10, 0, 0, tzinfo=timezone.utc),
-            end_time=datetime(2026, 1, 27, 11, 0, 0, tzinfo=timezone.utc),
+            start_time=datetime(2026, 1, 27, 10, 0, 0, tzinfo=UTC),
+            end_time=datetime(2026, 1, 27, 11, 0, 0, tzinfo=UTC),
             is_all_day=False,
             description=None,
             location=None,
         ),
         CalendarEvent(
             summary="Future Meeting 2",
-            start_time=datetime(2026, 1, 28, 14, 0, 0, tzinfo=timezone.utc),
-            end_time=datetime(2026, 1, 28, 15, 0, 0, tzinfo=timezone.utc),
+            start_time=datetime(2026, 1, 28, 14, 0, 0, tzinfo=UTC),
+            end_time=datetime(2026, 1, 28, 15, 0, 0, tzinfo=UTC),
             is_all_day=False,
             description=None,
             location=None,
@@ -504,8 +504,8 @@ async def test_update_calendar_event_endpoint(
     mock_service.update_event.return_value = {
         "id": "event123",
         "summary": "Updated Meeting Title",
-        "start_time": datetime(2026, 1, 26, 10, 0, 0, tzinfo=timezone.utc),
-        "end_time": datetime(2026, 1, 26, 11, 0, 0, tzinfo=timezone.utc),
+        "start_time": datetime(2026, 1, 26, 10, 0, 0, tzinfo=UTC),
+        "end_time": datetime(2026, 1, 26, 11, 0, 0, tzinfo=UTC),
         "html_link": "http://cal.link/event123",
         "description": "New description",
         "location": None,

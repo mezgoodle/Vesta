@@ -1,9 +1,10 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 from fastapi import HTTPException
 
+from app.schemas.open_meteo import DailyForecast, OpenMeteoResponse
 from app.services.open_meteo_service import OpenMeteoService
-from app.schemas.open_meteo import OpenMeteoResponse, DailyForecast
 
 
 @pytest.fixture

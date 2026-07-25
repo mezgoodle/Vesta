@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -15,8 +15,8 @@ class SmartDevice(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     name: Mapped[str] = mapped_column(String)
     entity_id: Mapped[str] = mapped_column(String)
-    device_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    room: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    device_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    room: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="devices")

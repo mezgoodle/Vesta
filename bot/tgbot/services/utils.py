@@ -1,10 +1,10 @@
-from typing import Any, Dict
+from typing import Any
 
 from aiogram.utils.formatting import Bold, Text, as_marked_section
 from aiogram.utils.markdown import hbold, hcode
 
 
-def format_user_data(user_data: Dict[str, Any]) -> str:
+def format_user_data(user_data: dict[str, Any]) -> str:
     """
     Format user data for Telegram message using HTML parse mode.
     """

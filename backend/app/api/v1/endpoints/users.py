@@ -1,12 +1,12 @@
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api import deps
 from app.crud.crud_user import user as crud_user
 from app.schemas.user import User, UserApprovalUpdate, UserCreate, UserUpdate
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(deps.get_current_user)])
 
 
 @router.get("/", response_model=list[User])
@@ -78,9 +78,10 @@ async def delete_user(
     *,
     db: deps.SessionDep,
     user_id: int,
+    current_user: deps.CurrentSuperUser,
 ) -> Any:
     """
-    Delete a user.
+    Delete a user. Require superuser privileges.
     """
     user = await crud_user.get(db, id=user_id)
     if not user:
@@ -122,6 +123,7 @@ async def update_user_approval(
     db: deps.SessionDep,
     telegram_id: int,
     approval_in: UserApprovalUpdate,
+    current_user: deps.CurrentSuperUser,
 ) -> Any:
     """
     Update user approval status by telegram_id.

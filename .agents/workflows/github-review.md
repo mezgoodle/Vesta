@@ -22,12 +22,13 @@ description: Review github pull request
 
 
 ### Step 4: Resolving Review Threads & Verification
-- Run lint and test scripts to ensure the changes didn't break anything.
+- **Mandatory Verification:** Run `uv run ruff check .` in `backend` and `bot`, as well as `pytest` suite to verify zero linting errors and 100% test pass rate.
 - If checks pass:
+  - Commit all applied changes and push to the remote branch.
   - Resolve the corresponding review threads on GitHub via `gh api graphql`:
     ```bash
     gh api graphql -F threadId="<THREAD_NODE_ID>" -f query='mutation($threadId: ID!) { resolveReviewThread(input: {threadId: $threadId}) { thread { id isResolved } } }'
     ```
   - Provide a concise summary to the user of resolved review threads and committed changes.
 - If checks fail:
-  - Roll back (if possible) or alert the user with the error log.
+  - Roll back or fix remaining errors until all linting and test checks pass.

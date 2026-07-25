@@ -4,14 +4,14 @@ import os
 import re
 import tempfile
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import google.auth
-from google.auth.transport.requests import Request
-from google.oauth2 import service_account
 from google import genai
+from google.auth.transport.requests import Request
 from google.genai import types
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 
@@ -106,12 +106,12 @@ class KnowledgeService:
         if isinstance(time_val, datetime):
             return time_val
         if not time_val:
-            return datetime.min.replace(tzinfo=timezone.utc)
+            return datetime.min.replace(tzinfo=UTC)
         time_str = str(time_val).replace("Z", "+00:00")
         try:
             return datetime.fromisoformat(time_str)
         except ValueError:
-            return datetime.min.replace(tzinfo=timezone.utc)
+            return datetime.min.replace(tzinfo=UTC)
 
     def _get_or_create_store(self, client: genai.Client) -> Any:
         """Get the File Search Store by name, or create it if not found."""

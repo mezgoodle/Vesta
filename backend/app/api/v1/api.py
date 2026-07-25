@@ -10,6 +10,7 @@ from app.api.v1.endpoints import (
     login,
     news,
     sessions,
+    tasks,
     tts,
     users,
     weather,
@@ -28,5 +29,6 @@ api_router.include_router(
 )
 api_router.include_router(calendar.router, prefix="/calendar", tags=["calendar"])
 api_router.include_router(gmail.router, prefix="/gmail", tags=["gmail"])
+api_router.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
 api_router.include_router(tts.router, prefix="/tts", tags=["tts"])
 api_router.include_router(cron.router, prefix="/cron", tags=["cron"])

@@ -13,8 +13,29 @@ from app.schemas.enums import ChatRole
 from app.schemas.user import UserCreate
 
 
+@pytest.fixture
+async def api_key_headers(db_session: AsyncSession):
+    user_in = UserCreate(
+        telegram_id=99999999,
+        full_name="System Superuser",
+        username="systemsuperuser",
+        email="system@example.com",
+        is_superuser=True,
+    )
+    await crud_user.create(db_session, obj_in=user_in)
+    return {"X-API-Key": settings.BACKEND_API_KEY}
+
+
 @pytest.mark.asyncio
-async def test_read_chat_history(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_unauthenticated_chat_access(client: AsyncClient) -> None:
+    response = await client.get(f"{settings.API_V1_STR}/chat/")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_read_chat_history(
+    client: AsyncClient, db_session: AsyncSession, api_key_headers: dict
+) -> None:
     # Create a user first
     user_in = UserCreate(
         telegram_id=111222333, full_name="Chat User", username="chatuser"
@@ -35,7 +56,9 @@ async def test_read_chat_history(client: AsyncClient, db_session: AsyncSession) 
     chat_history = await crud_chat.create(db_session, obj_in=chat_history_in)
     _ = await crud_chat.create(db_session, obj_in=chat_history_in)
 
-    response = await client.get(f"{settings.API_V1_STR}/chat/?user_id={user.id}")
+    response = await client.get(
+        f"{settings.API_V1_STR}/chat/?user_id={user.id}", headers=api_key_headers
+    )
 
     assert response.status_code == 200
     content = response.json()
@@ -48,7 +71,7 @@ async def test_read_chat_history(client: AsyncClient, db_session: AsyncSession) 
 
 @pytest.mark.asyncio
 async def test_read_chat_sessions(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient, db_session: AsyncSession, api_key_headers: dict
 ) -> None:
     # Create a user first
     user_in = UserCreate(
@@ -60,7 +83,9 @@ async def test_read_chat_sessions(
     chat_session_in = ChatSessionCreate(user_id=user.id, title="Chat Session")
     chat_session = await crud_session.create(db_session, obj_in=chat_session_in)
 
-    response = await client.get(f"{settings.API_V1_STR}/sessions/?user_id={user.id}")
+    response = await client.get(
+        f"{settings.API_V1_STR}/sessions/?user_id={user.id}", headers=api_key_headers
+    )
 
     assert response.status_code == 200
     content = response.json()
@@ -72,7 +97,7 @@ async def test_read_chat_sessions(
 
 @pytest.mark.asyncio
 async def test_create_chat_message_user_not_found(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient, db_session: AsyncSession, api_key_headers: dict
 ) -> None:
     # Create chat message for non-existent user
     chat_data = {
@@ -81,7 +106,9 @@ async def test_create_chat_message_user_not_found(
         "content": "Hello, world!",
         "session_id": 1,
     }
-    response = await client.post(f"{settings.API_V1_STR}/chat/", json=chat_data)
+    response = await client.post(
+        f"{settings.API_V1_STR}/chat/", json=chat_data, headers=api_key_headers
+    )
 
     assert response.status_code == 404
     content = response.json()
@@ -90,7 +117,7 @@ async def test_create_chat_message_user_not_found(
 
 @pytest.mark.asyncio
 async def test_create_chat_message(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient, db_session: AsyncSession, api_key_headers: dict
 ) -> None:
     # Create a user first
     user_in = UserCreate(
@@ -105,7 +132,9 @@ async def test_create_chat_message(
         "content": "Hello, world!",
         "session_id": 1,
     }
-    response = await client.post(f"{settings.API_V1_STR}/chat/", json=chat_data)
+    response = await client.post(
+        f"{settings.API_V1_STR}/chat/", json=chat_data, headers=api_key_headers
+    )
 
     assert response.status_code == 200
     content = response.json()
@@ -117,7 +146,7 @@ async def test_create_chat_message(
 
 @pytest.mark.asyncio
 async def test_read_chat_message_success(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient, db_session: AsyncSession, api_key_headers: dict
 ) -> None:
     # Create a user
     user_in = UserCreate(
@@ -138,7 +167,9 @@ async def test_read_chat_message_success(
     )
     chat_history = await crud_chat.create(db_session, obj_in=chat_history_in)
 
-    response = await client.get(f"{settings.API_V1_STR}/chat/{chat_history.id}")
+    response = await client.get(
+        f"{settings.API_V1_STR}/chat/{chat_history.id}", headers=api_key_headers
+    )
 
     assert response.status_code == 200
     content = response.json()
@@ -150,9 +181,11 @@ async def test_read_chat_message_success(
 
 @pytest.mark.asyncio
 async def test_read_chat_message_not_found(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient, db_session: AsyncSession, api_key_headers: dict
 ) -> None:
-    response = await client.get(f"{settings.API_V1_STR}/chat/99999")
+    response = await client.get(
+        f"{settings.API_V1_STR}/chat/99999", headers=api_key_headers
+    )
 
     assert response.status_code == 404
     content = response.json()
@@ -161,7 +194,7 @@ async def test_read_chat_message_not_found(
 
 @pytest.mark.asyncio
 async def test_delete_chat_message_success(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient, db_session: AsyncSession, api_key_headers: dict
 ) -> None:
     # Create a user
     user_in = UserCreate(
@@ -182,7 +215,9 @@ async def test_delete_chat_message_success(
     )
     chat_history = await crud_chat.create(db_session, obj_in=chat_history_in)
 
-    response = await client.delete(f"{settings.API_V1_STR}/chat/{chat_history.id}")
+    response = await client.delete(
+        f"{settings.API_V1_STR}/chat/{chat_history.id}", headers=api_key_headers
+    )
 
     assert response.status_code == 200
     content = response.json()
@@ -197,9 +232,11 @@ async def test_delete_chat_message_success(
 
 @pytest.mark.asyncio
 async def test_delete_chat_message_not_found(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient, db_session: AsyncSession, api_key_headers: dict
 ) -> None:
-    response = await client.delete(f"{settings.API_V1_STR}/chat/99999")
+    response = await client.delete(
+        f"{settings.API_V1_STR}/chat/99999", headers=api_key_headers
+    )
 
     assert response.status_code == 404
     content = response.json()

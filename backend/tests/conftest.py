@@ -1,4 +1,4 @@
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -44,7 +44,7 @@ def anyio_backend():
 
 
 @pytest.fixture
-async def init_db() -> AsyncGenerator[None, None]:
+async def init_db() -> AsyncGenerator[None]:
     """Create tables before test and drop them after."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -56,7 +56,7 @@ async def init_db() -> AsyncGenerator[None, None]:
 
 
 @pytest.fixture
-async def db_session(init_db: None) -> AsyncGenerator[AsyncSession, None]:
+async def db_session(init_db: None) -> AsyncGenerator[AsyncSession]:
     """
     Fixture that returns a SQLAlchemy session with a SAVEPOINT.
     This allows each test to run in a transaction that is rolled back.
@@ -68,7 +68,7 @@ async def db_session(init_db: None) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest.fixture
-async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
     """
     Fixture for async HTTP client.
     Overrides the get_db dependency to use the test session.
@@ -92,7 +92,7 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest.fixture
-async def mock_llm_service() -> AsyncGenerator[AsyncMock, None]:
+async def mock_llm_service() -> AsyncGenerator[AsyncMock]:
     """
     Fixture for mocked LLM service.
     Overrides the llm_service dependency.
@@ -112,7 +112,7 @@ async def mock_llm_service() -> AsyncGenerator[AsyncMock, None]:
 
 
 @pytest.fixture
-async def mock_adk_service() -> AsyncGenerator[AsyncMock, None]:
+async def mock_adk_service() -> AsyncGenerator[AsyncMock]:
     """
     Fixture for mocked ADK service.
     Overrides the adk_service dependency.

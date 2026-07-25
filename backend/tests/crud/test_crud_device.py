@@ -1,9 +1,10 @@
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.crud.crud_device import device as crud_device
 from app.crud.crud_user import user as crud_user
 from app.schemas.device import SmartDeviceCreate
 from app.schemas.user import UserCreate
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.mark.asyncio

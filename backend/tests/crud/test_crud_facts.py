@@ -3,8 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud.crud_facts import user_fact as crud_user_fact
 from app.crud.crud_user import user as crud_user
-from app.schemas.user_facts import FactCreate
 from app.schemas.user import UserCreate
+from app.schemas.user_facts import FactCreate
 
 
 @pytest.mark.asyncio

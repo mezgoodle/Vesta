@@ -1,8 +1,9 @@
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.crud.base import CRUDBase
 from app.models.news import NewsSubscription
 from app.schemas.news import NewsSubscriptionCreate, NewsSubscriptionUpdate
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class CRUDNewsSubscription(

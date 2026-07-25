@@ -4,15 +4,13 @@ Example service demonstrating how to extend BaseAPIService.
 This is a template/example for creating new services.
 """
 
-from typing import Optional
-
 from tgbot.infrastructure.base_service import BaseAPIService
 
 
 class WeatherService(BaseAPIService):
     """Service for weather forecast operations."""
 
-    def __init__(self, base_url: Optional[str] = None, timeout: int = 10):
+    def __init__(self, base_url: str | None = None, timeout: int = 10):
         """
         Initialize the forecast service.
 

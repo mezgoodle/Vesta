@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from typing import Optional
 
 from google.api_core.client_options import ClientOptions
 from google.api_core.exceptions import GoogleAPIError
@@ -30,8 +29,9 @@ class GoogleSTTService:
         Uses GOOGLE_APPLICATION_CREDENTIALS if it points to a valid file,
         otherwise falls back to Application Default Credentials (ADC) on GCP.
         """
-        import os
         import json
+        import os
+
         import google.auth
 
         self.location_code = "us"
@@ -46,7 +46,7 @@ class GoogleSTTService:
             )
             # Try to load project_id from the service account key file if not set in config
             try:
-                with open(config.GOOGLE_APPLICATION_CREDENTIALS, "r") as f:
+                with open(config.GOOGLE_APPLICATION_CREDENTIALS) as f:
                     sa_info = json.load(f)
                     if not self.project_id and "project_id" in sa_info:
                         self.project_id = sa_info["project_id"]
@@ -60,7 +60,9 @@ class GoogleSTTService:
                 if default_project_id:
                     self.project_id = default_project_id
             except Exception as e:
-                self.logger.warning("Could not automatically determine GCP project ID", exc_info=e)
+                self.logger.warning(
+                    "Could not automatically determine GCP project ID", exc_info=e
+                )
 
         self.client = SpeechClient(
             credentials=credentials,
@@ -74,9 +76,11 @@ class GoogleSTTService:
             language_codes=["en-US", "uk-UA"],
             model="chirp_3",
         )
-        self.logger.info(f"GoogleSTTService initialized successfully with project: {self.project_id}")
+        self.logger.info(
+            f"GoogleSTTService initialized successfully with project: {self.project_id}"
+        )
 
-    async def recognize(self, audio_bytes: bytes) -> Optional[str]:
+    async def recognize(self, audio_bytes: bytes) -> str | None:
         """
         Recognize speech from audio bytes.
 

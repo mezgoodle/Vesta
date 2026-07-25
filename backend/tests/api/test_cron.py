@@ -1,13 +1,14 @@
 import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.models.user import User
 from app.models.device import SmartDevice
-from app.schemas.open_meteo import OpenMeteoResponse, DailyForecast
+from app.models.user import User
+from app.schemas.open_meteo import DailyForecast, OpenMeteoResponse
 
 
 @pytest.fixture
@@ -538,8 +539,8 @@ async def test_check_power_status_partial_failure(
 
 @pytest.mark.asyncio
 async def test_sync_knowledge_success(client: AsyncClient) -> None:
-    from app.services.knowledge import knowledge_service
     from app.main import app
+    from app.services.knowledge import knowledge_service
 
     mock_kb = MagicMock()
     mock_kb.sync_with_drive = MagicMock()
