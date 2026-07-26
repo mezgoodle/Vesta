@@ -34,6 +34,7 @@ class ChatRequest(BaseSchema):
     message: str
     want_voice: bool = False
     session_id: int | None = None
+    session_title: str | None = None
 
 
 class ChatResponse(BaseSchema):

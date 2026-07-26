@@ -14,6 +14,7 @@ class LLMService(BaseAPIService):
         prompt: str,
         user_id: int,
         session_id: int | None = None,
+        session_title: str | None = None,
         want_voice: bool = False,
     ) -> dict[str, Any]:
         """
@@ -31,6 +32,7 @@ class LLMService(BaseAPIService):
                 "session_id": session_id,
                 "message": prompt,
                 "want_voice": want_voice,
+                "session_title": session_title,
             },
             timeout=60,
         )
