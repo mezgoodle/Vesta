@@ -5,8 +5,8 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import BufferedInputFile, Message
 from aiogram.utils.markdown import hbold
-from loader import dp
 
+from loader import dp
 from tgbot.filters.approved_user import IsApprovedUserFilter
 from tgbot.infrastructure.llm_service import llm_service
 from tgbot.services.stt import stt_service
@@ -30,12 +30,20 @@ async def new_message_command(message: Message, state: FSMContext):
         await message.answer(
             f"You are in session {hbold(session_title)}. Send your message."
         )
+        return await state.set_state(ChatMessage.message)
     else:
-        await message.answer("Send your message.")
-        await message.answer(
-            "You will start a new session. If you want to continue the conversation, type /chats."
-        )
+        await message.answer("Send a title for your new session.")
+        return await state.set_state(ChatMessage.session_title)
+
+
+@router.message(ChatMessage.session_title)
+async def session_title_handler(message: Message, state: FSMContext):
+    session_title = message.text
+    if not session_title:
+        return await message.answer("Please send a session title.")
+    await state.update_data(session_title=session_title)
     await state.set_state(ChatMessage.message)
+    return await message.answer("Session title set. Send your message.")
 
 
 @router.message(ChatMessage.message, F.voice)
@@ -76,6 +84,7 @@ async def _process_llm_request(
         prompt=text,
         user_id=user_db_id,
         session_id=session_id,
+        session_title=session_title,
         want_voice=want_voice,
     )
     if not response:

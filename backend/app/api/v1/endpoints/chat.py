@@ -62,7 +62,7 @@ async def process_chat_message(
             db,
             obj_in=ChatSessionCreate(
                 user_id=user.id,
-                title="New Chat",
+                title=chat_request.session_title or "New Chat",
             ),
         )
         current_session_id = current_session.id
