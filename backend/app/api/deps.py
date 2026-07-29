@@ -14,6 +14,7 @@ from app.db.session import get_db
 from app.models.user import User
 from app.schemas.token import TokenPayload
 from app.services.adk_service import ADKService, adk_service
+from app.services.archiver import MemoryArchiverService, archiver_service
 from app.services.gmail_service import (
     GmailService,
     gmail_service,
@@ -37,6 +38,8 @@ TasksServiceDep = Annotated[GoogleTasksService, Depends(google_tasks_service)]
 GmailServiceDep = Annotated[GmailService, Depends(gmail_service)]
 KnowledgeServiceDep = Annotated[KnowledgeService, Depends(knowledge_service)]
 TTSServiceDep = Annotated[GoogleTTSService, Depends(google_tts_service)]
+ArchiverServiceDep = Annotated[MemoryArchiverService, Depends(archiver_service)]
+
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token",

@@ -59,6 +59,8 @@ class Settings(BaseSettings):
     # RAG / Knowledge Base
     GOOGLE_DRIVE_FOLDER_ID: str = ""
     FILE_SEARCH_STORE_DISPLAY_NAME: str = "vesta-knowledge-base"
+    SESSION_ARCHIVE_ENABLED: bool = True
+
 
     model_config = SettingsConfigDict(
         env_file=".env",
