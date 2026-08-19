@@ -55,6 +55,28 @@ class CRUDChatHistory(CRUDBase[ChatHistory, ChatHistoryCreate, ChatHistoryUpdate
 
         return list(reversed(items))
 
+    async def get_by_session_id(
+        self, db: AsyncSession, *, session_id: int
+    ) -> list[ChatHistory]:
+        """
+        Get all messages for a session, ordered chronologically (oldest to newest).
+
+        Args:
+            db: Database session
+            session_id: Session ID to fetch messages for
+
+        Returns:
+            List of ChatHistory records ordered by creation time
+        """
+        stmt = (
+            select(self.model)
+            .where(self.model.session_id == session_id)
+            .order_by(self.model.created_at.asc(), self.model.id.asc())
+        )
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
+
     async def get_count_by_session_id(
         self, db: AsyncSession, *, session_id: int
     ) -> int:
