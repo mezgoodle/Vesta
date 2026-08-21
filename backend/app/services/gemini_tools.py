@@ -125,7 +125,9 @@ def create_tools(
 
             result = f"Upcoming events (next {days} days):\n"
             for i, event in enumerate(events, 1):
-                if event.start_time:
+                if event.is_all_day:
+                    start = f"All day ({event.start_time.strftime('%Y-%m-%d') if event.start_time else ''})".strip()
+                elif event.start_time:
                     start = event.start_time.strftime("%Y-%m-%d %H:%M")
                 else:
                     start = "All day"

@@ -331,6 +331,72 @@ async def test_morning_digest_with_emails(
 
 
 @pytest.mark.asyncio
+async def test_morning_digest_with_all_day_event(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    mock_llm_service,
+    mock_calendar_service,
+    mock_weather_service,
+    mock_gmail_service,
+    mock_httpx_client,
+) -> None:
+    # Create test user in DB
+    user = User(
+        email="cron-digest-allday@example.com",
+        hashed_password="hashedpassword",
+        telegram_id=112233,
+        city_name="Kyiv",
+        is_daily_summary_enabled=True,
+        google_refresh_token="valid-refresh-token",
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    # Mock gmail service
+    mock_gmail_service.get_emails = AsyncMock(return_value=[])
+
+    # Mock all-day calendar event
+    event = MagicMock()
+    event.start_time = datetime.datetime(2026, 8, 24, 0, 0)
+    event.is_all_day = True
+    event.summary = "Independence Day of Ukraine"
+    mock_calendar_service.get_today_events = AsyncMock(return_value=[event])
+
+    # Mock weather service
+    mock_weather = MagicMock(spec=OpenMeteoResponse)
+    mock_weather.city_name = "Kyiv"
+    mock_weather.current_temp = 22.0
+    mock_weather.current_conditions = "Sunny"
+    mock_weather.daily_forecasts = []
+    mock_weather_service.get_weather = AsyncMock(return_value=mock_weather)
+
+    # Mock LLM service
+    mock_llm_service.chat.return_value = "Доброго ранку! Сьогодні святковий день."
+
+    # Mock Telegram API response
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_httpx_client.post.return_value = mock_response
+
+    # Send POST request with correct header secret
+    response = await client.post(
+        f"{settings.API_V1_STR}/cron/morning-digest",
+        headers={"X-Cron-Secret": settings.CRON_SECRET_KEY},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["sent_digests_count"] == 1
+
+    # Verify prompt contains "Весь день: Independence Day of Ukraine" and NOT "00:00"
+    prompt = mock_llm_service.chat.call_args[0][0]
+    assert "Весь день: Independence Day of Ukraine" in prompt
+    assert "00:00: Independence Day of Ukraine" not in prompt
+
+
+@pytest.mark.asyncio
 async def test_morning_digest_weather_failure(
     client: AsyncClient,
     db_session: AsyncSession,

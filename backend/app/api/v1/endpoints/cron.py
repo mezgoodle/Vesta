@@ -78,7 +78,7 @@ async def send_daily_digests(db: AsyncSession) -> int:
             if events:
                 events_text = "\n".join(
                     [
-                        f"- {e.start_time.strftime('%H:%M') if e.start_time else 'All day'}: {e.summary}"
+                        f"- {'Весь день' if e.is_all_day else (e.start_time.strftime('%H:%M') if e.start_time else 'Весь день')}: {e.summary}"
                         for e in events
                     ]
                 )
