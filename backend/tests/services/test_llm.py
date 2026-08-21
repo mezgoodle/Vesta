@@ -144,6 +144,50 @@ async def test_chat_extract_and_run_calendar_events_tool(
 
 
 @pytest.mark.asyncio
+async def test_chat_extract_and_run_calendar_events_tool_all_day(
+    llm_service, mock_genai_client
+):
+    mock_response = MagicMock()
+    mock_response.text = "Calendar response"
+    mock_genai_client.aio.models.generate_content.return_value = mock_response
+
+    db_session = AsyncMock()
+    await llm_service.chat("My events", [], 123, db_session)
+
+    calendar_tool = _extract_tool(mock_genai_client, "get_calendar_events")
+
+    with patch("app.services.llm.GoogleCalendarService") as MockCalendarService:
+        mock_calendar_service = MockCalendarService.return_value
+
+        # Mock all day event with start_time
+        event1 = MagicMock()
+        event1.summary = "All Day Festival"
+        event1.start_time = datetime.datetime(2026, 8, 24, 0, 0)
+        event1.is_all_day = True
+        event1.location = "Kyiv"
+        event1.description = None
+
+        # Mock all day event without start_time
+        event2 = MagicMock()
+        event2.summary = "Holiday"
+        event2.start_time = None
+        event2.is_all_day = True
+        event2.location = None
+        event2.description = None
+
+        mock_calendar_service.get_upcoming_events = AsyncMock(
+            return_value=[event1, event2]
+        )
+
+        result = await calendar_tool(days=7)
+
+        assert "1. All Day Festival - All day (2026-08-24) at Kyiv" in result
+        assert "2. Holiday - All day" in result
+        assert "All day ()" not in result
+        assert "00:00" not in result
+
+
+@pytest.mark.asyncio
 async def test_chat_extract_and_run_schedule_event_tool(llm_service, mock_genai_client):
     mock_response = MagicMock()
     mock_response.text = "Schedule response"

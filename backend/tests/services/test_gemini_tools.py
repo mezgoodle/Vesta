@@ -122,6 +122,31 @@ class TestGetCalendarEvents:
             assert "[ID: allday1]" in result
 
     @pytest.mark.asyncio
+    async def test_all_day_event_without_start_time(self, tools):
+        tool_groups, db = tools
+        calendar_tool = tool_groups["calendar"][0]
+
+        with patch("app.services.gemini_tools.GoogleCalendarService") as MockCal:
+            mock_cal = MockCal.return_value
+            mock_cal.get_upcoming_events = AsyncMock()
+
+            event = MagicMock()
+            event.id = "allday2"
+            event.summary = "Spring Break"
+            event.start_time = None
+            event.is_all_day = True
+            event.location = None
+            event.description = None
+
+            mock_cal.get_upcoming_events.return_value = [event]
+
+            result = await calendar_tool(days=7)
+
+            assert "Spring Break" in result
+            assert "Spring Break [ID: allday2] - All day" in result
+            assert "All day ()" not in result
+
+    @pytest.mark.asyncio
     async def test_no_events(self, tools):
         tool_groups, _ = tools
         calendar_tool = tool_groups["calendar"][0]

@@ -28,7 +28,7 @@ class GoogleCalendarService:
     def __init__(self) -> None:
         """Initialize the Google Calendar Service."""
         self.token_uri = "https://oauth2.googleapis.com/token"
-        self.timezone = "Europe/Kiev"
+        self.timezone = "Europe/Kyiv"
 
     async def _fetch_events_raw(
         self,
@@ -106,6 +106,16 @@ class GoogleCalendarService:
         except Exception as e:
             raise Exception(f"Failed to fetch calendar events: {str(e)}") from e
 
+    def _get_tz(self) -> ZoneInfo:
+        """Get ZoneInfo object with fallback for legacy timezone names."""
+        try:
+            return ZoneInfo(self.timezone)
+        except Exception:
+            try:
+                return ZoneInfo("Europe/Kyiv")
+            except Exception:
+                return ZoneInfo("Europe/Kiev")
+
     async def get_today_events(
         self, user_id: int, db: AsyncSession
     ) -> list["CalendarEvent"]:
@@ -119,7 +129,7 @@ class GoogleCalendarService:
         Returns:
             List of formatted CalendarEvent objects
         """
-        tz = ZoneInfo(self.timezone)
+        tz = self._get_tz()
         now_local = datetime.now(tz)
         time_min = datetime.combine(now_local.date(), time.min, tzinfo=tz)
         time_max = datetime.combine(now_local.date(), time.max, tzinfo=tz)
@@ -140,7 +150,7 @@ class GoogleCalendarService:
         Returns:
             List of formatted CalendarEvent objects
         """
-        tz = ZoneInfo(self.timezone)
+        tz = self._get_tz()
         now_local = datetime.now(tz)
         time_min = now_local
         time_max = now_local + timedelta(days=days)
@@ -266,7 +276,7 @@ class GoogleCalendarService:
 
     def _to_service_tz(self, dt: datetime) -> datetime:
         """Ensure a datetime object is timezone-aware in the service's configured timezone."""
-        tz = ZoneInfo(self.timezone)
+        tz = self._get_tz()
         return dt.replace(tzinfo=tz) if dt.tzinfo is None else dt.astimezone(tz)
 
     def _parse_datetime(self, dt_string: str | None) -> datetime | None:
