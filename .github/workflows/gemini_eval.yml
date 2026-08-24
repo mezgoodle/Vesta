@@ -1,0 +1,59 @@
+name: Gemini Models E2E Evaluation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/gemini_eval.yml"
+
+jobs:
+  gemini-e2e-eval:
+    name: Gemini Models E2E Benchmark
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "backend/.python-version"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run Gemini Models E2E Tests
+        run: |
+          uv run pytest -m e2e -v
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          SYSTEM_INSTRUCTION: "You are Vesta, a proactive personal AI assistant."
+
+      - name: Generate Benchmark Summary Report
+        if: always()
+        run: |
+          uv run python -m scripts.benchmark_models --output-md benchmark_summary.md --output-json benchmark_summary.json || true
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          SYSTEM_INSTRUCTION: "You are Vesta, a proactive personal AI assistant."
+
+      - name: Upload Benchmark Report Artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gemini-models-benchmark-report
+          path: |
+            backend/benchmark_summary.md
+            backend/benchmark_summary.json
+          if-no-files-found: ignore
