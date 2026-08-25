@@ -33,6 +33,16 @@ DEFAULT_MODELS = [
 ]
 
 
+def _positive_int(value: str) -> int:
+    try:
+        ival = int(value)
+        if ival < 1:
+            raise argparse.ArgumentTypeError("Concurrency must be at least 1")
+        return ival
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Invalid integer: {value}")
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Benchmark and evaluate multiple Gemini models on Vesta agent capabilities."
@@ -45,9 +55,9 @@ def parse_args():
     )
     parser.add_argument(
         "--concurrency",
-        type=int,
+        type=_positive_int,
         default=4,
-        help="Maximum concurrent API calls (default: 4)",
+        help="Maximum concurrent API calls (must be >= 1, default: 4)",
     )
     parser.add_argument(
         "--output-md",
@@ -115,6 +125,11 @@ async def main_async():
 
 
 def main():
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
     asyncio.run(main_async())
 
 

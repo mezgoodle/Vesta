@@ -64,7 +64,7 @@ class ModelBenchmarkSummary:
     results: list[EvalResult] = field(default_factory=list)
 
 
-# Pricing estimates per 1,000,000 tokens (Standard Tier as of 2025/2026)
+# Pricing estimates per 1,000,000 tokens (Standard Tier as of 2026)
 # Prompt / Output in USD
 MODEL_PRICING_PER_1M: dict[str, tuple[float, float]] = {
     "gemini-3.7-flash": (0.15, 0.60),
@@ -72,8 +72,8 @@ MODEL_PRICING_PER_1M: dict[str, tuple[float, float]] = {
     "gemini-3.5-flash": (0.15, 0.60),
     "gemini-3.5-flash-lite": (0.075, 0.30),
     "gemini-3-flash-preview": (0.15, 0.60),
-    "gemini-2.5-flash": (0.15, 0.60),
-    "gemini-2.5-pro": (1.25, 5.00),
+    "gemini-2.5-flash": (0.30, 2.50),
+    "gemini-2.5-pro": (1.25, 10.00),
     "gemini-2.0-flash": (0.10, 0.40),
     "gemini-2.0-flash-lite": (0.075, 0.30),
     "gemini-1.5-flash": (0.075, 0.30),
@@ -83,10 +83,12 @@ MODEL_PRICING_PER_1M: dict[str, tuple[float, float]] = {
 
 def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
     """Calculate estimated cost in USD for a given token usage."""
-    # Lookup pricing or fallback to flash tier
     rates = MODEL_PRICING_PER_1M.get(model)
     if not rates:
-        for known_model, rate in MODEL_PRICING_PER_1M.items():
+        # Fallback matching by descending key length so specific variants (e.g. lite) match first
+        for known_model, rate in sorted(
+            MODEL_PRICING_PER_1M.items(), key=lambda x: len(x[0]), reverse=True
+        ):
             if known_model in model:
                 rates = rate
                 break
@@ -94,6 +96,12 @@ def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
         rates = (0.15, 0.60)
 
     input_rate, output_rate = rates
+
+    # Handle Gemini 2.5 Pro tiered pricing for >200K prompt tokens
+    if "gemini-2.5-pro" in model and input_tokens > 200_000:
+        input_rate = 2.50
+        output_rate = 15.00
+
     cost = (input_tokens / 1_000_000 * input_rate) + (
         output_tokens / 1_000_000 * output_rate
     )

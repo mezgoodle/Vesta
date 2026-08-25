@@ -65,9 +65,10 @@ class TestGeminiModelsE2E:
         assert len(scenarios) == 1
 
         result = await evaluator.evaluate_single_test_case(model=model, test_case=scenarios[0])
-        # We check result without hard-failing if older flash models only trigger 1 tool
+        assert result.success, f"Model {model} failed daily briefing test: {result.validation_errors}"
         tool_names = [t.name for t in result.tools_called]
-        assert len(tool_names) >= 1, f"Model {model} failed to call any tools: {result.validation_errors}"
+        assert "get_weather_info" in tool_names
+        assert "get_calendar_events" in tool_names
 
     @pytest.mark.parametrize("model", BENCHMARK_MODELS)
     async def test_model_direct_conversation_no_tools(self, api_key: str, model: str):

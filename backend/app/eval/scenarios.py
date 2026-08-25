@@ -1,5 +1,4 @@
-"""Standard evaluation scenarios for Gemini models in Vesta."""
-
+import datetime
 import re
 from app.eval.models import EvalTestCase
 
@@ -20,12 +19,19 @@ def _validate_schedule_args(args: dict) -> bool:
     start_time_iso = args.get("start_time_iso", "")
     if not summary or not start_time_iso:
         return False
-    # Basic ISO 8601 validation (YYYY-MM-DDTHH:MM...)
-    return bool(re.match(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}", str(start_time_iso)))
+    try:
+        datetime.datetime.fromisoformat(str(start_time_iso).replace("Z", "+00:00"))
+        return True
+    except (ValueError, TypeError):
+        return False
 
 
 def get_standard_eval_scenarios() -> list[EvalTestCase]:
     """Get the standard suite of evaluation test cases."""
+    tomorrow_str = (
+        datetime.datetime.now() + datetime.timedelta(days=1)
+    ).strftime("%Y-%m-%d")
+
     return [
         EvalTestCase(
             name="direct_conversation",
@@ -66,7 +72,7 @@ def get_standard_eval_scenarios() -> list[EvalTestCase]:
         EvalTestCase(
             name="calendar_schedule_event",
             description="Scheduling a meeting with specific time (requires ISO datetime formatting).",
-            prompt="Заплануй зустріч 'Sync with Architecture Team' на 2026-08-25 о 14:30 тривалістю 45 хвилин.",
+            prompt=f"Заплануй зустріч 'Sync with Architecture Team' на {tomorrow_str} о 14:30 тривалістю 45 хвилин.",
             expected_tools=["schedule_event_tool"],
             tool_arg_validators={"schedule_event_tool": _validate_schedule_args},
         ),

@@ -81,28 +81,34 @@ class GeminiModelEvaluator:
             config = types.GenerateContentConfig(
                 system_instruction=system_instruction,
                 tools=tools,
-                temperature=0.0,  # Deterministic for benchmark
             )
 
             start_time = time.perf_counter()
             try:
-                response = await self.client.aio.models.generate_content(
-                    model=model,
-                    contents=test_case.prompt,
-                    config=config,
+                # Add timeout protection so slow/unresponsive models fail gracefully
+                response = await asyncio.wait_for(
+                    self.client.aio.models.generate_content(
+                        model=model,
+                        contents=test_case.prompt,
+                        config=config,
+                    ),
+                    timeout=30.0,
                 )
                 latency = time.perf_counter() - start_time
 
-                # Extract tool calls from response parts if not captured via mock execution
-                if response.candidates:
-                    for part in response.candidates[0].content.parts:
-                        if part.function_call:
-                            name = part.function_call.name
-                            args = getattr(part.function_call, "args", {}) or {}
-                            if not any(tc.name == name for tc in tools_called):
-                                tools_called.append(
-                                    ToolCallRecord(name=name, args=dict(args))
-                                )
+                # Extract tool calls from response parts defensively
+                candidates = getattr(response, "candidates", None) or []
+                if candidates:
+                    content = getattr(candidates[0], "content", None)
+                    parts = getattr(content, "parts", None) or []
+                    for part in parts:
+                        fn_call = getattr(part, "function_call", None)
+                        if fn_call:
+                            name = getattr(fn_call, "name", "")
+                            args = getattr(fn_call, "args", {}) or {}
+                            tools_called.append(
+                                ToolCallRecord(name=name, args=dict(args))
+                            )
 
                 usage = getattr(response, "usage_metadata", None)
                 in_tokens = getattr(usage, "prompt_token_count", 0) if usage else 0
@@ -115,6 +121,15 @@ class GeminiModelEvaluator:
                 # Validation
                 validation_errors = []
                 called_tool_names = [tc.name for tc in tools_called]
+
+                if not candidates:
+                    validation_errors.append("No candidates returned in response")
+
+                # If no tools are expected, any tool called is a validation error
+                if not test_case.expected_tools and called_tool_names:
+                    validation_errors.append(
+                        f"Expected no tools to be called, but called: {called_tool_names}"
+                    )
 
                 for expected in test_case.expected_tools:
                     if expected not in called_tool_names:
@@ -136,7 +151,7 @@ class GeminiModelEvaluator:
                                 f"Arguments for tool '{tc_record.name}' failed validation: {tc_record.args}"
                             )
 
-                response_text = response.text or ""
+                response_text = getattr(response, "text", "") or ""
                 for kw in test_case.expected_content_keywords:
                     if kw.lower() not in response_text.lower():
                         validation_errors.append(

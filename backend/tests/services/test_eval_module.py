@@ -18,11 +18,17 @@ from app.eval.scenarios import (
 
 def test_calculate_cost():
     """Test cost estimation for different models."""
-    cost_flash = calculate_cost("gemini-2.5-flash", 1_000_000, 1_000_000)
-    assert cost_flash == 0.75  # 0.15 + 0.60
+    cost_flash_25 = calculate_cost("gemini-2.5-flash", 1_000_000, 1_000_000)
+    assert cost_flash_25 == 2.80  # 0.30 + 2.50
 
-    cost_pro = calculate_cost("gemini-2.5-pro", 1_000_000, 1_000_000)
-    assert cost_pro == 6.25  # 1.25 + 5.00
+    cost_pro_25 = calculate_cost("gemini-2.5-pro", 100_000, 100_000)
+    assert cost_pro_25 == 1.125  # 0.125 + 1.000
+
+    cost_pro_25_tiered = calculate_cost("gemini-2.5-pro", 300_000, 100_000)
+    assert cost_pro_25_tiered == 2.25  # (0.3 * 2.50) + (0.1 * 15.00) = 0.75 + 1.50 = 2.25
+
+    cost_lite = calculate_cost("gemini-3.5-flash-lite-preview", 1_000_000, 1_000_000)
+    assert cost_lite == 0.375  # 0.075 + 0.30
 
 
 def test_scenario_validators():
@@ -121,6 +127,64 @@ async def test_evaluator_evaluate_single_test_case_mocked():
     assert result.output_tokens == 50
     assert len(result.tools_called) == 1
     assert result.tools_called[0].name == "get_weather_info"
+
+
+async def test_evaluator_empty_candidates_safe_handling():
+    """Test evaluator handles empty candidates without throwing exception."""
+    evaluator = GeminiModelEvaluator(api_key="test_key_fake")
+
+    mock_response = MagicMock()
+    mock_response.candidates = []
+    mock_response.text = ""
+    mock_response.usage_metadata = None
+
+    evaluator.client.aio.models.generate_content = AsyncMock(return_value=mock_response)
+
+    test_case = EvalTestCase(
+        name="test_empty",
+        prompt="Hello?",
+        expected_tools=["get_weather_info"],
+    )
+
+    result = await evaluator.evaluate_single_test_case(
+        model="gemini-2.5-flash", test_case=test_case
+    )
+
+    assert result.success is False
+    assert any("No candidates returned" in err for err in result.validation_errors)
+
+
+async def test_evaluator_direct_conversation_tool_failure():
+    """Test that when expected_tools is empty, any called tool fails validation."""
+    evaluator = GeminiModelEvaluator(api_key="test_key_fake")
+
+    mock_part = MagicMock()
+    mock_part.function_call = MagicMock()
+    mock_part.function_call.name = "get_weather_info"
+    mock_part.function_call.args = {"city": "Kyiv"}
+
+    mock_candidate = MagicMock()
+    mock_candidate.content.parts = [mock_part]
+
+    mock_response = MagicMock()
+    mock_response.candidates = [mock_candidate]
+    mock_response.text = "Here is weather."
+    mock_response.usage_metadata = None
+
+    evaluator.client.aio.models.generate_content = AsyncMock(return_value=mock_response)
+
+    test_case = EvalTestCase(
+        name="direct_conversation",
+        prompt="Hi!",
+        expected_tools=[],
+    )
+
+    result = await evaluator.evaluate_single_test_case(
+        model="gemini-2.5-flash", test_case=test_case
+    )
+
+    assert result.success is False
+    assert any("Expected no tools" in err for err in result.validation_errors)
 
 
 def test_generate_markdown_report():
