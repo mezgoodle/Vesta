@@ -93,19 +93,39 @@ async def main_async():
     evaluator = GeminiModelEvaluator(api_key=api_key, max_concurrency=args.concurrency)
     summaries = await evaluator.run_benchmark(models=models, test_cases=scenarios)
 
-    # Print summary table to terminal
-    print("\n" + "=" * 80)
-    print(f"{'Model':<20} | {'Pass Rate':<10} | {'Passed':<8} | {'Avg Time':<10} | {'Tokens':<10} | {'Est. Cost':<10}")
-    print("-" * 80)
+    # Print hierarchical summary table to terminal
+    print("\n" + "=" * 95)
+    print(f"{'Model / Test Scenario':<32} | {'Status':<9} | {'Time (s)':<9} | {'In / Out':<12} | {'Tools / Details'}")
+    print("=" * 95)
     for s in summaries.values():
-        pass_str = f"{s.pass_rate_percent}%"
-        passed_str = f"{s.passed_tests}/{s.total_tests}"
+        pass_badge = "🟢" if s.pass_rate_percent == 100 else ("🟡" if s.pass_rate_percent >= 75 else "🔴")
+        model_header = f"📦 {s.model}"
+        pass_str = f"{pass_badge} {s.pass_rate_percent}%"
         time_str = f"{s.avg_latency_seconds}s"
-        cost_str = f"${s.total_estimated_cost_usd:.5f}"
-        print(
-            f"{s.model:<20} | {pass_str:<10} | {passed_str:<8} | {time_str:<10} | {s.total_tokens:<10} | {cost_str:<10}"
-        )
-    print("=" * 80 + "\n")
+        tokens_str = f"{s.total_tokens:,} tot"
+        details_str = f"{s.passed_tests}/{s.total_tests} passed (${s.total_estimated_cost_usd:.5f})"
+
+        print(f"{model_header:<32} | {pass_str:<9} | {time_str:<9} | {tokens_str:<12} | {details_str}")
+
+        # Breakdown by specific task
+        for i, r in enumerate(s.results):
+            is_last = (i == len(s.results) - 1)
+            branch = "  └─ " if is_last else "  ├─ "
+            task_col = f"{branch}{r.test_case_name}"
+            status_str = "✅ PASS" if r.success else "❌ FAIL"
+            r_time = f"{r.latency_seconds}s"
+            r_tokens = f"{r.input_tokens}/{r.output_tokens}"
+            
+            if r.success:
+                tools_str = ", ".join(t.name for t in r.tools_called) or "(none)"
+                r_details = f"Tools: {tools_str}"
+            else:
+                err_msg = "; ".join(r.validation_errors) if r.validation_errors else (r.error_message or "failed")
+                r_details = f"Err: {err_msg[:45]}"
+
+            print(f"{task_col:<32} | {status_str:<9} | {r_time:<9} | {r_tokens:<12} | {r_details}")
+        print("-" * 95)
+    print("=" * 95 + "\n")
 
     # Generate Markdown Report
     md_report = evaluator.generate_markdown_report(summaries)
