@@ -57,17 +57,10 @@ jobs:
       - name: Generate Benchmark Summary Report
         if: always()
         run: |
-          uv run python -m scripts.benchmark_models --output-md benchmark_summary.md --output-json benchmark_summary.json
+          uv run python -m scripts.benchmark_models --output-md summary.md
+          if [ -n "${GITHUB_STEP_SUMMARY}" ] && [ -f summary.md ]; then
+            cat summary.md >> "${GITHUB_STEP_SUMMARY}"
+          fi
         env:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           SYSTEM_INSTRUCTION: "You are Vesta, a proactive personal AI assistant."
-
-      - name: Upload Benchmark Report Artifact
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: gemini-models-benchmark-report
-          path: |
-            backend/benchmark_summary.md
-            backend/benchmark_summary.json
-          if-no-files-found: ignore
