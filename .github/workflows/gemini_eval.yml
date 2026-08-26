@@ -1,0 +1,66 @@
+name: Gemini Models E2E Evaluation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/gemini_eval.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  gemini-e2e-eval:
+    name: Gemini Models E2E Benchmark
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "backend/.python-version"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Verify GOOGLE_API_KEY is configured
+        run: |
+          if [ -z "${GOOGLE_API_KEY}" ]; then
+            echo "::error::GOOGLE_API_KEY secret is required but not set or empty."
+            exit 1
+          fi
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+
+      - name: Run Gemini Models E2E Tests
+        run: |
+          uv run pytest -m e2e -v
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          SYSTEM_INSTRUCTION: "You are Vesta, a proactive personal AI assistant."
+
+      - name: Generate Benchmark Summary Report
+        if: always()
+        run: |
+          uv run python -m scripts.benchmark_models --output-md summary.md
+          if [ -n "${GITHUB_STEP_SUMMARY}" ] && [ -f summary.md ]; then
+            cat summary.md >> "${GITHUB_STEP_SUMMARY}"
+          fi
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          SYSTEM_INSTRUCTION: "You are Vesta, a proactive personal AI assistant."
