@@ -78,22 +78,51 @@ class GeminiModelEvaluator:
                 or self._build_system_instruction()
             )
 
+            # Configure thinking budget: for flash models default to 0 for instant evaluation
+            thinking_config = None
+            if "flash" in model.lower() and hasattr(types, "ThinkingConfig"):
+                try:
+                    thinking_config = types.ThinkingConfig(thinking_budget=0)
+                except Exception:
+                    thinking_config = None
+
             config = types.GenerateContentConfig(
                 system_instruction=system_instruction,
                 tools=tools,
+                thinking_config=thinking_config,
             )
 
             start_time = time.perf_counter()
+            max_retries = 3
+            backoff_base = 3.0
+            response = None
+
             try:
-                # Add timeout protection so slow/unresponsive models fail gracefully
-                response = await asyncio.wait_for(
-                    self.client.aio.models.generate_content(
-                        model=model,
-                        contents=test_case.prompt,
-                        config=config,
-                    ),
-                    timeout=30.0,
-                )
+                for attempt in range(1, max_retries + 1):
+                    try:
+                        # Timeout protection (60s) for models processing tools
+                        response = await asyncio.wait_for(
+                            self.client.aio.models.generate_content(
+                                model=model,
+                                contents=test_case.prompt,
+                                config=config,
+                            ),
+                            timeout=60.0,
+                        )
+                        break
+                    except Exception as exc:
+                        err_str = str(exc)
+                        is_transient = (
+                            "429" in err_str
+                            or "503" in err_str
+                            or "RESOURCE_EXHAUSTED" in err_str
+                            or "UNAVAILABLE" in err_str
+                        )
+                        if is_transient and attempt < max_retries:
+                            await asyncio.sleep(backoff_base * attempt)
+                            continue
+                        raise
+
                 latency = time.perf_counter() - start_time
 
                 # Extract tool calls from response parts defensively
