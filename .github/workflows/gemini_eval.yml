@@ -57,7 +57,8 @@ jobs:
       - name: Generate Benchmark Summary Report
         if: always()
         run: |
-          uv run python -m scripts.benchmark_models --output-md summary.md
+          sleep 5
+          uv run python -m scripts.benchmark_models --concurrency 2 --output-md summary.md
           if [ -n "${GITHUB_STEP_SUMMARY}" ] && [ -f summary.md ]; then
             cat summary.md >> "${GITHUB_STEP_SUMMARY}"
           fi

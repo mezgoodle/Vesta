@@ -56,8 +56,8 @@ def parse_args():
     parser.add_argument(
         "--concurrency",
         type=_positive_int,
-        default=4,
-        help="Maximum concurrent API calls (must be >= 1, default: 4)",
+        default=2,
+        help="Maximum concurrent API calls (must be >= 1, default: 2)",
     )
     parser.add_argument(
         "--output-md",
