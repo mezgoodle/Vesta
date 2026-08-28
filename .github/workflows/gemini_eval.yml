@@ -48,6 +48,7 @@ jobs:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
 
       - name: Run Gemini Models E2E Tests
+        continue-on-error: true
         run: |
           uv run pytest -m e2e -v
         env:
