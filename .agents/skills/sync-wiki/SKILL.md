@@ -36,6 +36,10 @@ Ensure the Vesta GitHub Wiki repository (`https://github.com/mezgoodle/Vesta.wik
    - If **already exists**:
      ```powershell
      cd <wiki_path>
+     $originUrl = (git remote get-url origin).Trim()
+     if ($originUrl -ne "https://github.com/mezgoodle/Vesta.wiki.git") {
+         throw "Invalid wiki remote URL: $originUrl. Expected https://github.com/mezgoodle/Vesta.wiki.git"
+     }
      git pull origin master
      ```
 
@@ -93,17 +97,21 @@ Modify the relevant `.md` files in `<wiki_path>`:
 ### Step 5: Commit & Push Wiki Changes
 
 1. Navigate to the `<wiki_path>` directory.
-2. Check git status and stage modified markdown files:
+2. Check git status and stage only the explicitly reviewed pages changed by this sync:
    ```powershell
    git status
-   git add *.md
+   git add -- <pages_changed_by_this_sync>
    ```
 3. Commit with a descriptive conventional commit message:
    ```powershell
    git commit -m "docs(wiki): sync documentation with recent codebase changes"
    ```
-4. Push to the active wiki branch (typically `master` for GitHub Wiki):
+4. Validate remote URL and push to the active wiki branch (typically `master` for GitHub Wiki):
    ```powershell
+   $originUrl = (git remote get-url origin).Trim()
+   if ($originUrl -ne "https://github.com/mezgoodle/Vesta.wiki.git") {
+       throw "Invalid wiki remote URL: $originUrl. Expected https://github.com/mezgoodle/Vesta.wiki.git"
+   }
    git push origin master
    ```
 

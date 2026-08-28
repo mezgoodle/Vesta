@@ -78,11 +78,14 @@ class GeminiModelEvaluator:
                 or self._build_system_instruction()
             )
 
-            # Configure thinking budget: for flash models default to 0 for instant evaluation
+            # Configure thinking config: for Gemini 3 use thinking_level="LOW", for Gemini 2.5 use thinking_budget=0
             thinking_config = None
             if "flash" in model.lower() and hasattr(types, "ThinkingConfig"):
                 try:
-                    thinking_config = types.ThinkingConfig(thinking_budget=0)
+                    if "gemini-3" in model.lower() or "gemini-3." in model.lower():
+                        thinking_config = types.ThinkingConfig(thinking_level="LOW")
+                    else:
+                        thinking_config = types.ThinkingConfig(thinking_budget=0)
                 except Exception:
                     thinking_config = None
 
