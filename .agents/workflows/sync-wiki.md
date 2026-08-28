@@ -1,13 +1,10 @@
 ---
-name: sync-wiki
-description: >-
-  Synchronize and update the Vesta project GitHub Wiki documentation based on the current codebase state.
-  Activate this skill whenever the user asks to update, actualize, sync, or refresh the project wiki documentation.
+description: Synchronize and update the Vesta project GitHub Wiki documentation based on the current codebase state
 ---
 
-# Sync Project Wiki Skill (`sync-wiki`)
+# Agent Workflow: Sync Project Wiki (`/sync-wiki`)
 
-This skill provides step-by-step procedures for the agent to inspect the current Vesta codebase, identify recent modifications across the backend and bot services, and automatically update the corresponding GitHub Wiki pages.
+This workflow provides step-by-step procedures to inspect the current Vesta codebase, identify recent modifications across the backend and bot services, and automatically update the corresponding GitHub Wiki pages.
 
 ---
 
