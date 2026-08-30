@@ -125,7 +125,13 @@ def create_tools(
 
             result = f"Upcoming events (next {days} days):\n"
             for i, event in enumerate(events, 1):
-                if event.start_time:
+                if event.is_all_day:
+                    start = (
+                        f"All day ({event.start_time.strftime('%Y-%m-%d')})"
+                        if event.start_time
+                        else "All day"
+                    )
+                elif event.start_time:
                     start = event.start_time.strftime("%Y-%m-%d %H:%M")
                 else:
                     start = "All day"
@@ -171,7 +177,7 @@ def create_tools(
         - '2026-03-01T09:30:00' (March 1, 2026 at 9:30 AM)
         - '2026-12-25T18:00:00' (December 25, 2026 at 6:00 PM)
 
-        The time will be interpreted in Europe/Kiev timezone.
+        The time will be interpreted in Europe/Kyiv timezone.
 
         Args:
             summary: The title/name of the event (e.g., 'Team Meeting', 'Doctor Appointment')

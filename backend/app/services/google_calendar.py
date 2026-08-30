@@ -3,8 +3,8 @@ import json
 import logging
 from datetime import datetime, time, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
-import pytz
 from google.auth.exceptions import RefreshError
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -28,7 +28,7 @@ class GoogleCalendarService:
     def __init__(self) -> None:
         """Initialize the Google Calendar Service."""
         self.token_uri = "https://oauth2.googleapis.com/token"
-        self.timezone = "Europe/Kiev"
+        self.timezone = "Europe/Kyiv"
 
     async def _fetch_events_raw(
         self,
@@ -68,8 +68,10 @@ class GoogleCalendarService:
         service = await self._get_calendar_service(user_id, db)
 
         try:
-            time_min_str = time_min.isoformat() + "Z"
-            time_max_str = time_max.isoformat() + "Z"
+            time_min_aware = self._to_service_tz(time_min)
+            time_max_aware = self._to_service_tz(time_max)
+            time_min_str = time_min_aware.isoformat()
+            time_max_str = time_max_aware.isoformat()
 
             events_result = await asyncio.to_thread(
                 lambda: (
@@ -104,6 +106,16 @@ class GoogleCalendarService:
         except Exception as e:
             raise Exception(f"Failed to fetch calendar events: {str(e)}") from e
 
+    def _get_tz(self) -> ZoneInfo:
+        """Get ZoneInfo object with fallback for legacy timezone names."""
+        try:
+            return ZoneInfo(self.timezone)
+        except Exception:
+            try:
+                return ZoneInfo("Europe/Kyiv")
+            except Exception:
+                return ZoneInfo("Europe/Kiev")
+
     async def get_today_events(
         self, user_id: int, db: AsyncSession
     ) -> list["CalendarEvent"]:
@@ -117,9 +129,10 @@ class GoogleCalendarService:
         Returns:
             List of formatted CalendarEvent objects
         """
-        now = datetime.utcnow()
-        time_min = datetime.combine(now.date(), time.min)
-        time_max = datetime.combine(now.date(), time.max)
+        tz = self._get_tz()
+        now_local = datetime.now(tz)
+        time_min = datetime.combine(now_local.date(), time.min, tzinfo=tz)
+        time_max = datetime.combine(now_local.date(), time.max, tzinfo=tz)
         events = await self._fetch_events_raw(user_id, time_min, time_max, db)
         return self._format_events(events)
 
@@ -137,9 +150,10 @@ class GoogleCalendarService:
         Returns:
             List of formatted CalendarEvent objects
         """
-        now = datetime.utcnow()
-        time_min = now
-        time_max = now + timedelta(days=days)
+        tz = self._get_tz()
+        now_local = datetime.now(tz)
+        time_min = now_local
+        time_max = now_local + timedelta(days=days)
         events = await self._fetch_events_raw(user_id, time_min, time_max, db)
         return self._format_events(events)
 
@@ -262,8 +276,8 @@ class GoogleCalendarService:
 
     def _to_service_tz(self, dt: datetime) -> datetime:
         """Ensure a datetime object is timezone-aware in the service's configured timezone."""
-        tz = pytz.timezone(self.timezone)
-        return tz.localize(dt) if dt.tzinfo is None else dt.astimezone(tz)
+        tz = self._get_tz()
+        return dt.replace(tzinfo=tz) if dt.tzinfo is None else dt.astimezone(tz)
 
     def _parse_datetime(self, dt_string: str | None) -> datetime | None:
         """

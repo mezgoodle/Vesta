@@ -567,3 +567,53 @@ async def test_delete_calendar_event_endpoint(
         assert mock_service.delete_event.call_args.args[1] == "event123"
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_get_today_events_timezone_boundaries(
+    client: AsyncClient, db_session: AsyncSession, auth_user: dict
+) -> None:
+    """Test that get_today_events queries Google API with timezone-aware boundaries."""
+    user = auth_user["user"]
+    headers = auth_user["headers"]
+
+    await crud_user.update(
+        db_session, db_obj=user, obj_in={"google_refresh_token": "test_refresh_token"}
+    )
+
+    mock_all_day_item = {
+        "id": "allday123",
+        "summary": "All Day Conference",
+        "start": {"date": "2026-08-22"},
+        "end": {"date": "2026-08-23"},
+    }
+
+    with patch("app.services.google_calendar.build") as mock_build:
+        mock_service = MagicMock()
+        mock_events_list = MagicMock()
+        mock_events_list.execute.return_value = {"items": [mock_all_day_item]}
+        mock_service.events.return_value.list.return_value = mock_events_list
+        mock_build.return_value = mock_service
+
+        response = await client.get(
+            f"{settings.API_V1_STR}/calendar/events/today",
+            params={"user_id": user.id},
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["count"] == 1
+        assert data["events"][0]["summary"] == "All Day Conference"
+        assert data["events"][0]["is_all_day"] is True
+
+        # Verify list() call arguments include timezone offset (e.g. +02:00 or +03:00)
+        call_kwargs = mock_service.events.return_value.list.call_args.kwargs
+        time_min_called = call_kwargs["timeMin"]
+        time_max_called = call_kwargs["timeMax"]
+        # Ensure timeMin and timeMax have valid timezone offsets (not naive + 'Z')
+        assert ("+02:00" in time_min_called or "+03:00" in time_min_called)
+        assert ("+02:00" in time_max_called or "+03:00" in time_max_called)
+        assert "00:00:00" in time_min_called
+        assert "23:59:59" in time_max_called
+
