@@ -335,6 +335,6 @@ class TestBuildSystemInstruction:
 
     def test_delegation_guidelines_weather_boundary(self):
         result = build_system_instruction()
-        assert "For ANY weather questions" in result
-        assert "Daily Briefing: ONLY if the user explicitly asks for a full daily briefing" in result
+        assert "For weather-only questions" in result
+        assert "Daily Briefing / Combined Requests:" in result
         assert "Do NOT delegate to SecretaryAgent for queries that are purely about weather." in result

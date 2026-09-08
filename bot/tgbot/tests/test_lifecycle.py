@@ -40,9 +40,13 @@ async def test_base_api_service_close_and_close_all():
     assert service2._session is None
 
 
-def test_llm_service_sessions_endpoint():
-    # Verify the trailing slash is present to avoid HTTP 307 redirects
-    assert llm_service is not None
+@pytest.mark.asyncio
+async def test_llm_service_sessions_endpoint(monkeypatch):
+    get = AsyncMock(return_value=(200, []))
+    monkeypatch.setattr(llm_service, "_get", get)
+
+    assert await llm_service.get_sessions_by_user_id(123) == []
+    get.assert_awaited_once_with("/sessions/", params={"user_id": 123})
 
 
 @pytest.mark.asyncio
@@ -50,8 +54,27 @@ async def test_show_typing_context_manager():
     bot = MagicMock(spec=Bot)
     bot.send_chat_action = AsyncMock()
 
-    async with show_typing(bot, chat_id=12345, interval=0.05):
-        await asyncio.sleep(0.12)
+    async with show_typing(bot, chat_id=12345, interval=0.04):
+        await asyncio.sleep(0.10)
 
-    assert bot.send_chat_action.await_count >= 1
+    count_after_exit = bot.send_chat_action.await_count
+    assert count_after_exit >= 2
     bot.send_chat_action.assert_called_with(chat_id=12345, action="typing")
+
+    # Verify task was cancelled and no new calls occur after exit
+    await asyncio.sleep(0.08)
+    assert bot.send_chat_action.await_count == count_after_exit
+
+
+@pytest.mark.asyncio
+async def test_show_typing_resilient_to_transient_errors():
+    bot = MagicMock(spec=Bot)
+    # Fail first call, succeed on subsequent
+    bot.send_chat_action = AsyncMock(
+        side_effect=[Exception("Telegram network error"), None, None]
+    )
+
+    async with show_typing(bot, chat_id=12345, interval=0.04):
+        await asyncio.sleep(0.10)
+
+    assert bot.send_chat_action.await_count >= 2

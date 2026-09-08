@@ -5,8 +5,8 @@ Secretary sub-agent — handles scheduling, calendar, and email/inbox queries.
 from collections.abc import Callable
 
 from google.adk.agents import LlmAgent
-from google.genai.types import GenerateContentConfig, ThinkingConfig
 
+from app.agents.common import build_agent_generate_content_config
 from app.core.config import settings
 
 
@@ -44,12 +44,8 @@ def create_secretary_agent(
             f"{instruction}"
         )
 
-    generate_content_config = (
-        GenerateContentConfig(
-            thinking_config=ThinkingConfig(thinking_budget=thinking_budget)
-        )
-        if thinking_budget is not None
-        else None
+    generate_content_config = build_agent_generate_content_config(
+        model=model, thinking_budget=thinking_budget
     )
 
     return LlmAgent(

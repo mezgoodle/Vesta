@@ -10,7 +10,8 @@ need any tools, the root agent responds directly.
 from collections.abc import Callable
 
 from google.adk.agents import LlmAgent
-from google.genai.types import GenerateContentConfig, ThinkingConfig
+
+from app.agents.common import build_agent_generate_content_config
 
 
 def create_root_agent(
@@ -37,12 +38,8 @@ def create_root_agent(
         A configured ``LlmAgent`` that acts as the entry-point for all
         user interactions.
     """
-    generate_content_config = (
-        GenerateContentConfig(
-            thinking_config=ThinkingConfig(thinking_budget=thinking_budget)
-        )
-        if thinking_budget is not None
-        else None
+    generate_content_config = build_agent_generate_content_config(
+        model=model, thinking_budget=thinking_budget
     )
 
     return LlmAgent(

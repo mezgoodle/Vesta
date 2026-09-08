@@ -317,34 +317,72 @@ class TestMapHistory:
 
 
 class TestAgentThinkingBudget:
-    def test_agents_support_thinking_budget(self):
+    def test_agents_gemini_2_thinking_budget(self):
         from app.agents.knowledge_agent import create_knowledge_agent
         from app.agents.root_agent import create_root_agent
         from app.agents.secretary_agent import create_secretary_agent
         from app.agents.summary_agent import create_summary_agent
         from app.agents.weather_agent import create_weather_agent
 
-        weather = create_weather_agent(tools=[], model="gemini-test", thinking_budget=0)
+        weather = create_weather_agent(tools=[], model="gemini-2.5-flash", thinking_budget=0)
         assert weather.generate_content_config is not None
         assert weather.generate_content_config.thinking_config.thinking_budget == 0
 
-        secretary = create_secretary_agent(tools=[], model="gemini-test", thinking_budget=0)
+        secretary = create_secretary_agent(tools=[], model="gemini-2.5-flash", thinking_budget=0)
         assert secretary.generate_content_config is not None
         assert secretary.generate_content_config.thinking_config.thinking_budget == 0
 
-        knowledge = create_knowledge_agent(tools=[], model="gemini-test", thinking_budget=0)
+        knowledge = create_knowledge_agent(tools=[], model="gemini-2.5-flash", thinking_budget=0)
         assert knowledge.generate_content_config is not None
         assert knowledge.generate_content_config.thinking_config.thinking_budget == 0
 
-        summary = create_summary_agent(model="gemini-test", thinking_budget=0)
+        summary = create_summary_agent(model="gemini-2.5-flash", thinking_budget=0)
         assert summary.generate_content_config is not None
         assert summary.generate_content_config.thinking_config.thinking_budget == 0
 
         root = create_root_agent(
             sub_agents=[weather, secretary, knowledge],
             system_instruction="prompt",
-            model="gemini-test",
+            model="gemini-2.5-flash",
             thinking_budget=0,
         )
         assert root.generate_content_config is not None
         assert root.generate_content_config.thinking_config.thinking_budget == 0
+
+    def test_agents_gemini_3_thinking_level(self):
+        from app.agents.knowledge_agent import create_knowledge_agent
+        from app.agents.root_agent import create_root_agent
+        from app.agents.secretary_agent import create_secretary_agent
+        from app.agents.summary_agent import create_summary_agent
+        from app.agents.weather_agent import create_weather_agent
+        from google.genai.types import ThinkingLevel
+
+        weather = create_weather_agent(tools=[], model="gemini-3.5-flash-lite", thinking_budget=0)
+        assert weather.generate_content_config is not None
+        assert weather.generate_content_config.thinking_config.thinking_level == ThinkingLevel.LOW
+
+        secretary = create_secretary_agent(tools=[], model="gemini-3.5-flash-lite", thinking_budget=0)
+        assert secretary.generate_content_config is not None
+        assert secretary.generate_content_config.thinking_config.thinking_level == ThinkingLevel.LOW
+
+        knowledge = create_knowledge_agent(tools=[], model="gemini-3.5-flash-lite", thinking_budget=0)
+        assert knowledge.generate_content_config is not None
+        assert knowledge.generate_content_config.thinking_config.thinking_level == ThinkingLevel.LOW
+
+        summary = create_summary_agent(model="gemini-3.5-flash-lite", thinking_budget=0)
+        assert summary.generate_content_config is not None
+        assert summary.generate_content_config.thinking_config.thinking_level == ThinkingLevel.LOW
+
+        root = create_root_agent(
+            sub_agents=[weather, secretary, knowledge],
+            system_instruction="prompt",
+            model="gemini-3.5-flash-lite",
+            thinking_budget=0,
+        )
+        assert root.generate_content_config is not None
+        assert root.generate_content_config.thinking_config.thinking_level == ThinkingLevel.LOW
+
+    def test_agents_no_budget_returns_none(self):
+        from app.agents.common import build_agent_generate_content_config
+
+        assert build_agent_generate_content_config(model="gemini-3.5-flash-lite", thinking_budget=None) is None

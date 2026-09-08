@@ -10,14 +10,18 @@ logger = logging.getLogger(__name__)
 
 async def _keep_typing(bot: Bot, chat_id: int, interval: float = 4.0) -> None:
     """Send typing chat action periodically until cancelled."""
-    try:
-        while True:
+    while True:
+        try:
             await bot.send_chat_action(chat_id=chat_id, action="typing")
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.debug(f"Failed to send typing chat action to chat {chat_id}: {e}")
+
+        try:
             await asyncio.sleep(interval)
-    except asyncio.CancelledError:
-        pass
-    except Exception as e:
-        logger.debug(f"Failed to send typing chat action to chat {chat_id}: {e}")
+        except asyncio.CancelledError:
+            break
 
 
 @asynccontextmanager

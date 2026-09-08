@@ -39,8 +39,9 @@ class BaseAPIService(ABC):
         """
         Close the underlying aiohttp ClientSession if open.
         """
-        if self._session is not None and not self._session.closed:
-            await self._session.close()
+        if self._session is not None:
+            if not self._session.closed:
+                await self._session.close()
             self._session = None
 
     @classmethod
