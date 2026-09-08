@@ -5,12 +5,16 @@ Weather sub-agent — handles weather and forecast queries.
 from collections.abc import Callable
 
 from google.adk.agents import LlmAgent
+from google.genai.types import GenerateContentConfig, ThinkingConfig
 
 from app.core.config import settings
 
 
 def create_weather_agent(
-    tools: list[Callable], model: str, current_time_str: str | None = None
+    tools: list[Callable],
+    model: str,
+    current_time_str: str | None = None,
+    thinking_budget: int | None = None,
 ) -> LlmAgent:
     """Create the Weather sub-agent."""
 
@@ -31,6 +35,14 @@ def create_weather_agent(
             f"{instruction}"
         )
 
+    generate_content_config = (
+        GenerateContentConfig(
+            thinking_config=ThinkingConfig(thinking_budget=thinking_budget)
+        )
+        if thinking_budget is not None
+        else None
+    )
+
     return LlmAgent(
         name="WeatherAgent",
         model=model,
@@ -41,5 +53,6 @@ def create_weather_agent(
         ),
         instruction=instruction,
         tools=tools,
+        generate_content_config=generate_content_config,
         mode="single_turn",
     )

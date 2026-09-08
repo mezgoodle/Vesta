@@ -8,12 +8,16 @@ the RAG tool (``consult_knowledge_base``) already attached.
 from collections.abc import Callable
 
 from google.adk.agents import LlmAgent
+from google.genai.types import GenerateContentConfig, ThinkingConfig
 
 from app.core.config import settings
 
 
 def create_knowledge_agent(
-    tools: list[Callable], model: str, current_time_str: str | None = None
+    tools: list[Callable],
+    model: str,
+    current_time_str: str | None = None,
+    thinking_budget: int | None = None,
 ) -> LlmAgent:
     """
     Create the Knowledge sub-agent.
@@ -46,6 +50,14 @@ def create_knowledge_agent(
     if current_time_str:
         instruction = f"Current Date and Time: {current_time_str}.\n{instruction}"
 
+    generate_content_config = (
+        GenerateContentConfig(
+            thinking_config=ThinkingConfig(thinking_budget=thinking_budget)
+        )
+        if thinking_budget is not None
+        else None
+    )
+
     return LlmAgent(
         name="KnowledgeAgent",
         model=model,
@@ -60,5 +72,6 @@ def create_knowledge_agent(
         ),
         instruction=instruction,
         tools=tools,
+        generate_content_config=generate_content_config,
         mode="single_turn",
     )

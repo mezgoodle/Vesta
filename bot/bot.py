@@ -12,6 +12,7 @@ from aiogram.webhook.aiohttp_server import (
 from aiohttp import web
 from loader import bot, dp
 from tgbot.config import Settings, config
+from tgbot.infrastructure.base_service import BaseAPIService
 from tgbot.infrastructure.logger import setup_logging
 from tgbot.infrastructure.user_service import user_service
 from tgbot.middlewares.logging import LoggingMiddleware
@@ -71,6 +72,8 @@ async def on_startup(bot: Bot, dispatcher: Dispatcher) -> None:
 async def on_shutdown(bot: Bot, dispatcher: Dispatcher) -> None:
     await dispatcher.storage.close()
     logging.info("Storage closed.")
+    await BaseAPIService.close_all()
+    logging.info("API service sessions closed.")
     logging.info("Bot stopped.")
 
 

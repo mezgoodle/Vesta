@@ -7,18 +7,30 @@ concise summaries of recent conversation messages.
 """
 
 from google.adk.agents import LlmAgent
+from google.genai.types import GenerateContentConfig, ThinkingConfig
 
 
-def create_summary_agent(model: str) -> LlmAgent:
+def create_summary_agent(
+    model: str, thinking_budget: int | None = None
+) -> LlmAgent:
     """
     Create the Summary agent.
 
     Args:
         model: The Gemini model name (e.g. ``gemini-2.5-flash``).
+        thinking_budget: Optional Gemini thinking budget.
 
     Returns:
         A configured ``LlmAgent`` for summarisation tasks.
     """
+    generate_content_config = (
+        GenerateContentConfig(
+            thinking_config=ThinkingConfig(thinking_budget=thinking_budget)
+        )
+        if thinking_budget is not None
+        else None
+    )
+
     return LlmAgent(
         name="SummaryAgent",
         model=model,
@@ -36,4 +48,5 @@ def create_summary_agent(model: str) -> LlmAgent:
             "4. Do NOT add information that was not in the conversation.\n"
             "5. Write the summary in third person (e.g. 'The user asked about…')."
         ),
+        generate_content_config=generate_content_config,
     )

@@ -13,6 +13,7 @@ def mock_settings():
     with patch("app.services.adk_service.settings") as mock_s:
         mock_s.GOOGLE_API_KEY = "test-key"
         mock_s.GOOGLE_MODEL_NAME = "gemini-test"
+        mock_s.GEMINI_THINKING_BUDGET = 0
         mock_s.SYSTEM_INSTRUCTION = "You are Vesta."
         yield mock_s
 
@@ -308,3 +309,42 @@ class TestMapHistory:
     def test_empty_history(self, adk_svc):
         result = adk_svc._map_history_to_content([])
         assert result == []
+
+
+# ------------------------------------------------------------------ #
+# Thinking budget configuration                                       #
+# ------------------------------------------------------------------ #
+
+
+class TestAgentThinkingBudget:
+    def test_agents_support_thinking_budget(self):
+        from app.agents.knowledge_agent import create_knowledge_agent
+        from app.agents.root_agent import create_root_agent
+        from app.agents.secretary_agent import create_secretary_agent
+        from app.agents.summary_agent import create_summary_agent
+        from app.agents.weather_agent import create_weather_agent
+
+        weather = create_weather_agent(tools=[], model="gemini-test", thinking_budget=0)
+        assert weather.generate_content_config is not None
+        assert weather.generate_content_config.thinking_config.thinking_budget == 0
+
+        secretary = create_secretary_agent(tools=[], model="gemini-test", thinking_budget=0)
+        assert secretary.generate_content_config is not None
+        assert secretary.generate_content_config.thinking_config.thinking_budget == 0
+
+        knowledge = create_knowledge_agent(tools=[], model="gemini-test", thinking_budget=0)
+        assert knowledge.generate_content_config is not None
+        assert knowledge.generate_content_config.thinking_config.thinking_budget == 0
+
+        summary = create_summary_agent(model="gemini-test", thinking_budget=0)
+        assert summary.generate_content_config is not None
+        assert summary.generate_content_config.thinking_config.thinking_budget == 0
+
+        root = create_root_agent(
+            sub_agents=[weather, secretary, knowledge],
+            system_instruction="prompt",
+            model="gemini-test",
+            thinking_budget=0,
+        )
+        assert root.generate_content_config is not None
+        assert root.generate_content_config.thinking_config.thinking_budget == 0
