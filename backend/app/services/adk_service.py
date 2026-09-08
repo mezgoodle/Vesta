@@ -59,6 +59,7 @@ class ADKService:
             raise ValueError("GOOGLE_MODEL_NAME is not set")
 
         self.model = settings.GOOGLE_MODEL_NAME
+        self.thinking_budget = settings.GEMINI_THINKING_BUDGET
 
         # ADK reads the API key from the GOOGLE_API_KEY env var.
         # Vesta loads it via pydantic Settings, so we bridge the two.
@@ -114,11 +115,13 @@ class ADKService:
                 tools=tool_groups["weather"],
                 model=self.model,
                 current_time_str=current_time_str,
+                thinking_budget=self.thinking_budget,
             )
             knowledge = create_knowledge_agent(
                 tools=tool_groups["knowledge"],
                 model=self.model,
                 current_time_str=current_time_str,
+                thinking_budget=self.thinking_budget,
             )
             secretary = create_secretary_agent(
                 tools=tool_groups["calendar"]
@@ -126,6 +129,7 @@ class ADKService:
                 + tool_groups.get("tasks", []),
                 model=self.model,
                 current_time_str=current_time_str,
+                thinking_budget=self.thinking_budget,
             )
 
             system_instruction = await build_personalized_prompt(
@@ -140,6 +144,7 @@ class ADKService:
                 system_instruction=system_instruction,
                 model=self.model,
                 tools=tool_groups.get("memory"),
+                thinking_budget=self.thinking_budget,
             )
 
             # 3. Convert DB history to ADK content
@@ -254,7 +259,10 @@ class ADKService:
         )
 
         try:
-            summary_agent = create_summary_agent(model=self.model)
+            summary_agent = create_summary_agent(
+                model=self.model,
+                thinking_budget=self.thinking_budget,
+            )
             runner = InMemoryRunner(
                 agent=summary_agent,
                 app_name=_ADK_APP_NAME,

@@ -6,11 +6,15 @@ from collections.abc import Callable
 
 from google.adk.agents import LlmAgent
 
+from app.agents.common import build_agent_generate_content_config
 from app.core.config import settings
 
 
 def create_weather_agent(
-    tools: list[Callable], model: str, current_time_str: str | None = None
+    tools: list[Callable],
+    model: str,
+    current_time_str: str | None = None,
+    thinking_budget: int | None = None,
 ) -> LlmAgent:
     """Create the Weather sub-agent."""
 
@@ -31,6 +35,10 @@ def create_weather_agent(
             f"{instruction}"
         )
 
+    generate_content_config = build_agent_generate_content_config(
+        model=model, thinking_budget=thinking_budget
+    )
+
     return LlmAgent(
         name="WeatherAgent",
         model=model,
@@ -41,5 +49,6 @@ def create_weather_agent(
         ),
         instruction=instruction,
         tools=tools,
+        generate_content_config=generate_content_config,
         mode="single_turn",
     )

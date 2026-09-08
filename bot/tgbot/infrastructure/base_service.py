@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import weakref
 from abc import ABC
 
 import aiohttp
@@ -17,6 +18,7 @@ class BaseAPIService(ABC):
     """
 
     API_PREFIX = "/api/v1"
+    _instances: weakref.WeakSet["BaseAPIService"] = weakref.WeakSet()
 
     def __init__(self, base_url: str | None = None, timeout: int = 10):
         """
@@ -31,6 +33,29 @@ class BaseAPIService(ABC):
         self.api_key = config.backend_api_key.get_secret_value()
         self.logger = logging.getLogger(self.__class__.__name__)
         self._session: aiohttp.ClientSession | None = None
+        self._instances.add(self)
+
+    async def close(self) -> None:
+        """
+        Close the underlying aiohttp ClientSession if open.
+        """
+        if self._session is not None:
+            if not self._session.closed:
+                await self._session.close()
+            self._session = None
+
+    @classmethod
+    async def close_all(cls) -> None:
+        """
+        Close all open ClientSessions across all BaseAPIService instances.
+        """
+        for instance in list(cls._instances):
+            try:
+                await instance.close()
+            except Exception as e:
+                logging.getLogger(cls.__name__).warning(
+                    f"Error closing session for {instance.__class__.__name__}: {e}"
+                )
 
     async def _get_session(self) -> aiohttp.ClientSession:
         """
