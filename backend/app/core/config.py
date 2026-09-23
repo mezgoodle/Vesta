@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     GOOGLE_APPLICATION_CREDENTIALS: str = ""
     GOOGLE_API_KEY: str = ""
     GOOGLE_MODEL_NAME: str = ""
+    GEMINI_THINKING_BUDGET: int = 0
     SYSTEM_INSTRUCTION: str = "You are Vesta, a helpful smart home assistant."
     TELEGRAM_HTML_GUIDELINES: str = (
         "--- TELEGRAM HTML FORMATTING RULES ---\n"

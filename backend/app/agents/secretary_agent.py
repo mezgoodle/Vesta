@@ -6,11 +6,15 @@ from collections.abc import Callable
 
 from google.adk.agents import LlmAgent
 
+from app.agents.common import build_agent_generate_content_config
 from app.core.config import settings
 
 
 def create_secretary_agent(
-    tools: list[Callable], model: str, current_time_str: str | None = None
+    tools: list[Callable],
+    model: str,
+    current_time_str: str | None = None,
+    thinking_budget: int | None = None,
 ) -> LlmAgent:
     """Create the Secretary sub-agent."""
 
@@ -28,6 +32,7 @@ def create_secretary_agent(
         "9. Create new tasks or to-do items using create_task_tool.\n"
         "10. Mark tasks as completed using complete_task_tool, or delete tasks using delete_task_tool (if you don't have the task ID, call get_tasks_tool first).\n"
         "11. For requests about 'today' or 'my day', call get_calendar_events(days=1) and get_tasks_tool().\n"
+        "12. You do NOT handle weather queries. Pure weather questions are handled exclusively by WeatherAgent.\n"
         "Always respond in a friendly, professional, and concise manner.\n\n"
         f"{settings.TELEGRAM_HTML_GUIDELINES}"
     )
@@ -39,6 +44,10 @@ def create_secretary_agent(
             f"{instruction}"
         )
 
+    generate_content_config = build_agent_generate_content_config(
+        model=model, thinking_budget=thinking_budget
+    )
+
     return LlmAgent(
         name="SecretaryAgent",
         model=model,
@@ -49,5 +58,6 @@ def create_secretary_agent(
         ),
         instruction=instruction,
         tools=tools,
+        generate_content_config=generate_content_config,
         mode="chat",
     )

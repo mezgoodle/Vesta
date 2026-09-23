@@ -9,6 +9,7 @@ from aiogram.utils.markdown import hbold
 from loader import dp
 from tgbot.filters.approved_user import IsApprovedUserFilter
 from tgbot.infrastructure.llm_service import llm_service
+from tgbot.services.chat_actions import show_typing
 from tgbot.services.stt import stt_service
 from tgbot.states.states import ChatMessage
 
@@ -78,15 +79,14 @@ async def _process_llm_request(
     session_id = data.get("session_id")
     session_title = data.get("session_title")
 
-    await message.bot.send_chat_action(chat_id=message.chat.id, action="typing")
-
-    response = await llm_service.process_prompt(
-        prompt=text,
-        user_id=user_db_id,
-        session_id=session_id,
-        session_title=session_title,
-        want_voice=want_voice,
-    )
+    async with show_typing(message.bot, message.chat.id):
+        response = await llm_service.process_prompt(
+            prompt=text,
+            user_id=user_db_id,
+            session_id=session_id,
+            session_title=session_title,
+            want_voice=want_voice,
+        )
     if not response:
         return await message.answer("Something went wrong")
 

@@ -11,12 +11,15 @@ from collections.abc import Callable
 
 from google.adk.agents import LlmAgent
 
+from app.agents.common import build_agent_generate_content_config
+
 
 def create_root_agent(
     sub_agents: list[LlmAgent],
     system_instruction: str,
     model: str,
     tools: list[Callable] | None = None,
+    thinking_budget: int | None = None,
 ) -> LlmAgent:
     """
     Create the Vesta root dispatcher agent.
@@ -29,16 +32,22 @@ def create_root_agent(
                             delegation guidelines).
         model: The Gemini model name (e.g. ``gemini-2.5-flash``).
         tools: Optional list of tools for the root agent itself (e.g. memory tools).
+        thinking_budget: Optional Gemini thinking budget.
 
     Returns:
         A configured ``LlmAgent`` that acts as the entry-point for all
         user interactions.
     """
+    generate_content_config = build_agent_generate_content_config(
+        model=model, thinking_budget=thinking_budget
+    )
+
     return LlmAgent(
         name="VestaRootAgent",
         model=model,
         description="Root routing agent for the Vesta smart assistant.",
         instruction=system_instruction,
         sub_agents=sub_agents,
-        tools=tools,
+        tools=tools or [],
+        generate_content_config=generate_content_config,
     )

@@ -332,3 +332,9 @@ class TestBuildSystemInstruction:
 
             assert "CONVERSATION SUMMARY" in result
             assert "User asked about weather in Kyiv." in result
+
+    def test_delegation_guidelines_weather_boundary(self):
+        result = build_system_instruction()
+        assert "For weather-only questions" in result
+        assert "Daily Briefing / Combined Requests:" in result
+        assert "Do NOT delegate to SecretaryAgent for queries that are purely about weather." in result

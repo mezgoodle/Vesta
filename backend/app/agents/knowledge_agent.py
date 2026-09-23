@@ -9,11 +9,15 @@ from collections.abc import Callable
 
 from google.adk.agents import LlmAgent
 
+from app.agents.common import build_agent_generate_content_config
 from app.core.config import settings
 
 
 def create_knowledge_agent(
-    tools: list[Callable], model: str, current_time_str: str | None = None
+    tools: list[Callable],
+    model: str,
+    current_time_str: str | None = None,
+    thinking_budget: int | None = None,
 ) -> LlmAgent:
     """
     Create the Knowledge sub-agent.
@@ -46,6 +50,10 @@ def create_knowledge_agent(
     if current_time_str:
         instruction = f"Current Date and Time: {current_time_str}.\n{instruction}"
 
+    generate_content_config = build_agent_generate_content_config(
+        model=model, thinking_budget=thinking_budget
+    )
+
     return LlmAgent(
         name="KnowledgeAgent",
         model=model,
@@ -60,5 +68,6 @@ def create_knowledge_agent(
         ),
         instruction=instruction,
         tools=tools,
+        generate_content_config=generate_content_config,
         mode="single_turn",
     )
