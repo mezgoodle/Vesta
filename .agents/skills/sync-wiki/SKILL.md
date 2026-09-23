@@ -1,5 +1,6 @@
 ---
-description: Synchronize and update the Vesta project GitHub Wiki documentation based on the current codebase state
+name: sync-wiki
+description: Synchronize and update the Vesta project GitHub Wiki documentation based on the current codebase state.
 ---
 
 # Agent Workflow: Sync Project Wiki (`/sync-wiki`)

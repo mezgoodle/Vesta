@@ -1,5 +1,6 @@
 ---
-description: Review github pull request
+name: github-review
+description: Review GitHub pull requests, semantically analyze reviewer comments, apply auto-corrections, run verification, and resolve threads.
 ---
 
 # Agent Workflow: PR Review & Auto-Correction
