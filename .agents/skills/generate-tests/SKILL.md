@@ -1,8 +1,9 @@
 ---
-description: How to generate unit tests for the backend
+name: generate-tests
+description: Generate unit tests for backend services and endpoints following testing conventions and mocking rules.
 ---
 
-## Testing Workflow
+# Testing Workflow
 
 - **Test-Driven Intent:** For every new feature, implementation MUST be accompanied by unit tests.
 - **File Naming:** Tests must follow the pattern:
