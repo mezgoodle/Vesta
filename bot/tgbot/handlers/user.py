@@ -25,14 +25,14 @@ async def user_info(message: Message) -> Message:
 
 @router.message(Command("google_auth"))
 async def google_auth(message: Message, user_cache: UserCache) -> Message:
-    data, _ = await user_service.start_google_auth(
+    data, error_msg = await user_service.start_google_auth(
         user_cache.get_user_id_in_db(message.from_user.id)
     )
     if data and (url := data.get("authorization_url")):
-        await message.reply(
+        return await message.reply(
             f"Please visit the {hlink('URL', url)} to authorize access to your Google Calendar"
         )
-    return await message.reply("Something went wrong")
+    return await message.reply(error_msg or "Something went wrong")
 
 
 @router.message(Command("enable_daily_summary"), IsApprovedUserFilter())

@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock
 
 import pytest
+from google.genai.errors import APIError
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -407,6 +408,62 @@ async def test_process_chat_message_llm_error(
     assert len(user_messages) == 1
     assert user_messages[0].role == "user"
     assert user_messages[0].content == "This will fail"
+
+
+@pytest.mark.asyncio
+async def test_process_chat_message_gemini_503_unavailable(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    mock_adk_service: AsyncMock,
+    auth_user: dict,
+) -> None:
+    """Test error handling when Gemini model experiences high demand (503)."""
+    mock_adk_service.process_chat.side_effect = APIError(
+        503,
+        "This model is currently experiencing high demand. Spikes in demand are usually temporary.",
+    )
+
+    user = auth_user["user"]
+    headers = auth_user["headers"]
+
+    chat_request = {"user_id": user.id, "message": "High demand test"}
+    response = await client.post(
+        f"{settings.API_V1_STR}/chat/process",
+        json=chat_request,
+        headers=headers,
+    )
+
+    assert response.status_code == 503
+    content = response.json()
+    assert "experiencing high demand" in content["detail"]
+
+
+@pytest.mark.asyncio
+async def test_process_chat_message_gemini_429_rate_limit(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    mock_adk_service: AsyncMock,
+    auth_user: dict,
+) -> None:
+    """Test error handling when Gemini rate limit is reached (429)."""
+    mock_adk_service.process_chat.side_effect = APIError(
+        429,
+        "Resource has been exhausted.",
+    )
+
+    user = auth_user["user"]
+    headers = auth_user["headers"]
+
+    chat_request = {"user_id": user.id, "message": "Rate limit test"}
+    response = await client.post(
+        f"{settings.API_V1_STR}/chat/process",
+        json=chat_request,
+        headers=headers,
+    )
+
+    assert response.status_code == 429
+    content = response.json()
+    assert "rate limit reached" in content["detail"].lower()
 
 
 @pytest.mark.asyncio

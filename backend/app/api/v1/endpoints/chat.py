@@ -1,7 +1,8 @@
 import logging
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from google.genai.errors import APIError
 
 from app.api.deps import (
     ADKServiceDep,
@@ -141,6 +142,22 @@ async def process_chat_message(
 
     except HTTPException:
         raise
+
+    except APIError as e:
+        logger.error(f"Gemini API error in chat message: {e}")
+        if e.code == 503:
+            http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+            detail = "The AI service is experiencing high demand. Please try again in a moment."
+        elif e.code == 429:
+            http_status = status.HTTP_429_TOO_MANY_REQUESTS
+            detail = "AI rate limit reached. Please wait a moment and try again."
+        else:
+            http_status = status.HTTP_502_BAD_GATEWAY
+            detail = "AI service error. Please try again later."
+        raise HTTPException(
+            status_code=http_status,
+            detail=detail,
+        )
 
     except Exception as e:
         logger.error(f"Error processing chat message: {e}")
