@@ -46,13 +46,15 @@ async def session_delete_handler(
     state: FSMContext,
 ) -> None:
     deleted_session_id = callback_data.session_id
-    result = await llm_service.delete_session(session_id=deleted_session_id)
-    if not result:
-        return await callback.message.answer("Something went wrong")
+    success, msg = await llm_service.delete_session(session_id=deleted_session_id)
+    if not success:
+        await callback.message.answer(msg)
+        await callback.answer()
+        return
     data = await state.get_data()
     if data.get("session_id") == deleted_session_id:
         await state.clear()
-    await callback.message.answer("Session deleted.")
+    await callback.message.answer(msg)
     await callback.answer()
     return
 
@@ -85,11 +87,11 @@ async def session_change_title_handler(message: Message, state: FSMContext):
     data = await state.get_data()
     if not session_title:
         return await message.answer("Please enter a session title.")
-    result = await llm_service.update_session(
+    success, msg = await llm_service.update_session(
         session_id=data.get("session_id"),
         data={"title": session_title},
     )
-    if not result:
-        return await message.answer("Something went wrong")
+    if not success:
+        return await message.answer(msg)
     await state.set_state(ChatMessage.message)
-    return await message.answer("Session title changed. Send your message.")
+    return await message.answer(f"{msg} Send your message.")

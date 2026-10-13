@@ -80,15 +80,15 @@ async def _process_llm_request(
 
     await message.bot.send_chat_action(chat_id=message.chat.id, action="typing")
 
-    response = await llm_service.process_prompt(
+    response, error_msg = await llm_service.process_prompt(
         prompt=text,
         user_id=user_db_id,
         session_id=session_id,
         session_title=session_title,
         want_voice=want_voice,
     )
-    if not response:
-        return await message.answer("Something went wrong")
+    if error_msg or not response:
+        return await message.answer(error_msg or "❌ An unexpected error occurred.")
 
     llm_response = response.get("response")
     if not llm_response:

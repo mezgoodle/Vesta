@@ -131,7 +131,7 @@ class BaseAPIService(ABC):
                     self.logger.error(
                         f"Timeout error during {method} request to {url} after {max_retries} attempts."
                     )
-                    return 0, None
+                    return 0, {"detail": "Request timed out"}
                 self.logger.warning(
                     f"Attempt {attempt} for {method} {url} timed out. Retrying in {delay}s..."
                 )
@@ -140,7 +140,7 @@ class BaseAPIService(ABC):
                     self.logger.error(
                         f"Connection error to {url} after {max_retries} attempts: {e}"
                     )
-                    return 0, None
+                    return 0, {"detail": f"Connection error: {e}"}
                 self.logger.warning(
                     f"Attempt {attempt} for {method} {url} failed with connection error: {e}. Retrying in {delay}s..."
                 )
@@ -148,7 +148,7 @@ class BaseAPIService(ABC):
                 self.logger.error(
                     f"Unexpected error during {method} request to {url}: {e}"
                 )
-                return 0, None
+                return 0, {"detail": f"Unexpected error: {e}"}
 
             await asyncio.sleep(delay)
             delay *= backoff_factor
@@ -267,27 +267,42 @@ class BaseAPIService(ABC):
         Returns:
             User-friendly error message.
         """
+        detail = data.get("detail") if isinstance(data, dict) else None
+
         if status == 0:
+            if detail == "Request timed out":
+                return "⏱️ Request timed out. The server took too long to answer. Please try again."
             return "❌ My brain is offline. Please try again later."
         elif status == 404:
             return "❌ Resource not found. Please check your input."
         elif status == 400:
-            error_msg = (
-                data.get("detail", "Invalid request") if data else "Invalid request"
-            )
+            error_msg = detail or "Invalid request"
             self.logger.warning(f"Bad request while {context}: {error_msg}")
-            return "❌ Invalid request. Please try again."
+            return f"❌ Invalid request: {error_msg}"
         elif status == 401:
-            error_msg = data.get("detail", "Unauthorized") if data else "Unauthorized"
+            error_msg = detail or "Unauthorized"
             self.logger.warning(f"Unauthorized while {context}: {error_msg}")
             return f"❌ Unauthorized: {error_msg}"
         elif status == 403:
-            error_msg = data.get("detail", "Forbidden") if data else "Forbidden"
+            error_msg = detail or "Forbidden"
             self.logger.warning(f"Forbidden while {context}: {error_msg}")
             return f"❌ Forbidden: {error_msg}"
+        elif status == 429:
+            self.logger.warning(f"Rate limit exceeded while {context}: {detail}")
+            return f"⏳ {detail}" if detail else "⏳ Rate limit reached. Please wait a moment and try again."
+        elif status == 503:
+            self.logger.warning(f"Service unavailable while {context}: {detail}")
+            return f"⏳ {detail}" if detail else "⏳ Service is currently experiencing high demand. Please try again shortly."
+        elif status == 504:
+            self.logger.error(f"Gateway timeout while {context}")
+            return "⏱️ Request timed out. The server took too long to respond. Please try again."
         elif status == 500:
-            self.logger.error(f"Server error while {context}")
+            self.logger.error(f"Server error while {context}: {detail}")
+            if detail and detail != "Internal Server Error":
+                return f"❌ Server error: {detail}"
             return "❌ Server error. Please try again later."
         else:
-            self.logger.error(f"Unexpected status {status} while {context}")
-            return "❌ My brain is offline. Please try again later."
+            self.logger.error(f"Unexpected status {status} while {context}: {detail}")
+            if detail:
+                return f"❌ Error ({status}): {detail}"
+            return "❌ Something went wrong. Please try again later."

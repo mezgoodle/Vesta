@@ -16,13 +16,15 @@ class LLMService(BaseAPIService):
         session_id: int | None = None,
         session_title: str | None = None,
         want_voice: bool = False,
-    ) -> dict[str, Any]:
+    ) -> tuple[dict[str, Any] | None, str | None]:
         """
-
         Process prompt.
 
+        Returns:
+            Tuple of (response_data, error_message).
+            If successful, (data, None).
+            If failed, (None, error_message).
         """
-
         endpoint = "/chat/process"
 
         status, data = await self._post(
@@ -37,16 +39,18 @@ class LLMService(BaseAPIService):
             timeout=60,
         )
 
-        if status == 200:
-            return data
+        if status == 200 and data:
+            return data, None
         else:
-            return {}
+            error_message = self._handle_error_response(
+                status, data, "processing chat prompt"
+            )
+            return None, error_message
 
     async def get_sessions_by_user_id(self, user_id: int) -> list[dict]:
         """
         Get list of sessions for user.
         """
-
         endpoint = "/sessions"
 
         status, data = await self._get(endpoint, params={"user_id": user_id})
@@ -56,33 +60,41 @@ class LLMService(BaseAPIService):
         else:
             return []
 
-    async def update_session(self, session_id: int, data: dict) -> bool:
+    async def update_session(self, session_id: int, data: dict) -> tuple[bool, str]:
         """
         Update session.
-        """
 
+        Returns:
+            Tuple of (success, message).
+        """
         endpoint = f"/sessions/{session_id}"
 
-        status, _ = await self._patch(endpoint, data)
+        status, resp_data = await self._patch(endpoint, data)
 
         if status == 200:
-            return True
+            return True, "Session title changed."
         else:
-            return False
+            return False, self._handle_error_response(
+                status, resp_data, f"updating session '{session_id}'"
+            )
 
-    async def delete_session(self, session_id: int) -> bool:
+    async def delete_session(self, session_id: int) -> tuple[bool, str]:
         """
         Delete session.
-        """
 
+        Returns:
+            Tuple of (success, message).
+        """
         endpoint = f"/sessions/{session_id}"
 
-        status, _ = await self._delete(endpoint)
+        status, resp_data = await self._delete(endpoint)
 
         if status == 200:
-            return True
+            return True, "Session deleted."
         else:
-            return False
+            return False, self._handle_error_response(
+                status, resp_data, f"deleting session '{session_id}'"
+            )
 
 
 llm_service = LLMService()
